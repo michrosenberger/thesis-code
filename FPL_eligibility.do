@@ -29,6 +29,8 @@ forvalues year = 1998(1)2017 {
     save "${DATACLEAN}/PovertyLevels.dta", replace
 }
 
+replace state = "District of Columbia" if state == "D.C."
+
 label variable state ""
 label variable famSize "Family size"
 label variable povLevel "Poverty level"

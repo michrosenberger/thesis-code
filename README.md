@@ -1,14 +1,14 @@
 # MASTER THESIS GENERAL <!-- omit in toc -->
 
 - [Overview](#overview)
-    - [Data](#data)
-        - [Data structure](#data-structure)
-    - [Order of execution](#order-of-execution)
-    - [Directory structure](#directory-structure)
-    - [Variable naming convention](#variable-naming-convention)
+- [Data](#data)
+    - [Data structure](#data-structure)
+- [Order of execution](#order-of-execution)
+- [Directory structure](#directory-structure)
+- [Variable naming convention](#variable-naming-convention)
 
 
-# Overview
+## Overview
 This code ...
 
 

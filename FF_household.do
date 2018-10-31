@@ -1,3 +1,9 @@
+* Project:      MA Thesis
+* Content:      
+* Data:         Fragile families
+* Author:       Michelle Rosenberger
+* Date:         October 15, 2018
+
 *************************
 * Family structure - Fragile families
 *************************
@@ -84,7 +90,7 @@ foreach parent in m f {
 }
 
 ** Family
-/* In family only mother / father, spouse and children under the age of 18. */
+/* In family only mother/father, spouse and children under the age of 18. */
 foreach parent in m f {
     gen `parent'fam_relate  = .
         replace `parent'fam_relate = `parent'hh_relate  if (`parent'hh_relate == 0 | `parent'hh_relate == 3 | `parent'hh_relate == 5)
