@@ -25,11 +25,11 @@ Output datasets:
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global MYPATH     	"/Users/michellerosenberger/Development/MA"  
-global RAWDATA      "${MYPATH}/data/MedicaidDataPost/RawData"
-global MYDATA       "${MYPATH}/data/KFF/raw"
-global TEMPDIR  	"${MYPATH}/data/clean"			// general
-global CLEANDIR  	"${MYPATH}/data/temp"			// general
+global MYPATH     		"/Users/michellerosenberger/Development/MA"  
+global RAWDATA      	"${MYPATH}/data/MedicaidDataPost/RawData"
+global MYDATA       	"${MYPATH}/data/raw/KFF"
+global CLEANDATADIR  	"${MYPATH}/data/clean"			// general
+global TEMPDATADIR  	"${MYPATH}/data/temp"			// general
 
 
 ************************************
@@ -44,7 +44,7 @@ reshape wide medicut schipcut, i(state year  bpost1983) j(age)
 gen medicut18 	= medicut17
 gen schipcut18 	= schipcut17
 reshape long medicut schipcut, i(state year  bpost1983) j(age)
-save "${CLEANDIR}/cutscombined.dta", replace
+save "${CLEANDATADIR}/cutscombined.dta", replace
 
 
 ************************************
@@ -54,12 +54,12 @@ save "${CLEANDIR}/cutscombined.dta", replace
 
 * Import own transcriptions of KFF reports
 import excel "${MYDATA}/KFFTranscriptions_M.xlsx", sheet("sheet1") firstrow clear
-save "${TEMPDIR}/KFFTranscriptions_M.dta", replace
+save "${TEMPDATADIR}/KFFTranscriptions_M.dta", replace
 
 * Import Thompson transcripts of KFF reports & merge both datasets
 import excel "${RAWDATA}/KFFTranscriptions.xlsx", sheet("sheet1") firstrow clear
 
-merge 1:1 statefip using "${TEMPDIR}/KFFTranscriptions_M.dta", label
+merge 1:1 statefip using "${TEMPDATADIR}/KFFTranscriptions_M.dta", label
 drop _merge
 
 expand 	13
@@ -83,7 +83,7 @@ replace schipcut 	= schipcut / 100
 keep statefip year age medicut schipcut
 gen bpost1983 = 1
 
-append using "${CLEANDIR}/cutscombined.dta"
+append using "${CLEANDATADIR}/cutscombined.dta"
 
 egen cut = rowmax(medicut schipcut)
 keep if year >= 1998
@@ -99,4 +99,4 @@ label var schipcut	"S-CHIP threshold"
 label var cut		"Medicaid and S-CHIP threshold combined"
 label var bpost1983	"Child born after 1983"
 
-save "${CLEANDIR}/cutscombined.dta", replace		// data 1995-2018
+save "${CLEANDATADIR}/cutscombined.dta", replace		// data 1995-2018

@@ -7,10 +7,10 @@
 *************************
 * Family structure - Fragile families
 *************************
-global USERPATH     	"/Users/michellerosenberger/Development/MA"
-global RAWDATADIR		"${USERPATH}/data/FragileFamilies/raw"
-global CLEANDATADIR		"${USERPATH}/data/FragileFamilies/clean"
-global TEMPDATADIR		"${USERPATH}/data/FragileFamilies/temp1"
+global USERPATH         "/Users/michellerosenberger/Development/MA"
+global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
+global CLEANDATADIR  	"${MYPATH}/data/clean"		// general
+global TEMPDATADIR  	"${MYPATH}/data/temp"		// general
 
 use "${RAWDATADIR}/00_Baseline/ffmombspv3.dta", clear
 merge 1:1 idnum using "${RAWDATADIR}/00_Baseline/ffdadbspv3.dta"

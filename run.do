@@ -16,20 +16,23 @@ set maxvar 10000
 global CODEDIR  "/Users/michellerosenberger/Development/MA/code"
 
 * Simulated Eligibility Instrument
-do "${CODEDIR}\FPL_thresholds.do"              // OK
+do "${CODEDIR}/FPL_threshold.do"                // OK
     display("Federal poverty line created.")
-    display("Creates PovertyLevels.dta")
+    display("Creates: PovertyLevels.dta")
 
-do "${CODEDIR}\medicaidEligibility.do"          // OK
+macro list
+use "${CLEANDIR}/PovertyLevels.dta", clear
+
+do "${CODEDIR}/medicaidEligibility.do"          // OK
     display("Eligibility data created.")
-    display("Creates cutscombined.dta")
+    display("Creates: cutscombined.dta")
 
-do "${CODEDIR}\cps_households.do"               // In process
+do "${CODEDIR}/CPS_household.do"                // In process
     display("CPS household data created.")
-    display("Creates cps.dta")
+    display("Creates: cps.dta")
 
-do "${CODEDIR}\simulatedEligibility.do"         // In process
-    display("Instrument created.")
+* do "${CODEDIR}/simulatedEligibility.do"         // In process
+*   display("Instrument created.")
 
 * Fragile families data
 

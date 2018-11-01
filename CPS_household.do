@@ -24,11 +24,11 @@ Note:
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global MYPATH     	"/Users/michellerosenberger/Development/MA"
-global RAWDATADIR	"${MYPATH}/data/MarchCPS/raw"
-global CODEDIR		"${MYPATH}/code"
-global TEMPDIR  	"${MYPATH}/data/clean"		// general
-global CLEANDIR  	"${MYPATH}/data/temp"		// general
+global MYPATH     		"/Users/michellerosenberger/Development/MA"
+global RAWDATADIR		"${MYPATH}/data/raw/MarchCPS"
+global CODEDIR			"${MYPATH}/code"
+global CLEANDATADIR  	"${MYPATH}/data/clean"		// general
+global TEMPDATADIR  	"${MYPATH}/data/temp"		// general
 
 // log using ${CODEDIR}/CPS.log, replace 
 
@@ -185,7 +185,7 @@ drop state
 ************************************
 * MERGE POVERTY LEVELS
 ************************************
-merge m:1  year famSize statefip using "${CLEANDIR}/PovertyLevels.dta"
+merge m:1  year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
 keep if _merge == 3
 drop _merge
 
@@ -199,10 +199,10 @@ label var incRatio	"Family poverty level"
 * winsorize income p1 and p99?
 * browse famInc incf_all povLevel pvcfam incRatio  pvlfam
 
-save "${TEMPDIR}/household_cps_povlevels.dta", replace
+save "${TEMPDATADIR}/household_cps_povlevels.dta", replace
 
 
-use "${TEMPDIR}/household_cps_povlevels.dta", clear
+use "${TEMPDATADIR}/household_cps_povlevels.dta", clear
 drop incp_* incf_all pvlfam persInc month id
 
 * Unique identifiers
@@ -265,7 +265,7 @@ keep age statefip inratio
 keep if pfrel == 3 		// child
 
 keep year age statefip incRatio
-save "${CLEANDIR}/cps.dta", replace
+save "${CLEANDATADIR}/cps.dta", replace
 
 
 ************************************

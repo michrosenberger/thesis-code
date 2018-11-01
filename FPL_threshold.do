@@ -22,10 +22,10 @@ Output datasets:
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global MYPATH     	"/Users/michellerosenberger/Development/MA"
-global DATARAW      "${MYPATH}/data/POVLEVEL/raw"
-global TEMPDIR  	"${MYPATH}/data/clean"			// general
-global CLEANDIR  	"${MYPATH}/data/temp"			// general
+global MYPATH     	    "/Users/michellerosenberger/Development/MA"
+global DATARAW          "${MYPATH}/data/raw/FPL"
+global CLEANDATADIR  	"${MYPATH}/data/clean"			// general
+global TEMPDATADIR      "${MYPATH}/data/temp"			// general
 
 *************************
 * Poverty levels
@@ -36,7 +36,7 @@ gen state = ""
 gen year = .
 gen famSize = .
 gen povLevel = .
-save "${DATACLEAN}/PovertyLevels.dta", replace
+save "${CLEANDATADIR}/PovertyLevels.dta", replace
 
 forvalues year = 1998(1)2017 { 
     import excel "${DATARAW}/FPL`year'.xlsx", sheet("Sheet1") firstrow clear
@@ -45,8 +45,8 @@ forvalues year = 1998(1)2017 {
     rename FS povLevel 
     rename STATE state
     order state year 
-    append using "${DATACLEAN}/PovertyLevels.dta"
-    save "${DATACLEAN}/PovertyLevels.dta", replace
+    append using "${CLEANDATADIR}/PovertyLevels.dta"
+    save "${CLEANDATADIR}/PovertyLevels.dta", replace
 }
 
 * LABELS
@@ -115,7 +115,11 @@ gen statefip = .
 drop state
 drop if year == .
 
+label var statefip 	"State of residence (FIPS) coding"
+label var year      "Year"
+
 *************************
 * Save
 *************************
-save "${CLEANDIR}/PovertyLevels.dta", replace
+save "${CLEANDATADIR}/PovertyLevels.dta", replace
+

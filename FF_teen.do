@@ -17,10 +17,11 @@ set maxvar 10000
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
 global USERPATH     	"/Users/michellerosenberger/Development/MA"	// Own directory data
-global RAWDATADIR		"${USERPATH}/data/FragileFamilies/data/raw"
-global CLEANDATADIR		"${USERPATH}/data/FragileFamilies/data/clean"
-global CODEDIR			"${USERPATH}/code/FragileFamilies"
-global INFODIR			"${USERPATH}/data/FragileFamilies/references"
+global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
+global CLEANDATADIR		"${USERPATH}/data/clean"    // general
+global TEMPDATADIR      "${MYPATH}/data/temp"       // general
+global CODEDIR			"${USERPATH}/code"
+global INFODIR
 
 log using ${CODEDIR}/varsTeen.log, replace 
 

@@ -24,9 +24,9 @@ Note:
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global MYPATH       "/Users/michellerosenberger/Development/MA"
-global TEMPDIR  	"${MYPATH}/data/clean"
-global CLEANDIR  	"${MYPATH}/data/temp"
+global MYPATH           "/Users/michellerosenberger/Development/MA"
+global CLEANDATADIR  	"${MYPATH}/data/clean"
+global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 // log using ${CODEDIR}/CPS.log, replace 
 
@@ -36,16 +36,16 @@ global CLEANDIR  	"${MYPATH}/data/temp"
 foreach var in statefip year age {  // create new dataset
     gen `var' = .
 }
-save "${CLEANDIR}/simulatedEligbility.dta", replace
+save "${CLEANDATADIR}/simulatedEligbility.dta", replace
 
 
-use "${CLEANDIR}/cutscombined.dta", clear     // combine all datasets
+use "${CLEANDATADIR}/cutscombined.dta", clear     // combine all datasets
 levelsof statefip, local(states)
 forvalues year = 1998/2016 {
     forvalues age = 0/18 {
         foreach state of local states {
             di "Age: `age', Year: `year', State: `state'"
-            use "${CLEANDIR}/cps.dta" if age == `age', clear
+            use "${CLEANDATADIR}/cps.dta" if age == `age', clear
             drop if statefip==`s'
             drop statefip
             gen bpost1983 = `year' - `age' > 1983
@@ -56,8 +56,8 @@ forvalues year = 1998/2016 {
             keep if _merge == 3
             gen simulatedElig = incRatio < = cut
             collapse simulatedElig, by(statefip year age)  // fraction by state, year and age
-            append using "${CLEANDIR}/simulatedEligbility.dta"
-            save "${CLEANDIR}/simulatedEligbility.dta", replace
+            append using "${CLEANDATADIR}/simulatedEligbility.dta"
+            save "${CLEANDATADIR}/simulatedEligbility.dta", replace
         }
     }
 }

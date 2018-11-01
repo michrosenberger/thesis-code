@@ -98,10 +98,10 @@ Data was downloaded from: https://sites.google.com/site/othompsonecon/home/publi
 
 
 ## Order of execution
-The files were written for a UNIX environment. You can just run the file listed below and all other files will be automatically executed.
+The files were written for a UNIX environment. You can just run the file listed below in STATA and all files will be automatically executed.
 
 ~~~
-bash ./INSERT.sh
+. run.do
 ~~~
 
 ## Directory structure
