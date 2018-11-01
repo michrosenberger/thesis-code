@@ -18,8 +18,8 @@ Data from the following sources were used:
 **Add Health dataset**  
 Downloaded from:
 
-**Federal Poverty line**  
-Data for the years XXXX - XXXX were downloaded from: https://aspe.hhs.gov/prior-hhs-poverty-guidelines-and-federal-register-references
+**Federal Poverty line**
+Data for the years 1998 - 2017 were downloaded from: https://aspe.hhs.gov/prior-hhs-poverty-guidelines-and-federal-register-references
 
 **Fragile Families dataset**  
 Downloaded from:
