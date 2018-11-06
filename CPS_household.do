@@ -231,20 +231,20 @@ label data "CPS March data 1998-2016"
 * needed: age (0-19), statefip, inratio
 
 * HH with married parents and age .. or unmarried parents and age
+gen cohort = year - age
 gen 	typeFF1 = 0
-replace typeFF1 = 1 if pfrel == 2 & female == 1  // &  cohort == ?
-replace typeFF1 = 1 if pfrel == 5  				// & cohort == ?
+replace typeFF1 = 1 if pfrel == 2 & female == 1  & (cohort>=1955 & cohort<=1985)
+replace typeFF1 = 1 if pfrel == 5 & (cohort>=1955 & cohort<=1985)
 bysort serial year : egen typeFFhh1=max(typeFF1)
 
 * Keep the flagged households
 keep if typeFFhh1==1
 
 * Age mother at birth of child
-gen cohort = year - age
 gen momCohort_temp = cohort	if (pfrel == 2 | pfrel == 5) & female == 1
 bysort serial year : egen momCohort = min (momCohort_temp)
 gen momGeb = cohort - momCohort
-drop if momGeb < AGENUM | momGeb > AGENUM		// range in FF
+drop if momGeb < 15 | momGeb > 43		// range in FF
 drop momCohort_temp
 */
 
@@ -265,6 +265,8 @@ keep age statefip inratio
 keep if pfrel == 3 		// child
 
 keep year age statefip incRatio
+order year statefip age incRatio
+sort year statefip age
 save "${CLEANDATADIR}/cps.dta", replace
 
 
