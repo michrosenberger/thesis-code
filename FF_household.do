@@ -30,17 +30,15 @@ cd ${CODEDIR}
 ******************************* VARIABLES MERGE ********************************
 ********************************************************************************
 
-do FF_prepareHH.do  // prepare data
-
+* MERGE
 use "${TEMPDATADIR}/parents_Y0.dta", clear
 append using "${TEMPDATADIR}/parents_Y1.dta"
 append using "${TEMPDATADIR}/parents_Y3.dta"
 append using "${TEMPDATADIR}/parents_Y5.dta"
-* WAVE 9
-* WAVE 15
+append using "${TEMPDATADIR}/parents_Y9.dta"
+append using "${TEMPDATADIR}/parents_Y15.dta"
 
-label data "Household structure FF"
-
+* RENAME
 rename idnum       id
 rename moYear      year
 rename chFAM_size  famSize
@@ -50,24 +48,48 @@ rename chGender    gender
 rename chAvg_inc   avgInc
 rename chHH_income hhInc
 
-order id wave year age famSize
-sort id wave
+* AGE
+rename age age_m
+gen age_temp = age_m / 12
+gen age = int(age_temp)
+drop age_temp
 
+* GENDER
+rename gender gender_temp
+egen gender = max(gender_temp), by(id) 
+drop gender_temp
+
+* LABEL
+label data "Household structure FF"
 label var year      "Year interview"
 label var famSize   "Number of family members in hh"
 label var hhSize    "Number of hh members"
 label var incRatio  "Poverty ratio % (FF)"
 label var avgInc    "Avg. hh income"
 label var hhInc     "Household income"
-label var age       "Age child (months)"
+label var age       "Age child (years)"
+label var age_m     "Age child (months)"
 label var gender    "Gender cild"
 label var wave      "Wave"
+
+order id wave year age famSize gender
+sort id wave
+
 
 tab year
 describe
 
+drop age_m
+
 * ONE observation per WAVE and ID
 save "${TEMPDATADIR}/household_FF.dta", replace
+
+
+/* NOTES:
+- Limit obersvations per person
+- Drop those that year == .
+- Label variables
+*/
 
 
 

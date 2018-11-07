@@ -24,7 +24,9 @@ Note:
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global MYPATH           "/Users/michellerosenberger/Development/MA"
+if "`c(username)'" == "michellerosenberger"  {
+    global MYPATH		"~/Development/MA"
+}
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 

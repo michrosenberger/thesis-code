@@ -13,15 +13,14 @@ set maxvar 10000
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global CODEDIR  "/Users/michellerosenberger/Development/MA/code"
+if "`c(username)'" == "michellerosenberger"  {
+    global CODEDIR		"~/Development/MA/code"
+}
 
 * Simulated Eligibility Instrument
 do "${CODEDIR}/FPL_threshold.do"                // OK
     display("Federal poverty line created.")
     display("Creates: PovertyLevels.dta")
-
-macro list
-use "${CLEANDIR}/PovertyLevels.dta", clear
 
 do "${CODEDIR}/medicaidEligibility.do"          // OK
     display("Eligibility data created.")
@@ -34,7 +33,18 @@ do "${CODEDIR}/CPS_household.do"                // In process
 * do "${CODEDIR}/simulatedEligibility.do"         // In process
 *   display("Instrument created.")
 
-* Fragile families data
+* Fragile families data household panel
+do "${CODEDIR}/FF_prepareHH.do"
+    display("Prepare FF household data created.")
+    display("Creates: parents_Y0.dta - parents_Y15.dta")
+
+do "${CODEDIR}/FF_household.do"
+    display("FF household data created.")
+    display("Creates: household_FF.dta")
+
+* Fragile families outcome variables
+
+
 
 
 * Combine

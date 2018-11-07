@@ -113,7 +113,6 @@ while `int' <= `num' {
         * AGE and RELATIONSHIP hh member
         rename `letter'1e1d`member' `parent'HH_age`member'
         rename `letter'1e1b`member' `parent'HH_relate`member'
-        /* 0 = none, 1 = partner, 5 = child, 6 = OtChld */
 
         * EMPLOYMENT hh member
         gen     `parent'HH_employ`member'   = .
@@ -187,7 +186,7 @@ foreach parent in mo fa {
 }
 
 *************************
-** CHILD FAMILY STRUCTURE
+** CHILD FAM STRUCTURE
 *************************
 /* IF chLiveMo missing: mother report as default */
 foreach var in member female relate age employ size {
@@ -203,7 +202,7 @@ label   define chFAM_size_f 0 "Father report" 1 "Mother report"
 label   values chFAM_size_f chFAM_size_f
 
 *************************
-* CHILD FAMILY & HH INCOME
+** CHILD FAM & HH INCOME
 *************************
 /* Total family income in Thompson, 2018:
 Sum of income for mother + spouse: wages, salaries, business and farm operation
@@ -394,7 +393,7 @@ foreach parent in mo fa {
 }
 
 *************************
-** CHILD FAMILY STRUCTURE
+** CHILD FAM STRUCTURE
 *************************
 /* IF chLiveMo missing: mother report as default */
 foreach var in member female relate age employ size {
@@ -410,7 +409,7 @@ label   define chFAM_size_f 0 "Father report" 1 "Mother report"
 label   values chFAM_size_f chFAM_size_f
 
 *************************
-* CHILD FAMILY & HH INCOME
+** CHILD FAM & HH INCOME
 *************************
 /* Total family income in Thompson, 2018:
 Sum of income for mother + spouse: wages, salaries, business and farm operation
@@ -885,10 +884,291 @@ replace chFAM_size = . if moYear == .
 
 save "${TEMPDATADIR}/parents_Y5.dta", replace
 
-* Left: idnum moYear chAge chFAM_size chHH_size chHH_income chAvg_inc incRatio
 
 ********************************************************************************
 ******************************* VARIABLES YEAR 9 *******************************
 ********************************************************************************
 
+*************************
+** MERGE
+*************************
+use "${RAWDATADIR}/04_Nine-Year Core/ff_y9_pub1.dta", clear
 
+keep idnum c*5age cm5b_age c*5intyr c*5intmon c*5hhinc c*5hhimp c*5povco c*5povca *5a5b* *5a5c* *5a5d* *5a5e* *5a51 c*5adult c*5kids m5a2 m5a3f
+
+missingvalues	// recode missing values
+
+*************************
+** DEMOGRAPHICS
+*************************
+rename cm5age 	moAge
+rename cf5age 	faAge
+rename cm5b_age	chAge
+rename cm5intyr	moYear
+rename cf5intyr	faYear
+rename cm5intmon	moMonth
+rename cf5intmon	faMonth
+gen moCohort    = moYear - moAge
+gen faCohort    = faYear - faAge
+
+*************************
+** HH INCOME
+*************************
+local int = 1
+local num : word count mo fa
+while `int' <= `num' {
+    local parent    : word `int' of     mo  fa
+    local letter    : word `int' of     m   f
+    local int = `int' + 1
+
+	rename c`letter'5hhinc 	`parent'HH_income
+	rename c`letter'5hhimp	`parent'HH_income_f
+	rename c`letter'5povco	`parent'HH_povratio
+	rename c`letter'5povca	`parent'HH_povcat
+}
+
+*************************
+** HH STRUCTURE
+*************************
+local int = 1
+local num : word count mo fa
+while `int' <= `num' {
+    local parent    : word `int' of     mo  fa
+    local letter    : word `int' of     m   f
+    local int = `int' + 1
+
+    forvalues member = 1/9 {
+
+        * GENDER hh member
+        gen     `parent'HH_female`member'   = .
+        replace `parent'HH_female`member'   = 1   if `letter'5a5b0`member' == 2
+        replace `parent'HH_female`member'   = 0   if `letter'5a5b0`member' == 1
+
+        * AGE and RELATIONSHIP hh member
+		rename `letter'5a5c0`member'	`parent'HH_age`member'
+		rename `letter'5a5d0`member'	`parent'HH_relate`member'
+
+        * EMPLOYMENT hh member
+        gen     `parent'HH_employ`member'   = .
+        replace `parent'HH_employ`member'   = 1   if `letter'5a5e0`member' == 1
+        replace `parent'HH_employ`member'   = 0   if `letter'5a5e0`member' == 2
+    }
+}
+
+forvalues member = 10/11 {  // just mother
+
+    * GENDER hh member
+    gen     moHH_female`member'   = .
+    replace moHH_female`member'   = 1   if m5a5b`member' == 2
+    replace moHH_female`member'   = 0   if m5a5b`member' == 1
+
+    * AGE and RELATIONSHIP hh member
+    rename m5a5c`member'	moHH_age`member'
+    rename m5a5d`member'	moHH_relate`member'
+
+    * EMPLOYMENT hh member
+    gen     moHH_employ`member'   = .
+    replace moHH_employ`member'   = 1   if m5a5e`member' == 1
+    replace moHH_employ`member'   = 0   if m5a5e`member' == 2
+}
+
+* HH size
+gen		moHH_size_s	= m5a51 + 2		// self-reported (var without self + child)
+gen		faHH_size_s	= f5a51 + 2		// self-reported (var without self + child)
+gen     moHH_size_c   	= cm5adult + cm5kids		// constructed
+gen     faHH_size_c   	= cf5adult + cf5kids		// constructed
+
+
+*************************
+** CHILD LIVING ARR.
+*************************
+codebook m5a2		// how much time
+codebook m5a3f		// usually live with
+
+gen 	chLiveMo = .
+replace chLiveMo = 1 if (m5a2 == 1 | m5a2 == 2)	// mother (most & half)
+replace chLiveMo = 0 if (m5a2 != 1 & m5a2 != 2 & m5a3f == 1)	// father
+label var chLiveMo      "Baby lives with mother"
+
+keep idnum mo* fa* ch* // cm1relf
+
+reshape long moHH_female moHH_age moHH_relate moHH_employ faHH_female faHH_age faHH_relate faHH_employ, i(idnum) j(noHH_member)
+
+gen wave		= 9
+keep idnum mo* fa* ch* no* wave
+order idnum wave
+
+*************************
+** MISSING VALUES
+*************************
+foreach parent in moHH faHH {
+    foreach var in `parent'_female `parent'_age `parent'_relate `parent'_employ {
+        replace `var' = . if (`var' == .a | `var' == .b | `var' == .c | `var' == .f | `var' == .i)
+    }
+}
+
+*************************
+** PARENTS FAM STRUCTURE
+*************************
+tab moHH_relate
+tab faHH_relate
+/* 1 = spouse, 2 = partner, 6 = child, 7 = step, */
+
+/* In family only partner and children under the age of 18. */
+foreach parent in mo fa {
+    
+    * Relationship to respondent
+    gen     `parent'FAM_relate = .
+    replace `parent'FAM_relate = `parent'HH_relate if (`parent'HH_relate == 1 | `parent'HH_relate == 2 | `parent'HH_relate == 6 | `parent'HH_relate == 7)
+    replace `parent'FAM_relate = . if (`parent'HH_relate == 6 & `parent'HH_age > 18) // child under 18
+    replace `parent'FAM_relate = . if (`parent'HH_relate == 7 & `parent'HH_age > 18) // child under 18
+
+    * Gender hh member
+    gen     `parent'FAM_female = .
+    replace `parent'FAM_female = `parent'HH_female if (`parent'HH_relate == 1 | `parent'HH_relate == 2 | `parent'HH_relate == 6 | `parent'HH_relate == 7)
+    replace `parent'FAM_female = . if (`parent'HH_relate == 6 & `parent'HH_age > 18) // child under 18
+    replace `parent'FAM_female = . if (`parent'HH_relate == 7 & `parent'HH_age > 18) // child under 18
+
+    * Age hh member
+    gen     `parent'FAM_age = .
+    replace `parent'FAM_age = `parent'HH_age if (`parent'HH_relate == 1 | `parent'HH_relate == 2 | `parent'HH_relate == 6 | `parent'HH_relate == 7)
+    replace `parent'FAM_age = . if (`parent'HH_relate == 6 & `parent'HH_age > 18) // child under 18
+    replace `parent'FAM_age = . if (`parent'HH_relate == 7 & `parent'HH_age > 18) // child under 18
+
+    * Employment hh member
+    gen     `parent'FAM_employ = .
+    replace `parent'FAM_employ = `parent'HH_employ if (`parent'HH_relate == 1 | `parent'HH_relate == 2 | `parent'HH_relate == 6 | `parent'HH_relate == 7)
+    replace `parent'FAM_employ = . if (`parent'HH_relate == 6 & `parent'HH_age > 18) // child under 18
+    replace `parent'FAM_employ = . if (`parent'HH_relate == 7 & `parent'HH_age > 18) // child under 18
+
+    * Family size
+    gen temp`parent' = 1 if `parent'FAM_relate != .
+    bysort temp`parent' idnum : gen `parent'FAM_member = _n if `parent'FAM_relate != .
+    drop temp`parent'
+
+    egen `parent'FAM_size = count(`parent'FAM_member), by(idnum)
+    replace `parent'FAM_size = `parent'FAM_size + 1    // Add parent
+}
+
+*************************
+** CHILD FAMILY STRUCTURE
+*************************
+/* IF chLiveMo missing: mother report as default */
+foreach var in member female relate age employ size {
+    gen     chFAM_`var' = moFAM_`var' if chLiveMo == 1 // mother report
+    replace chFAM_`var' = faFAM_`var' if chLiveMo == 2 // father report
+    replace chFAM_`var' = moFAM_`var' if (chLiveMo != 1 & chLiveMo != 2)  // default
+
+}
+
+gen     chFAM_size_f  = 1 if chLiveMo != 2    // mother
+replace chFAM_size_f  = 0 if chLiveMo == 2    // father
+label   define chFAM_size_f 0 "Father report" 1 "Mother report"
+label   values chFAM_size_f chFAM_size_f
+
+*************************
+* CHILD FAMILY & HH INCOME
+*************************
+/* Total family income in Thompson, 2018:
+Sum of income for mother + spouse: wages, salaries, business and farm operation
+profits, unemployment insurance and child support payments */
+/* INCOME LAG? */
+
+/* Divide by # of hh members and multiply by family members  */
+gen     moAvg_inc = (moHH_income / moHH_size_c) * moFAM_size
+gen     faAvg_inc = (faHH_income / faHH_size_c) * faFAM_size
+
+gen     chHH_size = moHH_size_c if chLiveMo != 2  // mo report
+replace chHH_size = faHH_size_c if chLiveMo == 2  // fa report
+
+gen     chHH_income = moHH_income if chLiveMo != 2    // mo report
+replace chHH_income = faHH_income if chLiveMo == 2    // fa report
+
+gen     chAvg_inc = moAvg_inc if chLiveMo != 2    // mo report
+replace chAvg_inc = faAvg_inc if chLiveMo == 2    // fa report
+
+* Poverty ratio FF (Child hh income ratio)
+gen     incRatio = moHH_povratio if chLiveMo != 2   // mo report
+replace incRatio = faHH_povratio if chLiveMo == 2   // fa report
+
+
+keep idnum moYear moMonth ch* incRatio wave
+order idnum moYear moMonth
+sort idnum
+
+ds idnum, not
+global FINALVARS = r(varlist)
+collapse $FINALVARS, by(idnum)
+
+drop chFAM_member chFAM_female chFAM_relate chFAM_age chFAM_employ moMonth chLiveMo chFAM_size_f
+replace chFAM_size = . if moYear == .
+
+
+save "${TEMPDATADIR}/parents_Y9.dta", replace
+
+
+
+********************************************************************************
+****************************** VARIABLES YEAR 15 *******************************
+********************************************************************************
+
+*************************
+** MERGE
+*************************
+use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear
+
+keep idnum cp6age cp6yagey cp6yagem cp6intyr cp6intmon cp6hhinc cp6hhimp cp6povco cp6povca cp6hhsize
+
+missingvalues	// recode missing values
+
+*************************
+** DEMOGRAPHICS
+*************************
+* Only primary caregiver
+
+rename cp6age 	    moAge
+*rename cp6yagey    chAge   // years
+rename cp6yagem     chAge   // months
+rename cp6intyr	    moYear
+rename cp6intmon    moMonth
+gen pgCohort = moYear - moAge
+
+*************************
+** HH INCOME
+*************************
+rename cp6hhinc moHH_income
+rename cp6hhimp	moHH_income_f
+rename cp6povco	moHH_povratio
+rename cp6povca	moHH_povcat
+
+*************************
+** HH STRUCTURE
+*************************
+rename  cp6hhsize moHH_size_c       // includes PCG + child
+
+* Don't find all HH members
+
+gen wave		= 15
+keep idnum mo* wave chAge 
+
+*************************
+* CHILD FAM & HH INCOME
+*************************
+* Income HH
+gen     chHH_income = moHH_income   // pcg report
+
+* HH size
+gen     chHH_size = moHH_size_c     // pcg report
+
+* Poverty ratio FF (Child hh income ratio)
+gen     incRatio = moHH_povratio    // pcg report
+
+keep idnum moYear ch* incRatio wave
+order idnum moYear
+sort idnum
+
+ds idnum, not
+global FINALVARS = r(varlist)
+collapse $FINALVARS, by(idnum)
+
+save "${TEMPDATADIR}/parents_Y15.dta", replace

@@ -1,11 +1,15 @@
+* Project:      MA Thesis
+* Content:      Extract information FF
+* Data:         Fragile families
+* Author:       Michelle Rosenberger
+* Date:         November 5, 2018
 
-
-
-
-
+********************************************************************************
+*********************************** PREAMBLE ***********************************
+********************************************************************************
 capture log close
 clear all
-macro drop _all
+est clear
 set more off
 set emptycells drop
 set matsize 10000
@@ -20,8 +24,6 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"		// general
 global TEMPDATADIR  	"${MYPATH}/data/temp"		// general
 global INFODIR			"${MYPATH}/data/references/FF_references/codebook"
 cd ${INFODIR}
-
-* DEFINE PROGRAM
 
 ************************************
 * Extract information

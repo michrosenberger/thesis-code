@@ -22,10 +22,12 @@ Output datasets:
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global MYPATH     	    "/Users/michellerosenberger/Development/MA"
+if "`c(username)'" == "michellerosenberger"  {
+    global MYPATH		"~/Development/MA"
+}
 global DATARAW          "${MYPATH}/data/raw/FPL"
-global CLEANDATADIR  	"${MYPATH}/data/clean"			// general
-global TEMPDATADIR      "${MYPATH}/data/temp"			// general
+global CLEANDATADIR  	"${MYPATH}/data/clean"
+global TEMPDATADIR      "${MYPATH}/data/temp"
 
 *************************
 * Poverty levels

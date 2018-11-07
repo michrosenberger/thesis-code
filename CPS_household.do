@@ -24,11 +24,13 @@ Note:
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
-global MYPATH     		"/Users/michellerosenberger/Development/MA"
+if "`c(username)'" == "michellerosenberger"  {
+    global MYPATH		"~/Development/MA"
+}
 global RAWDATADIR		"${MYPATH}/data/raw/MarchCPS"
 global CODEDIR			"${MYPATH}/code"
-global CLEANDATADIR  	"${MYPATH}/data/clean"		// general
-global TEMPDATADIR  	"${MYPATH}/data/temp"		// general
+global CLEANDATADIR  	"${MYPATH}/data/clean"
+global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 // log using ${CODEDIR}/CPS.log, replace 
 
