@@ -221,61 +221,84 @@ label data "CPS March data 1998-2016"
 ************************************
 * Subsample
 ************************************
-/* Construct sample that mirrors the FF sample:
-- Mothers / Parents in cohort between
-- Age mother at birth between .. and ..
-- Propsensity score matching
-- ssc install psmatch2
-*/
+* Mirrors FF composition (by mother)
 
-/*
-* before make sample that mirrors that of the FF data
-* needed: age (0-19), statefip, inratio
-
-* HH with married parents and age .. or unmarried parents and age
+* Mother cohort between 1955 and 1985 in FF
 gen cohort = year - age
-gen 	typeFF1 = 0
-replace typeFF1 = 1 if pfrel == 2 & female == 1  & (cohort>=1955 & cohort<=1985)
-replace typeFF1 = 1 if pfrel == 5 & (cohort>=1955 & cohort<=1985)
-bysort serial year : egen typeFFhh1=max(typeFF1)
+gen 	typeFF = 0
+replace typeFF = 1 if pfrel == 2 & female == 1  & (cohort>=1955 & cohort<=1985)
+replace typeFF = 1 if pfrel == 5 & (cohort>=1955 & cohort<=1985)
+bysort serial year : egen typeFFhh = max(typeFF)
 
 * Keep the flagged households
-keep if typeFFhh1==1
+keep if typeFFhh == 1
 
-* Age mother at birth of child
+* Age mother at birth between 15 and 43 years old in FF
 gen momCohort_temp = cohort	if (pfrel == 2 | pfrel == 5) & female == 1
 bysort serial year : egen momCohort = min (momCohort_temp)
 gen momGeb = cohort - momCohort
-drop if momGeb < 15 | momGeb > 43		// range in FF
+drop if momGeb < 15 | momGeb > 43
 drop momCohort_temp
-*/
 
-/* FROM THOMPSON
-  append using momageb_inworkingsample //this is a dataset with amaternal age at birth for the sample used in the baseline regression models
-  replace NLSY=0 if NLSY==.
-  psmatch2 NLSY momageb inratio, n(10) common 
-  
-  sum momageb inratio if NLSY==1
-  sum momageb inratio if NLSY==0
-  sum momageb inratio if NLSY==0 & _weight!=.
-  
-keep if  _weight!=.
-keep age statefip inratio 
-*/
+* Not in FF sample
+gen FF = 0
 
-* Until subsample from FF
-keep if pfrel == 3 		// child
+* Keep only children
+keep if pfrel == 3
+
+replace incRatio = incRatio / 100
+
+
+* Append to a dataset with maternal age at birth and income ratio used from the FF baseline wave
+** APPLY WEIGHT FROM FF DATA???
+
+/*
+append using "${TEMPDATADIR}/mothers_FF.dta"
+
+* Propensity score matching
+psmatch2 FF momGeb incRatio, n(10) common		// fails
+
+	sum momGeb incRatio if FF == 1
+	sum momGeb incRatio if FF == 0
+	sum momGeb incRatio if FF == 0 & _weight != .
+
+	keep if _weight != .
+*/
 
 keep year age statefip incRatio
 order year statefip age incRatio
 sort year statefip age
+
+drop year
+
 save "${CLEANDATADIR}/cps.dta", replace
+
+
+
+
+
+
+
+
 
 
 ************************************
 * Summary statistics
 ************************************
-* collapse varlist, by( ) 	// serial & id?
+*sum momGeb age female famSize famInc if FF == 0
+* do also with FF == 1
+* sutex
+
+
+
+
+
+
+
+
+
+
+
 
 
 ************************************
@@ -299,15 +322,6 @@ foreach var in himcaid hischip hins {
 	egen fraq_`var' = rowmax(fraq_`var'_*)
 }
 
-
-line fraq_hischip fraq_himcaid year
-graph export "${FIGUREDIR}/time1.pdf", replace
-
-twoway area fraq_himcaid fraq_hischip year
-graph export "${FIGUREDIR}/time2.pdf", replace
-
-
-/*
 // Income from social security, food stamps, WIC, EITC etc
 tab hins 	// Health insurance
 tab hipriv	// Health insurance, private

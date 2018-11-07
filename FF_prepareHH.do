@@ -227,7 +227,7 @@ gen     incRatio = moHH_povratio if chLiveMo != 2   // mo report
 replace incRatio = faHH_povratio if chLiveMo == 2   // fa report
 
 
-keep idnum moYear moMonth ch* incRatio wave
+keep idnum moYear moMonth ch* incRatio wave moAge
 order idnum moYear moMonth
 sort idnum
 
@@ -240,6 +240,12 @@ drop chFAM_member chFAM_female chFAM_relate chFAM_age chFAM_employ moMonth chLiv
 
 save "${TEMPDATADIR}/parents_Y0.dta", replace
 
+* For simulated instrument propensity score matching
+keep moAge incRatio
+gen FF = 1
+replace incRatio = incRatio * 100
+rename moAge momGeb
+save "${TEMPDATADIR}/mothers_FF.dta", replace
 
 ********************************************************************************
 ******************************* VARIABLES YEAR 1 *******************************
@@ -329,7 +335,7 @@ codebook m2a4a		// usually live with
 
 gen 	chLiveMo = .
 replace chLiveMo = 1 if (m2a3 == 1 | m2a3 == 2)				// mother (all or halftime)
-replace chLiveMo = 0 if (m2a3 != 1 & m2a3 != 2 & m2a4a == 1)	// father
+replace chLiveMo = 2 if (m2a3 != 1 & m2a3 != 2 & m2a4a == 1)	// father
 label var chLiveMo      "Baby lives with mother"
 
 keep idnum mo* fa* ch* // cm1relf
@@ -540,7 +546,7 @@ codebook m3a3a		// usually live with
 
 gen 	chLiveMo = .
 replace chLiveMo = 1 if (m3a2 == 1 | m3a2 == 2)	 // mother (most & half)
-replace chLiveMo = 0 if (m3a2 != 1 & m3a2 != 2 & m3a3a == 1)	// father
+replace chLiveMo = 2 if (m3a2 != 1 & m3a2 != 2 & m3a3a == 1)	// father
 label var chLiveMo      "Baby lives with mother"
 
 keep idnum mo* fa* ch* // cm1relf
@@ -757,7 +763,7 @@ codebook m4a3a2		// usually live with
 
 gen 	chLiveMo = .
 replace chLiveMo = 1 if (m4a2 == 1 | m4a2 == 2)	// mother (most & half)
-replace chLiveMo = 0 if (m4a2 != 1 & m4a2 != 2 & m4a3a2 == 1)	// father
+replace chLiveMo = 2 if (m4a2 != 1 & m4a2 != 2 & m4a3a2 == 1)	// father
 label var chLiveMo      "Baby lives with mother"
 
 keep idnum mo* fa* ch* // cm1relf
@@ -987,7 +993,7 @@ codebook m5a3f		// usually live with
 
 gen 	chLiveMo = .
 replace chLiveMo = 1 if (m5a2 == 1 | m5a2 == 2)	// mother (most & half)
-replace chLiveMo = 0 if (m5a2 != 1 & m5a2 != 2 & m5a3f == 1)	// father
+replace chLiveMo = 2 if (m5a2 != 1 & m5a2 != 2 & m5a3f == 1)	// father
 label var chLiveMo      "Baby lives with mother"
 
 keep idnum mo* fa* ch* // cm1relf

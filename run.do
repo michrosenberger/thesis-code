@@ -17,23 +17,24 @@ if "`c(username)'" == "michellerosenberger"  {
     global CODEDIR		"~/Development/MA/code"
 }
 
-* Simulated Eligibility Instrument
-do "${CODEDIR}/FPL_threshold.do"                // OK
+** Simulated Eligibility Instrument
+do "${CODEDIR}/FPL_threshold.do"
     display("Federal poverty line created.")
     display("Creates: PovertyLevels.dta")
 
-do "${CODEDIR}/medicaidEligibility.do"          // OK
+do "${CODEDIR}/medicaidEligibility.do"
     display("Eligibility data created.")
     display("Creates: cutscombined.dta")
 
-do "${CODEDIR}/CPS_household.do"                // In process
+do "${CODEDIR}/CPS_household.do"
     display("CPS household data created.")
     display("Creates: cps.dta")
 
-* do "${CODEDIR}/simulatedEligibility.do"         // In process
-*   display("Instrument created.")
+do "${CODEDIR}/simulatedEligibility.do"
+   display("Instrument created.")
 
-* Fragile families data household panel
+
+** Fragile families data household panel
 do "${CODEDIR}/FF_prepareHH.do"
     display("Prepare FF household data created.")
     display("Creates: parents_Y0.dta - parents_Y15.dta")
@@ -42,12 +43,15 @@ do "${CODEDIR}/FF_household.do"
     display("FF household data created.")
     display("Creates: household_FF.dta")
 
-* Fragile families outcome variables
+
+** Fragile families outcome variables
+do "${CODEDIR}/FF_health.do"
+    display("FF health data created.")
+    display("Creates: health.dta")
+
+* School / teacher outcomes
+
+** Combine
 
 
-
-
-* Combine
-
-
-* 
+**

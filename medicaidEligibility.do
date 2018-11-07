@@ -73,10 +73,10 @@ gen 	schipcut 	= .
 
 
 foreach year of numlist 2006/2018 {
-	replace medicut=zero_`year' if year==`year' & age==0
-	replace medicut=oneto5_`year' if year==`year' & (age>=1 & age<=5)
-	replace medicut=sixplus_`year' if year==`year' & age>=6
-	replace schipcut=CHIP_`year' if year==`year'
+	replace medicut 	= zero_`year' 		if year==`year' & age==0
+	replace medicut 	= oneto5_`year' 	if year==`year' & (age>=1 & age<=5)
+	replace medicut 	= sixplus_`year'	if year==`year' & age>=6
+	replace schipcut	= CHIP_`year'		if year==`year'
 }
 
 replace medicut 	= medicut / 100
@@ -87,7 +87,6 @@ gen bpost1983 = 1
 
 append using "${CLEANDATADIR}/cutscombined.dta"
 
-egen cut = rowmax(medicut schipcut)
 keep if year >= 1998
 
 ************************************
@@ -98,7 +97,6 @@ label var year		"Year"
 label var age		"Age"
 label var medicut	"Medicaid threshold"
 label var schipcut	"S-CHIP threshold"
-label var cut		"Medicaid and S-CHIP threshold combined"
 label var bpost1983	"Child born after 1983"
 
 save "${CLEANDATADIR}/cutscombined.dta", replace		// data 1995-2018

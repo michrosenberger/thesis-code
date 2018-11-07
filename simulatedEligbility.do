@@ -1,7 +1,8 @@
-* Project: 	MA Thesis
-* Content:  Create simulated eligbility instrument
-* Author: 	Michelle Rosenberger
-* Date: 	Nov 1, 2018
+* Project: 	    MA Thesis
+* Content:      Create simulated eligbility instrument
+* Author:       Thompson
+* Adapted by: 	Michelle Rosenberger
+* Date: 	    Nov 1, 2018
 
 capture log close
 clear all
@@ -12,11 +13,11 @@ set maxvar 10000
 
 /*
 Input datasets:
-- cps :           age statefip incRatio
+- cps :           age statefip incRatio year
 - cutscombined :  age statefip year medicuat schipcut bpost1983
 
 Output datasets:
-- simulatedEligbility : VARAIBLES HERE
+- simulatedEligbility : age statefip year simelig
 
 Note:
 - Thompson uses CPS data from 1980 - 1999, but does not use years but all observations combined */
@@ -41,25 +42,25 @@ foreach var in statefip year age {  // create new dataset
 save "${CLEANDATADIR}/simulatedEligbility.dta", replace
 
 
-use "${CLEANDATADIR}/cutscombined.dta", clear     // combine all datasets
+use "${CLEANDATADIR}/cutscombined.dta", clear
 levelsof statefip, local(states)
-forvalues year = 1998/2016 {
-    forvalues age = 0/18 {
-        foreach state of local states {
+foreach age of numlist 0/18 {  // 18
+    foreach state of local states {
+        foreach year of numlist 1998/2018 {
             di "Age: `age', Year: `year', State: `state'"
-            use "${CLEANDATADIR}/cps.dta" if age == `age', clear
-            drop if statefip==`s'
-            drop statefip
-            gen bpost1983 = `year' - `age' > 1983
-            gen statefip    = `state'
-            gen year        = `year'
-
-            merge m:1 statefip year age bpost1983 using cutscombined
-            keep if _merge == 3
-            gen simulatedElig = incRatio < = cut
-            collapse simulatedElig, by(statefip year age)  // fraction by state, year and age
-            append using "${CLEANDATADIR}/simulatedEligbility.dta"
-            save "${CLEANDATADIR}/simulatedEligbility.dta", replace
+            qui use "${CLEANDATADIR}/cps.dta" if age==`age', clear
+            qui drop if statefip==`state'
+            qui drop statefip 
+            qui g bpost1983=`year'-`age'>1983
+            qui g statefip=`state'
+            qui g year=`year'
+            qui merge m:1 statefip year age bpost1983 using "${CLEANDATADIR}/cutscombined.dta", norep
+            qui keep if _merge==3
+            qui g simulatedElig=incRatio<=medicut | incRatio<=schipcut
+            qui collapse simulatedElig, by(statefip year age)
+            qui append using "${CLEANDATADIR}/simulatedEligbility.dta"
+            qui save "${CLEANDATADIR}/simulatedEligbility.dta", replace
         }
     }
 }
+
