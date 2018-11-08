@@ -44,16 +44,16 @@ save "${CLEANDATADIR}/simulatedEligbility.dta", replace
 
 use "${CLEANDATADIR}/cutscombined.dta", clear
 levelsof statefip, local(states)
-foreach age of numlist 0/18 {  // 18
+foreach age of numlist 0/18 {
     foreach state of local states {
         foreach year of numlist 1998/2018 {
             di "Age: `age', Year: `year', State: `state'"
             qui use "${CLEANDATADIR}/cps.dta" if age==`age', clear
-            qui drop if statefip==`state'
-            qui drop statefip 
+            qui drop if statefip==`state'   // drops those obs from the state in question
+            qui drop statefip               // takes the obs from all states
             qui g bpost1983=`year'-`age'>1983
-            qui g statefip=`state'
-            qui g year=`year'
+            qui g statefip=`state'          // create obs for state in question
+            qui g year=`year'               // create obs for year in question
             qui merge m:1 statefip year age bpost1983 using "${CLEANDATADIR}/cutscombined.dta", norep
             qui keep if _merge==3
             qui g simulatedElig=incRatio<=medicut | incRatio<=schipcut
