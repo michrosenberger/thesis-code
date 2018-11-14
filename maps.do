@@ -79,15 +79,12 @@ foreach year in 1998 2018 {
 	merge 1:1 STATEFP using US_database
 
 	drop if _merge!=3
-	format simulatedElig %4.2f
+	format simulatedElig %4.0f
 
 	* Graph
 	spmap simulatedElig using US_coordinates if NAME!="Alaska" & NAME!="Hawaii", id(id) ///
 	fcolor(YlOrRd) clmethod(custom) clbreaks(20 25 30 35 40 50 60 70 80) ///
-	legstyle(2) legend(pos(7)) legtitle("% of children" " ") ///
-	title(Simulated Eligibility `year') ///
-	subtitle(Percentage of children eligible for Medicaid) ///
-	note(" " "This graph shows the average percentage of children in each state across age groups eligible for Medicaid. Data from `year' CPS data.")
+	legstyle(2) legend(pos(7)) legtitle("% of children")
 	graph export "${FIGUREDIR}/MapElig`year'.pdf", replace
 }
 
@@ -128,19 +125,12 @@ foreach year in 1998 2018 {
 	* Graph
 	spmap cut using US_coordinates if NAME!="Alaska" & NAME!="Hawaii", id(id) ///
 	fcolor(YlOrRd) clmethod(custom) clbreaks(100 150 200 250 300 350 400 450) ///
-	legstyle(2) legend(pos(7)) legtitle("% of FPL line" " ") ///
-	title(Medicaid and CHIP Eligibility threshold `year') ///
-	subtitle(Eligible family income as % of the FPL) ///
-	note(" " "This graph shows the highest family income as a percentage of the FPL in each state across age groups which still makes a child eligible for Medicaid. Data from `year' CPS data.")
-
+	legstyle(2) legend(pos(7) size(medsmall)) legtitle("% of FPL line") 
 	graph export "${FIGUREDIR}/MapFPL`year'.pdf", replace
 }
 
-
+* To-do
 * Label legend: % eligible 
-* Color scale with two different colors
 * Maybe also do by age groups
 * How to add labels for the states: need X and Y coordiantes
-* Can fix same color pattern for both images?
-* Colors: colorpalette sfso, votes nograph select(2/4 7/10)
 
