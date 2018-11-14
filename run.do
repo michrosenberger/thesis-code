@@ -54,4 +54,11 @@ do "${CODEDIR}/FF_health.do"
 ** Combine
 
 
-**
+** Outcomes
+do "${CODEDIR}/tables.do"
+    display("Tables created.")
+    display("Creates: *")
+
+do "${CODEDIR}/maps.do"
+    display("Maps created.")
+    display("Creates: *")

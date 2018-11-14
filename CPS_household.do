@@ -19,7 +19,13 @@ Output datasets:
 - cps.dta 				:	year age statefip incRatio
 
 Note:
-- In process. */
+- * CPI ADJUST INCOME
+- * Need data 2017/18
+- * winsorize income p1 and p99?
+- Subsample: * CHECK FOR those households without mother
+- Check subsample year and age
+- * Summary statistics
+*/
 
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
@@ -38,7 +44,6 @@ global TEMPDATADIR  	"${MYPATH}/data/temp"
 * IMPORT DATA
 ************************************
 * Data from 1990 until 2016 available
-* Need data 2017/18
 
 use "${RAWDATADIR}/cepr_march_1998.dta", clear
 foreach year of numlist 1999(1)2016 {
@@ -94,37 +99,52 @@ label values unmarried unmarried
 ************************************
 * INCOME
 ************************************
-/* Income values refer to the previous calendar year, NOT
-the current survey year */
-
-/* Total family income in Thompson, 2018:
-Sum of income for mother + spouse: wages, salaries, business and farm operation
-profits, unemployment insurance and child support payments */
-
 /* PERSONAL INCOME IN PREVIOUS YEAR
 This income measure includes: 
 - Income from wage and salary (nominal) incp_wag
 - Income from self-employment (nominal) incp_se (farm + nonfarm)
 - Income from child support (nominal) icnp_cs
 - Income from unemployment compensation (nominal) incp_uc */
-gen persInc = incp_wag + incp_se + incp_cs + incp_uc
 
-bysort hhseq year: egen famInc = sum(persInc)
+if year < 2014 {		// Previous Medicaid eligibility
+	* Wages, salaries, profit from self-employment		incp_wag
+	* Unemployment compensation							incp_uc
+	* Self-employment 	counted							incp_se
+	* Child support 	counted							icnp_cs
+	* TANF and SSI 		counted							X
+	* Alimony received	counted							incp_alm
+	gen persInc = incp_wag + incp_uc + incp_se + incp_cs + incp_alm
+}
+if year >= 2014 {			// MAGI
+	* Wages, salaries									incp_wag 
+	* Unemployment compensation							incp_uc
+	* Self-employment 	counted							incp_se
+	* Child support 	NOT counted
+	* TANF and SSI 		NOT counted
+	* Alimony received	counted							incp_alm
+	gen persInc = incp_wag + incp_uc + incp_se + incp_alm
+}
+
+gen tempInc = persInc if (pfrel == 1 | pfrel == 2 | pfrel == 5)
+bysort hhseq year: egen famInc = sum(tempInc)
+drop tempInc
 
 label var persInc	"Personal income"
 label var famInc	"Family income"
 
 note incp_se : Bottom/TopCode*(Value): -9999/50000(80-81) -9999/75000 (82-84) -9999*/99999*(85-88) -19998*/199998*(89-95) -9999/760120*(96-97) -9999/546375*(98) -9999/624176*(1999) -9999/481887*(2000) -99999/456973*(2001) -99999/605159*(2002) -99999/789127*(2003) -99999/661717*(2004) -99999/880089*(2005) -99999/730116*(2006) -99999/766141*(2007) -99999/801198*(2008) -99999/736488*(2009) -99999/702914*(2010) -99999/9999999*(2011-on)
 
-/* To-do:
-* CPI adjust income
-* Only income from parents - not kids?
-* FAMILY INCOME IN PREVIOUS YEAR (Note: now also salary from other siblings included - check rules medicaid (without sibling salary)
-* lag income: bysort hhid: gen persInc_lag = persInc[_n-1]*/
-
-keep year month hhid hhseq id female wbho pfrel age famSize husband wife numChild child1 unmarried incp_wag incp_se incp_cs incp_uc persInc famInc state pvcfam incf_all pvlfam
+keep year month hhid hhseq id female wbho pfrel age famSize husband wife numChild child1 unmarried incp_wag incp_se incp_cs incp_uc persInc famInc state pvcfam incf_all pvlfam hins hipriv hipub hiep hipind himcaid himcc hischip
 
 rename child1 child
+
+************************************
+* RACE
+************************************
+gen white 		= wbho == 1
+gen black 		= wbho == 2
+gen hispanic 	= wbho == 3
+gen other 		= wbho == 4
 
 ************************************
 * STATES
@@ -185,6 +205,19 @@ gen statefip = .
 drop state
 
 ************************************
+* HEALTH COVERAGE
+************************************
+rename hins		healthIns	// Health insurance
+rename hipriv	healthPriv	// Health insurance, private
+rename hipub	healthPubl	// Health insurance, public
+rename hiep		healthEmp	// Health insurance, Employer-provided (private)
+rename hipind	healthPriv2	// Health insurance, privately purchased
+rename himcaid	healthMedi	// Health insurance, Medicaid
+rename himcc 	childMedi	// Child covered by Medicaid
+rename hischip 	childCHIP	// Child covered by SCHIP
+* More child covered by ... options
+
+************************************
 * MERGE POVERTY LEVELS
 ************************************
 merge m:1  year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
@@ -194,13 +227,11 @@ drop _merge
 ************************************
 * Income ratio
 ************************************
-/* Divide CPS fam income by the applicable poverty line (based on family size and composition) */
-gen incRatio = famInc / povLevel * 100
+* Divide CPS fam income by poverty line based on fam size and composition
+gen incRatio = famInc / povLevel
 label var incRatio	"Family poverty level"
 
-* winsorize income p1 and p99?
 * browse famInc incf_all povLevel pvcfam incRatio  pvlfam
-
 save "${TEMPDATADIR}/household_cps_povlevels.dta", replace
 
 
@@ -223,6 +254,7 @@ label data "CPS March data 1998-2016"
 ************************************
 * Mirrors FF composition (by mother)
 
+/*
 * Mother cohort between 1955 and 1985 in FF
 gen cohort = year - age
 gen 	typeFF = 0
@@ -230,8 +262,27 @@ replace typeFF = 1 if pfrel == 2 & female == 1  & (cohort>=1955 & cohort<=1985)
 replace typeFF = 1 if pfrel == 5 & (cohort>=1955 & cohort<=1985)
 bysort serial year : egen typeFFhh = max(typeFF)
 
-* Keep the flagged households
-keep if typeFFhh == 1
+* What happens with missing
+* Mother race
+gen moWhite1 		= white if (pfrel == 2 | pfrel == 5) & female == 1
+gen moBlack1 		= black if (pfrel == 2 | pfrel == 5) & female == 1
+gen moHispanic1 	= hispanic if (pfrel == 2 | pfrel == 5) & female == 1
+gen moOther1		= other if (pfrel == 2 | pfrel == 5) & female == 1
+bysort serial year : egen moWhite 		= max(moWhite1)
+bysort serial year : egen moBlack 		= max(moBlack1)
+bysort serial year : egen moHispanic	= max(moHispanic1)
+bysort serial year : egen moOther 		= max(moOther1)
+
+* Father race
+gen faWhite1 		= white if (pfrel == 1 | pfrel == 5) & female == 0
+gen faBlack1 		= black if (pfrel == 1 | pfrel == 5) & female == 0
+gen faHispanic1 	= hispanic if (pfrel == 1 | pfrel == 5) & female == 0
+gen faOther1		= other if (pfrel == 1 | pfrel == 5) & female == 0
+bysort serial year : egen faWhite 		= max(faWhite1)
+bysort serial year : egen faBlack 		= max(faBlack1)
+bysort serial year : egen faHispanic	= max(faHispanic1)
+bysort serial year : egen faOther 		= max(faOther1)
+drop white black hispanic other fa*1 mo*1
 
 * Age mother at birth between 15 and 43 years old in FF
 gen momCohort_temp = cohort	if (pfrel == 2 | pfrel == 5) & female == 1
@@ -240,54 +291,47 @@ gen momGeb = cohort - momCohort
 drop if momGeb < 15 | momGeb > 43
 drop momCohort_temp
 
+* Keep the flagged households
+keep if typeFFhh == 1
+
 * Not in FF sample
 gen FF = 0
+*/
 
 * Keep only children
 keep if pfrel == 3
 
-replace incRatio = incRatio / 100
+/* Propsensity score matching on characteristics
+	* MERGE datasets from CPS (FF = 0) and FF baseline wave (FF = 1)
 
+	append using "${TEMPDATADIR}/mothers_FF.dta"		// FF data
 
-* Append to a dataset with maternal age at birth and income ratio used from the FF baseline wave
-** APPLY WEIGHT FROM FF DATA???
+	* drop incomes too high and too low?
+	* probit FF momGeb incRatio
+	probit FF momGeb moWhite moBlack moHispanic incRatio
 
-/*
-append using "${TEMPDATADIR}/mothers_FF.dta"
+	psmatch2 FF momGeb moWhite moBlack moHispanic incRatio, n(10) common
 
-* Propensity score matching
-psmatch2 FF momGeb incRatio, n(10) common		// fails
+	sum moWhite momGeb moBlack moHispanic incRatio if FF == 1
+	sum moWhite momGeb moBlack moHispanic incRatio if FF == 0
+	sum moWhite momGeb moBlack moHispanic incRatio if FF == 0 & _weight != .
 
-	sum momGeb incRatio if FF == 1
-	sum momGeb incRatio if FF == 0
-	sum momGeb incRatio if FF == 0 & _weight != .
+	tab year if _weight != .		// how year distribution looks
 
-	keep if _weight != .
+	tab age year if _weight != .
+
+	* keep if _weight != .
 */
 
-keep year age statefip incRatio
+tabstat healthIns healthMedi childMedi  childCHIP , by(year)
+
+keep year age statefip incRatio health* child*
 order year statefip age incRatio
 sort year statefip age
 
 drop year
 
 save "${CLEANDATADIR}/cps.dta", replace
-
-
-
-
-
-
-
-
-
-
-************************************
-* Summary statistics
-************************************
-*sum momGeb age female famSize famInc if FF == 0
-* do also with FF == 1
-* sutex
 
 
 

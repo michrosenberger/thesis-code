@@ -24,6 +24,12 @@ global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
 global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
 
+* NOTES!!!!!
+* - gen ratioSize = chHH_size / chFAM_size  // check those below zero
+* - impute same ratio from wave 9 to 15
+* - make shorter file
+
+* PROGRAM
 capture program drop missingvalues
 program define missingvalues
 	ds, has(type numeric)
@@ -76,6 +82,14 @@ rename m1intmon    moMonth
 rename f1intmon    faMonth
 gen moCohort	= moYear - moAge
 gen faCohort	= faYear - faAge
+
+*************************
+** RACE MOTHER
+*************************
+gen moWhite       = moRace == 1
+gen moBlack       = moRace == 2
+gen moHispanic    = moRace == 3
+gen moOther       = moRace == 4
 
 *************************
 ** HH INCOME 
@@ -131,12 +145,12 @@ gen     faHH_size_c   = cf1adult + cf1kids
 tab m1a11a
 rename m1a11a chLiveMo
 
-keep idnum mo* fa* ch* // cm1relf
+keep idnum mo* fa* ch* moWhite moBlack moHispanic moOther // cm1relf
 
 reshape long moHH_female moHH_age moHH_relate moHH_employ faHH_female faHH_age faHH_relate faHH_employ, i(idnum) j(noHH_member)
 
 gen wave		= 0
-keep idnum mo* fa* ch* no* wave
+keep idnum mo* fa* ch* no* wave moWhite moBlack moHispanic moOther
 order idnum wave
 
 *************************
@@ -204,11 +218,6 @@ label   values chFAM_size_f chFAM_size_f
 *************************
 ** CHILD FAM & HH INCOME
 *************************
-/* Total family income in Thompson, 2018:
-Sum of income for mother + spouse: wages, salaries, business and farm operation
-profits, unemployment insurance and child support payments */
-/* INCOME LAG? */
-
 /* Divide by # of hh members and multiply by family members  */
 gen     moAvg_inc = (moHH_income / moHH_size_c) * moFAM_size
 gen     faAvg_inc = (faHH_income / faHH_size_c) * faFAM_size
@@ -227,7 +236,7 @@ gen     incRatio = moHH_povratio if chLiveMo != 2   // mo report
 replace incRatio = faHH_povratio if chLiveMo == 2   // fa report
 
 
-keep idnum moYear moMonth ch* incRatio wave moAge
+keep idnum moYear moMonth ch* incRatio wave moAge moWhite moBlack moHispanic moOther
 order idnum moYear moMonth
 sort idnum
 
@@ -241,9 +250,8 @@ drop chFAM_member chFAM_female chFAM_relate chFAM_age chFAM_employ moMonth chLiv
 save "${TEMPDATADIR}/parents_Y0.dta", replace
 
 * For simulated instrument propensity score matching
-keep moAge incRatio
+keep moAge incRatio moWhite moBlack moHispanic moOther
 gen FF = 1
-replace incRatio = incRatio * 100
 rename moAge momGeb
 save "${TEMPDATADIR}/mothers_FF.dta", replace
 
