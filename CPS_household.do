@@ -18,12 +18,6 @@ Input datasets:
 
 Output datasets:
 - cps.dta 					:	year age statefip incRatio
-
-Note:
-- CPI ADJUST INCOME
-- winsorize income p1 and p99?
-- Check subsample year and age / mother
-- Summary statistics
 */
 
 ************************************
@@ -37,7 +31,7 @@ global CODEDIR			"${MYPATH}/code"
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
-* log using ${CODEDIR}/CPS.log, replace 
+log using ${CODEDIR}/CPS_household.log, replace 
 
 ************************************
 * IMPORT DATA
@@ -51,7 +45,8 @@ foreach year of numlist 2017(1)2018 {
 	qui append using "${TEMPDATADIR}/cpsmar`year'_clean.dta", force
 }
 
-keep famno pfrel hhseq female age wbho year incp_wag incp_uc incp_se incp_cs incp_alm state gestfips hins hipriv hipub hiep hipind himcaid himcc hischip pvcfam incf_all pvlfam
+keep famno pfrel hhseq female age wbho year incp_wag incp_uc incp_se incp_cs incp_alm ///
+state gestfips hins hipriv hipub hiep hipind himcaid himcc hischip pvcfam incf_all pvlfam
 
 ************************************
 * FAMILY STRUCTURE CPS
@@ -101,33 +96,28 @@ label values unmarried unmarried
 ************************************
 * INCOME
 ************************************
-/* PERSONAL INCOME IN PREVIOUS YEAR
-This income measure includes: 
-- Income from wage and salary (nominal) incp_wag
-- Income from self-employment (nominal) incp_se (farm + nonfarm)
-- Income from child support (nominal) icnp_cs
-- Income from unemployment compensation (nominal) incp_uc */
+* Note: famInc income only includes parents income
 
-if year < 2014 {		// Previous Medicaid eligibility
-	* Wages, salaries, profit from self-employment		incp_wag
-	* Unemployment compensation							incp_uc
-	* Self-employment 	counted							incp_se
-	* Child support 	counted							incp_cs
-	* TANF and SSI 		counted							X
-	* Alimony received	counted							incp_alm
-	gen persInc = incp_wag + incp_uc + incp_se + incp_cs + incp_alm
+if year < 2014 {
+	/* Previous Medicaid eligibility
+	Wages, salaries (incp_wag),
+	Unemployment compensation (incp_uc), Self-employment (incp_se),
+	Child support (incp_cs), Alimony received (incp_alm), SSI (incp_ssi),
+	Social security / railroads (incp_ss), Veteran payments (incp_vet),
+	Workers compensation (incp_wcp) */
+
+	gen persInc = incp_wag + incp_uc + incp_se + incp_cs + incp_alm + incp_ssi ///
+	+ incp_ss + incp_vet + incp_wcp
 }
 if year >= 2014 {			// MAGI
-	* Wages, salaries									incp_wag 
-	* Unemployment compensation							incp_uc
-	* Self-employment 	counted							incp_se
-	* Child support 	NOT counted
-	* TANF and SSI 		NOT counted
-	* Alimony received	counted							incp_alm
+	/* MAGI
+	Wages, salaries (incp_wag), Unemployment compensation (incp_uc),
+	Self-employment (incp_se), Alimony received (incp_alm) */
+
 	gen persInc = incp_wag + incp_uc + incp_se + incp_alm
 }
 
-gen tempInc = persInc if (pfrel == 1 | pfrel == 2 | pfrel == 5)
+gen tempInc = persInc if (pfrel == 1 | pfrel == 2 | pfrel == 5)	// parents
 bysort hhseq year: egen famInc = sum(tempInc)
 drop tempInc
 
@@ -210,6 +200,8 @@ drop state gestfips
 ************************************
 * HEALTH COVERAGE
 ************************************
+* More child covered by ... options
+
 rename hins		healthIns	// Health Ins.
 rename hipriv	healthPriv	// Health Ins., private
 rename hipub	healthPubl	// Health Ins., public
@@ -217,7 +209,6 @@ rename hiep		healthEmp	// Health Ins., Employer-provided (private)
 rename himcaid	healthMedi	// Health Ins., Medicaid
 rename himcc 	childMedi	// Child covered by Medicaid
 rename hischip 	childCHIP	// Child covered by SCHIP
-* More child covered by ... options
 
 ************************************
 * MERGE POVERTY LEVELS
@@ -249,7 +240,6 @@ order year serial pernum
 label var serial "Unique identifier for each hh"
 label var pernum "Unique person identifier inside hh"
 label data "CPS March data 1998-2018"
-
 
 ************************************
 * Subsample
