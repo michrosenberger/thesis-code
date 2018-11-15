@@ -12,19 +12,18 @@ set maxvar 10000
 
 /*
 Input datasets:
-- cepr_march_`year'.dta :	CPS March data 	(1998 - 2016)
-- PovertyLevels.dta 	:  	Poverty levels	(1998 - 2017)
+- cepr_march_`year'.dta		:	CPS March data 	(1998 - 2016)
+- cpsmar`year'_clean.dta	:	CPS March data 	(2017 - 2018)
+- PovertyLevels.dta 		:  	Poverty levels	(1997 - 2018)
 
 Output datasets:
-- cps.dta 				:	year age statefip incRatio
+- cps.dta 					:	year age statefip incRatio
 
 Note:
-- * CPI ADJUST INCOME
-- * Need data 2017/18
-- * winsorize income p1 and p99?
-- Subsample: * CHECK FOR those households without mother
-- Check subsample year and age
-- * Summary statistics
+- CPI ADJUST INCOME
+- winsorize income p1 and p99?
+- Check subsample year and age / mother
+- Summary statistics
 */
 
 ************************************
@@ -38,17 +37,21 @@ global CODEDIR			"${MYPATH}/code"
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
-// log using ${CODEDIR}/CPS.log, replace 
+* log using ${CODEDIR}/CPS.log, replace 
 
 ************************************
 * IMPORT DATA
 ************************************
-* Data from 1990 until 2016 available
 
-use "${RAWDATADIR}/cepr_march_1998.dta", clear
-foreach year of numlist 1999(1)2016 {
+use "${RAWDATADIR}/cepr_march_1997.dta", clear
+foreach year of numlist 1998(1)2016 {
 	qui append using "${RAWDATADIR}/cepr_march_`year'.dta", force
 }
+foreach year of numlist 2017(1)2018 {
+	qui append using "${TEMPDATADIR}/cpsmar`year'_clean.dta", force
+}
+
+keep famno pfrel hhseq female age wbho year incp_wag incp_uc incp_se incp_cs incp_alm state gestfips hins hipriv hipub hiep hipind himcaid himcc hischip pvcfam incf_all pvlfam
 
 ************************************
 * FAMILY STRUCTURE CPS
@@ -95,7 +98,6 @@ label values wife wife
 label values child1 child1
 label values unmarried unmarried
 
-
 ************************************
 * INCOME
 ************************************
@@ -110,7 +112,7 @@ if year < 2014 {		// Previous Medicaid eligibility
 	* Wages, salaries, profit from self-employment		incp_wag
 	* Unemployment compensation							incp_uc
 	* Self-employment 	counted							incp_se
-	* Child support 	counted							icnp_cs
+	* Child support 	counted							incp_cs
 	* TANF and SSI 		counted							X
 	* Alimony received	counted							incp_alm
 	gen persInc = incp_wag + incp_uc + incp_se + incp_cs + incp_alm
@@ -132,10 +134,6 @@ drop tempInc
 label var persInc	"Personal income"
 label var famInc	"Family income"
 
-note incp_se : Bottom/TopCode*(Value): -9999/50000(80-81) -9999/75000 (82-84) -9999*/99999*(85-88) -19998*/199998*(89-95) -9999/760120*(96-97) -9999/546375*(98) -9999/624176*(1999) -9999/481887*(2000) -99999/456973*(2001) -99999/605159*(2002) -99999/789127*(2003) -99999/661717*(2004) -99999/880089*(2005) -99999/730116*(2006) -99999/766141*(2007) -99999/801198*(2008) -99999/736488*(2009) -99999/702914*(2010) -99999/9999999*(2011-on)
-
-keep year month hhid hhseq id female wbho pfrel age famSize husband wife numChild child1 unmarried incp_wag incp_se incp_cs incp_uc persInc famInc state pvcfam incf_all pvlfam hins hipriv hipub hiep hipind himcaid himcc hischip
-
 rename child1 child
 
 ************************************
@@ -150,6 +148,8 @@ gen other 		= wbho == 4
 * STATES
 ************************************
 gen statefip = .
+
+if year <= 2016 {
 	replace statefip = 23	if state == 11 	// Maine
 	replace statefip = 33 	if state == 12 	// New Hampshire
 	replace statefip = 50 	if state == 13 	// Vermont
@@ -201,18 +201,20 @@ gen statefip = .
 	replace statefip = 6 	if state == 93 	// California
 	replace statefip = 2 	if state == 94 	// Alaska
 	replace statefip = 15 	if state == 95	// Hawaii
+}
 
-drop state
+replace statefip = gestfips if year == 2017
+replace statefip = gestfips if year == 2018
+drop state gestfips
 
 ************************************
 * HEALTH COVERAGE
 ************************************
-rename hins		healthIns	// Health insurance
-rename hipriv	healthPriv	// Health insurance, private
-rename hipub	healthPubl	// Health insurance, public
-rename hiep		healthEmp	// Health insurance, Employer-provided (private)
-rename hipind	healthPriv2	// Health insurance, privately purchased
-rename himcaid	healthMedi	// Health insurance, Medicaid
+rename hins		healthIns	// Health Ins.
+rename hipriv	healthPriv	// Health Ins., private
+rename hipub	healthPubl	// Health Ins., public
+rename hiep		healthEmp	// Health Ins., Employer-provided (private)
+rename himcaid	healthMedi	// Health Ins., Medicaid
 rename himcc 	childMedi	// Child covered by Medicaid
 rename hischip 	childCHIP	// Child covered by SCHIP
 * More child covered by ... options
@@ -236,17 +238,17 @@ save "${TEMPDATADIR}/household_cps_povlevels.dta", replace
 
 
 use "${TEMPDATADIR}/household_cps_povlevels.dta", clear
-drop incp_* incf_all pvlfam persInc month id
+drop incp_* incf_all pvlfam persInc
 
 * Unique identifiers
 egen serial = group(hhseq year)				// identifier for each hh
 bysort hhseq year : gen pernum = _n			// person number inside hh
-drop hhid hhseq
+drop hhseq
 order year serial pernum
 
 label var serial "Unique identifier for each hh"
 label var pernum "Unique person identifier inside hh"
-label data "CPS March data 1998-2016"
+label data "CPS March data 1998-2018"
 
 
 ************************************
@@ -323,7 +325,7 @@ keep if pfrel == 3
 	* keep if _weight != .
 */
 
-tabstat healthIns healthMedi childMedi  childCHIP , by(year)
+tabstat healthIns healthMedi childMedi childCHIP, by(year)
 
 keep year age statefip incRatio health* child*
 order year statefip age incRatio
@@ -334,66 +336,3 @@ drop year
 save "${CLEANDATADIR}/cps.dta", replace
 
 
-
-
-
-
-
-
-
-
-
-
-
-************************************
-* INSURANCE QUESTIONS
-************************************
-/*
-* CHIP data starts 2001
-keep year himcaid hischip hins hipriv hiep hipind
-
-foreach year of numlist 1990(1)2016 {
-	foreach var in himcaid hischip hins {
-		egen freq_`var'_`year' = count(`var') if (`var' == 1 & year == `year')
-		egen total_`var'_`year' = count(`var') if (year == `year')
-		gen fraq_`var'_`year' = (freq_`var'_`year' / total_`var'_`year') * 100 if year == `year'
-	}
-}
-
-foreach var in himcaid hischip hins {
-	egen freq_`var' = rowmax(freq_`var'_*)
-	egen total_`var' = rowmax(total_`var'_*)
-	egen fraq_`var' = rowmax(fraq_`var'_*)
-}
-
-// Income from social security, food stamps, WIC, EITC etc
-tab hins 	// Health insurance
-tab hipriv	// Health insurance, private
-tab hiep	// Health insurance, employer-provided (private)
-tab hipind	// Health insurance, privately purchased
-tab himcaid	// Health insurance, Medicaid
-tab himcare	// Health insurance, Medicare
-tab hiothpub	// Health insurance, provided by CHAMPUS or military hc
-tab hipub		// Health insurance, public
-tab hiprivc		// Child under private HI
-tab hiepc		// Child under HI provided by employers
-tab hipindc	
-tab hiprivc_none
-tab himcc
-tab hischip
-tab hiepdep
-tab hipindep
-tab hiprivdep
-tab hiepsp
-tab hipindsp
-tab hiprivsp
-tab hi_emp
-tab higj_all
-tab higj_part
-tab higj_none
-tab higj_allprt
-tab higj_pind
-tab higj_priv
-// hrearn hrwage
-*/
-*/
