@@ -49,32 +49,36 @@ rename chAvg_inc   avgInc
 rename chHH_income hhInc
 
 * AGE
-rename age age_m
-gen age_temp = age_m / 12
-gen age = int(age_temp)
-drop age_temp
+rename  age age_m
+gen     age_temp = age_m / 12
+gen     age = int(age_temp)
+drop    age_temp
 
 * GENDER
-rename gender gender_temp
-egen gender = max(gender_temp), by(id) 
-drop gender_temp
+rename  gender gender_temp
+egen    gender = max(gender_temp), by(id) 
+drop    gender_temp
 
 * LABEL
-label data "Household structure FF"
-label var year      "Year interview"
-label var famSize   "Number of family members in hh"
-label var hhSize    "Number of hh members"
-label var incRatio  "Poverty ratio % (FF)"
-label var avgInc    "Avg. hh income"
-label var hhInc     "Household income"
-label var age       "Age child (years)"
-label var age_m     "Age child (months)"
-label var gender    "Gender cild"
-label var wave      "Wave"
+label data              "Household structure FF"
+label var year          "Year interview"
+label var famSize       "Number of family members in hh"
+label var hhSize        "Number of hh members"
+label var incRatio      "Poverty ratio % (FF)"
+label var avgInc        "Avg. hh income"
+label var hhInc         "Household income"
+label var age           "Age child (years)"
+label var age_m         "Age child (months)"
+label var gender        "Gender cild"
+label var wave          "Wave"
+label var moAge         "Age mother"
+label var moWhite       "Mother white (race)"
+label var moBlack       "Mother black (race)"
+label var moHispanic    "Mother hispanic (race)"
+label var moOther       "Mother other (race)"
 
 order id wave year age famSize gender
 sort id wave
-
 
 tab year
 describe
@@ -86,9 +90,10 @@ save "${TEMPDATADIR}/household_FF.dta", replace
 
 
 /* NOTES:
-- Limit obersvations per person
-- Drop those that year == .
-- Label variables
+Limit obersvations per person
+
+drop if year == .
+drop if not enough observations per person
 */
 
 

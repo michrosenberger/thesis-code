@@ -192,18 +192,18 @@ program define reshape_missing
 
     * RESHAPE
     if wave == 0 {
-        keep idnum mo* fa* ch* wave moWhite moBlack moHispanic moOther // cm1relf
+        keep idnum mo* fa* ch* wave moWhite moBlack moHispanic moOther chLiveMo // cm1relf
 
         reshape long moHH_female moHH_age moHH_relate moHH_employ faHH_female faHH_age faHH_relate faHH_employ, i(idnum) j(noHH_member)
 
-        keep idnum mo* fa* ch* no* wave moWhite moBlack moHispanic moOther
+        keep idnum mo* fa* ch* no* wave moWhite moBlack moHispanic moOther chLiveMo
     }
     if wave > 0 {
-        keep idnum mo* fa* ch* wave // cm1relf
+        keep idnum mo* fa* ch* wave chLiveMo // cm1relf
 
         reshape long moHH_female moHH_age moHH_relate moHH_employ faHH_female faHH_age faHH_relate faHH_employ, i(idnum) j(noHH_member)
 
-        keep idnum mo* fa* ch* no* wave
+        keep idnum mo* fa* ch* no* wave chLiveMo
     }
 
     order idnum wave
@@ -221,9 +221,20 @@ end
 capture program drop fam_structure
 program define fam_structure
 
+    * Construct number of individuals in HH
+    foreach parent in mo fa {
+        replace `parent'HH_relate = . if `parent'HH_relate == 0 // None
+        gen temp`parent' = 1 if `parent'HH_relate != .
+        bysort temp`parent' idnum : gen `parent'HH_member = _n if `parent'HH_relate != .
+        drop temp`parent'
+        egen `parent'HH_size = count(`parent'HH_member), by(idnum)
+        replace `parent'HH_size = `parent'HH_size + 1 // add respondent
+    }
+
     tab moHH_relate
     tab faHH_relate
 
+    * Construct number of family members in HH
     /* In family only partner and children under the age of 18. */
     foreach parent in mo fa {
         gen     `parent'FAM_relate  = .
@@ -324,17 +335,17 @@ program define fam_structure_income
 
     * INCOME
     /* Divide by # of hh members and multiply by family members  */
-    gen     moAvg_inc = (moHH_income / moHH_size_c) * moFAM_size
-    gen     faAvg_inc = (faHH_income / faHH_size_c) * faFAM_size
+    gen     moAvg_inc = (moHH_income / moHH_size) * moFAM_size
+    gen     faAvg_inc = (faHH_income / faHH_size) * faFAM_size
 
-    gen     chHH_size = moHH_size_c if chLiveMo != 2  // mo report
-    replace chHH_size = faHH_size_c if chLiveMo == 2  // fa report
+    gen     chHH_size = moHH_size if chLiveMo != 2    // mo report
+    replace chHH_size = faHH_size if chLiveMo == 2    // fa report
 
-    gen     chHH_income = moHH_income if chLiveMo != 2    // mo report
-    replace chHH_income = faHH_income if chLiveMo == 2    // fa report
+    gen     chHH_income = moHH_income if chLiveMo != 2  // mo report
+    replace chHH_income = faHH_income if chLiveMo == 2  // fa report
 
-    gen     chAvg_inc = moAvg_inc if chLiveMo != 2    // mo report
-    replace chAvg_inc = faAvg_inc if chLiveMo == 2    // fa report
+    gen     chAvg_inc = moAvg_inc if chLiveMo != 2      // mo report
+    replace chAvg_inc = faAvg_inc if chLiveMo == 2      // fa report
 
     * Poverty ratio FF (Child hh income ratio)
     gen     incRatio = moHH_povratio if chLiveMo != 2   // mo report
@@ -342,10 +353,10 @@ program define fam_structure_income
 
     * COLLAPSE AND SAVE
     if wave == 0 {
-        keep idnum moYear moMonth ch* incRatio wave moAge moWhite moBlack moHispanic moOther
+        keep idnum moYear moMonth ch* incRatio wave moAge moWhite moBlack moHispanic moOther moHH_size_c chLiveMo
     }
     if wave > 0 {
-        keep idnum moYear moMonth ch* incRatio wave
+        keep idnum moYear moMonth ch* incRatio wave moHH_size_c chLiveMo
     }
     order idnum moYear moMonth
     sort idnum
@@ -354,8 +365,11 @@ program define fam_structure_income
     global FINALVARS = r(varlist)
     collapse $FINALVARS, by(idnum)
 
-    drop chFAM_member chFAM_female chFAM_relate chFAM_age chFAM_employ moMonth chLiveMo chFAM_size_f
+    drop chFAM_member chFAM_female chFAM_relate chFAM_age chFAM_employ moMonth chFAM_size_f
     replace chFAM_size = . if moYear == .
+
+    * HH / Family members ratio
+    gen ratio_size = chHH_size / chFAM_size
 
 end
 
@@ -407,9 +421,6 @@ hh_incomeFF     2       // hh income FF pro.
 
 hh_structure 2 1/10 2f2b 2f2c 2f2d 2f2e // hh structure from inidviduals pro.
 
-gen	moHH_size_s	= m2f1 + 1		// self-reported
-gen	faHH_size_s	= f2f1 + 1		// self-reported
-
 living_arr m2a3 m2a4a   // child living arrangement pro.
 reshape_missing         // reshape & missing values pro.
 fam_structure           // parents fam structure pro.
@@ -435,9 +446,6 @@ hh_incomeFF     3       // hh income FF pro.
 
 hh_structure 3 1/10 3f2b 3f2c 3f2d 3f2f // hh structure from inidviduals pro.
 
-gen		moHH_size_s	= m3f1 + 1		// self-reported
-gen		faHH_size_s	= f3f1 + 1		// self-reported
-
 living_arr m3a2 m3a3a   // child living arrangement pro.
 reshape_missing         // reshape & missing values pro.
 fam_structure           // parents fam structure pro.
@@ -462,10 +470,6 @@ hh_incomeFF     4       // hh income FF pro.
 
 hh_structure 4 1/10 4f2b 4f2c 4f2d 4f2f // hh structure from inidviduals pro.
 
-gen		moHH_size_s	= m4f1 + 1		// self-reported
-gen		faHH_size_s	= f4f1 + 1		// self-reported
-
-
 living_arr m4a2 m4a3a2  // child living arrangement pro.
 reshape_missing         // reshape & missing values pro.
 fam_structure           // parents fam structure pro.
@@ -488,10 +492,6 @@ hh_incomeFF     5       // hh income FF pro.
 
 hh_structure 5 1/9 5a5b0 5a5c0 5a5d0 5a5e0 // hh structure from inidviduals pro.
 
-gen		moHH_size_s	= m5a51 + 2		// self-reported (var without self + child)
-gen		faHH_size_s	= f5a51 + 2		// self-reported (var without self + child)
-
-
 living_arr m5a2 m5a3f   // child living arrangement pro.
 reshape_missing         // reshape & missing values pro.
 fam_structure           // parents fam structure pro.
@@ -499,16 +499,22 @@ fam_structure_income    // child fam structure & fam / hh income
 
 save "${TEMPDATADIR}/parents_Y9.dta", replace
 
+* HH / Family members ratio
+keep idnum ratio_size
+save "${TEMPDATADIR}/ratio_Y9.dta", replace 
+
 ********************************************************************************
 ****************************** VARIABLES YEAR 15 *******************************
 ********************************************************************************
 use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear
+keep idnum cp6age cp6yagey cp6yagem cp6intyr cp6intmon cp6hhinc cp6hhimp ///
+cp6povco cp6povca cp6hhsize
 
-keep idnum cp6age cp6yagey cp6yagem cp6intyr cp6intmon cp6hhinc cp6hhimp cp6povco cp6povca cp6hhsize
+gen wave = 15
 
-missingvalues	// recode missing values
+missingvalues           // recode missing values pro.
 
-gen wave		= 15
+merge 1:1 idnum using "${TEMPDATADIR}/ratio_Y9.dta", nogen  // hh/fam ratio Y9
 
 * DEMOGRAPHICS - only primary caregiver
 rename cp6age 	    moAge
@@ -518,25 +524,27 @@ rename cp6intyr	    moYear
 rename cp6intmon    moMonth
 gen pgCohort = moYear - moAge
 
-
 * HH INCOME
 rename cp6hhinc moHH_income
 rename cp6hhimp	moHH_income_f
 rename cp6povco	moHH_povratio
 rename cp6povca	moHH_povcat
 
+* HH STRUCTURE
+rename  cp6hhsize moHH_size       // includes PCG + child
 
-** HH STRUCTURE
-rename  cp6hhsize moHH_size_c       // includes PCG + child
-
-keep idnum mo* wave chAge  wave
-
+keep idnum mo* wave chAge wave ratio_size
 
 * CHILD FAM & HH INCOME
-    gen     chHH_income = moHH_income   // Income HH - pcg report
-    gen     chHH_size = moHH_size_c     // Size HH - pcg report
-    gen     incRatio = moHH_povratio    // Poverty ratio - pcg report
+gen chHH_income     = moHH_income               // Income HH - pcg report
+gen chHH_size       = moHH_size                 // Size HH - pcg report
+gen chFAM_size      = chHH_size / ratio_size    // Impute fam size with ratio from Y9
+replace chFAM_size  = round(chFAM_size)
 
+gen     incRatio = moHH_povratio            // Poverty ratio - pcg report
+
+* avg hh size also impute for 15 gen
+* avg_income gen for wave 15
 
 * RESHAPE AND SAVE
 keep idnum moYear ch* incRatio wave
@@ -546,6 +554,7 @@ sort idnum
 ds idnum, not
 global FINALVARS = r(varlist)
 collapse $FINALVARS, by(idnum)
+
 
 save "${TEMPDATADIR}/parents_Y15.dta", replace
 
