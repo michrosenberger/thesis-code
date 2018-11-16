@@ -130,7 +130,27 @@ foreach year in 1998 2018 {
 }
 
 * To-do
-* Label legend: % eligible 
+* Label legend: % eligible 	// legend: < 200% of FPL (4 States)
 * Maybe also do by age groups
 * How to add labels for the states: need X and Y coordiantes
+* For note() NOTE: FPL... SOURCE: ...
+* Title: Elgibility for Medicaid/CHIP by Income as % of the FPL
+
+
+********************************************************************************
+************************* MEDIAN SIMULATED ELIGIBILITY *************************
+********************************************************************************
+
+use "${CLEANDATADIR}/simulatedEligbility.dta", clear
+order statefip year age
+sort statefip year age
+label var year "Year"
+
+* Median for each year
+egen median_states = median(simulatedElig), by(year)
+label var median_states "Median % of eligible children"
+*  graph query, schemes
+scatter median_states year, connect(L) msymbol(D) //scheme(s1mono)
+
+* Median for each year by age group
 
