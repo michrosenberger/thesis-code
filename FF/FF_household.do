@@ -52,12 +52,15 @@ rename chHH_income hhInc
 rename  age age_m
 gen     age_temp = age_m / 12
 gen     age = int(age_temp)
-drop    age_temp
+drop    age_temp age_m
 
 * GENDER
-rename  gender gender_temp
-egen    gender = max(gender_temp), by(id) 
-drop    gender_temp
+foreach var in gender moAge moWhite moBlack moHispanic moOther {
+    rename  `var' `var'_temp
+    egen    `var' = max(`var'_temp), by(id) 
+    drop    `var'_temp
+}
+
 
 * LABEL
 label data              "Household structure FF"
@@ -68,7 +71,6 @@ label var incRatio      "Poverty ratio % (FF)"
 label var avgInc        "Avg. hh income"
 label var hhInc         "Household income"
 label var age           "Age child (years)"
-label var age_m         "Age child (months)"
 label var gender        "Gender cild"
 label var wave          "Wave"
 label var moAge         "Age mother"
@@ -80,21 +82,27 @@ label var moOther       "Mother other (race)"
 order id wave year age famSize gender
 sort id wave
 
+* LIMIT SAMPLE
+    * Drop if family didn't complete interview
+    drop if year == .
+
+    * Drop if not enough observations per person (min. 3 observations out of 6)
+    gen observation = 1 if year != .
+    bysort id: egen countObs = count(observation)
+    drop if countObs < 3
+    drop observation
+    label var countObs "Number of observation per child"
+
+    * Drop if no income value
+
+    * Replace age in wave 0
+
+
 tab year
 describe
 
-drop age_m
-
 * ONE observation per WAVE and ID
 save "${TEMPDATADIR}/household_FF.dta", replace
-
-
-/* NOTES:
-Limit obersvations per person
-
-drop if year == .
-drop if not enough observations per person
-*/
 
 
 
