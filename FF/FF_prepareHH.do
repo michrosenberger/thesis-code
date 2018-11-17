@@ -35,7 +35,7 @@ merge 1:1 idnum using "${RAWDATADIR}/00_Baseline/ffdadbspv3.dta", nogen
 
 keep idnum c*1edu c*1ethrace c*1age cm1bsex *1intyr *1intmon c*1hhinc ///
 c*1hhimp c*1inpov c*1povca *1e1c* *1e1d* *1e1b* *1e1e* c*1kids c*1adult m1a11a
-
+*browse idnum m1j2a m1j2b m1j2c m1j2d mx1j2 m1j3 cm1hhinc cm1hhimp
 gen wave = 0
 
 missingvalues           // recode missing values pro.
