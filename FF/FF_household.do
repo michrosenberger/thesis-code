@@ -47,6 +47,7 @@ rename chAge       age
 rename chGender    gender
 rename chAvg_inc   avgInc
 rename chHH_income hhInc
+rename incRatio    incRatio_FF
 
 * AGE
 rename  age age_m
@@ -54,20 +55,22 @@ gen     age_temp = age_m / 12
 gen     age = int(age_temp)
 drop    age_temp age_m
 
-* GENDER
-foreach var in gender moAge moWhite moBlack moHispanic moOther {
+* STATE
+gen statefip = . // as place holder for merge
+
+* GENDER, MOTHER AGE, MOTHER RACE
+foreach var in gender moAge moWhite moBlack moHispanic moOther moEduc {
     rename  `var' `var'_temp
     egen    `var' = max(`var'_temp), by(id) 
     drop    `var'_temp
 }
-
 
 * LABEL
 label data              "Household structure FF"
 label var year          "Year interview"
 label var famSize       "Number of family members in hh"
 label var hhSize        "Number of hh members"
-label var incRatio      "Poverty ratio % (FF)"
+label var incRatio_FF   "Poverty ratio % from FF"
 label var avgInc        "Avg. hh income"
 label var hhInc         "Household income"
 label var age           "Age child (years)"
@@ -78,45 +81,51 @@ label var moWhite       "Mother white (race)"
 label var moBlack       "Mother black (race)"
 label var moHispanic    "Mother hispanic (race)"
 label var moOther       "Mother other (race)"
+label var ratio_size    "Ratio hh size to family size"
+label var statefip      "State of residence fips codes"
 
-order id wave year age famSize gender
+label define gender 1 "Male" 2 "Female"
+label values gender gender
+
+order id wave year age famSize statefip gender
 sort id wave
 
 * LIMIT SAMPLE
     * Drop if family didn't complete interview
     drop if year == .
 
+    * Do with actual medi
     * Drop if not enough observations per person (min. 3 observations out of 6)
     gen observation = 1 if year != .
-    bysort id: egen countObs = count(observation)
-    drop if countObs < 3
+    bysort id: egen countMedi = count(observation)
+    drop if countMedi < 3
     drop observation
-    label var countObs "Number of observation per child"
+    label var countMedi "Number of observation per child"
 
     * Drop if no income value
+    drop if hhInc == .
 
     * Replace age in wave 0
 
+    * If fam size missing impute ratio from previous wave (mostly if no wave 9)
+
 
 tab year
-describe
+drop chLiveMo moHH_size_c
 
 * ONE observation per WAVE and ID
+describe
 save "${TEMPDATADIR}/household_FF.dta", replace
 
 
-
-
-/* ----------------------------- NOT USED
-
-/* Constructed variables
-cm1relf     hh relationship mother */
-
-
 /*
-** Merge poverty levels
-* no statefip in this data
-merge m:1  year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
+* ACTUAL ELIGIBILITY
+* Merge Poverty levels for incRatio
+merge m:1 year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
 keep if _merge == 3
 drop _merge
 */
+
+* SIMULATED ELIGIBILITY
+* Merge with simulated eligibility - how?
+
