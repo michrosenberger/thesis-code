@@ -24,6 +24,7 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 global TABLEDIR         "${MYPATH}/output/tables"
 global FIGUREDIR        "${MYPATH}/output/figures"
+global CODEDIR          "${USERPATH}/code"
 
 /*
 * Install packages
@@ -37,19 +38,6 @@ ssc install maptile
 ************************** MAPS SIMULATED ELIGIBILITY **************************
 ********************************************************************************
 
-/* New approach
-maptile_install using "http://files.michaelstepner.com/geo_state.zip"	// US map
-destring statefips , replace
-maptile simulatedElig , geo(state) geoid(statefip) fcolor(YlOrRd) nq(4)
-*/
-
-* Prepare map
-cd "${RAWDATADIR}/cb_2017_us_state_20m/"
-shp2dta using cb_2017_us_state_20m, database(US_database) coordinates(US_coordinates) genid(id) replace
-use US_database, clear
-describe
-list id STATEFP NAME in 1/5
-
 ************************************
 * % of eligible children per state
 ************************************
@@ -57,36 +45,58 @@ list id STATEFP NAME in 1/5
 * Prepare simulated eligibility data
 foreach year in 1998 2018 {
 	use "${CLEANDATADIR}/simulatedEligbility.dta", clear
-
 	keep if year == `year'
-	sort statefip age
 	collapse simulatedElig, by(statefip)			// mean (highest?)
 	replace simulatedElig = simulatedElig * 100		// in percent
-	rename statefip STATEFP
-
-	* Make data compatible
-	tostring STATEFP, replace
-	forvalues num = 1/9 {
-		replace STATEFP = "0`num'" if STATEFP == "`num'"
-	}
+	rename simulatedElig simulatedElig`year'
+	rename statefip statefips
 	save "${CLEANDATADIR}/Elig`year'.dta", replace
 }
 
-* Merge database map and eligibility data (with same colors)
-cd "${RAWDATADIR}/cb_2017_us_state_20m/"
+merge 1:1 statefips using "${CLEANDATADIR}/Elig1998.dta", nogen
+save  "${CLEANDATADIR}/Elig1998_2018.dta", replace
+
+* Maps
+maptile_install using "http://files.michaelstepner.com/geo_state.zip"	// load US map
+
+do "${CODEDIR}/output/maps_labels.do"	// center state names
+
+merge 1:1 statefips using "${CLEANDATADIR}/Elig1998_2018.dta", nogen // simulated Elig. data
+
+* Generate break data
+gen break2 = .
+replace break2 = 25 if _ID == 26
+replace break2 = 30 if _ID == 27
+replace break2 = 40 if _ID == 1
+replace break2 = 50 if _ID == 2
+replace break2 = 60 if _ID == 3
+replace break2 = 70 if _ID == 4
+replace break2 = 71 if _ID == 5
+
 foreach year in 1998 2018 {
-	use "${CLEANDATADIR}/Elig`year'.dta", clear 
-	merge 1:1 STATEFP using US_database
-
-	drop if _merge!=3
-	format simulatedElig %4.0f
-
-	* Graph
-	spmap simulatedElig using US_coordinates if NAME!="Alaska" & NAME!="Hawaii", id(id) ///
-	fcolor(YlOrRd) clmethod(custom) clbreaks(20 25 30 35 40 50 60 70 80) ///
-	legstyle(2) legend(pos(7)) legtitle("% of children")
+	maptile simulatedElig`year', geo(state) geoid(statefips) fcolor( Blues2) ///
+	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) legjunction(" to ") ///
+	legend(pos(5)) legtitle("% of children") line(data(line_data))) ///
+	legformat(%4.0f) cutp(break2) 
 	graph export "${FIGUREDIR}/MapElig`year'.pdf", replace
 }
+
+/*
+* With labels for legend and state count
+maptile simulatedElig2018, geo(state) geoid(statefips) fcolor(YlOrRd) ///
+spopt( label(xcoord(xcoord) ycoord(ycoord) label(state)) legstyle(2) ///
+legend( pos(5) label(2 "34.2-40.6% (9 states)") label(3 "40.6-42.1% (8 states)")) ///
+line(data(line_data)) legtitle("% of children") legcount) legformat(%4.1f) 
+*/
+
+* To-do
+* make comparable - same color patterns for both graphs
+* clmethod(custom) doesn't work
+* Maybe also do by age groups
+* For note() NOTE: FPL... SOURCE: ...
+* Title: Elgibility for Medicaid/CHIP by Income as % of the FPL
+* Delete individual eligibility
+
 
 ************************************
 * % of FPL threshold per state
@@ -103,39 +113,24 @@ foreach year in 1998 2018 {
 
 	keep if year == `year'
 	collapse (max) cut, by(statefip)		// max % covered
-	rename statefip STATEFP
+	rename statefip statefips
+	rename cut cut`year'
 
-	* Make data compatible
-	tostring STATEFP, replace
-	forvalues num = 1/9 {
-		replace STATEFP = "0`num'" if STATEFP == "`num'"
-	}
 	save "${CLEANDATADIR}/maxFPL`year'.dta", replace
 }
 
-* Merge database map and eligibility data (with same colors)
-cd "${RAWDATADIR}/cb_2017_us_state_20m/"
+merge 1:1 statefips using "${CLEANDATADIR}/maxFPL1998.dta", nogen
+save "${CLEANDATADIR}/maxFPL1998_2018.dta", replace
+
+do "${CODEDIR}/output/maps_labels.do"	// center state names
+
+merge 1:1 statefips using "${CLEANDATADIR}/maxFPL1998_2018.dta", nogen // data
+
 foreach year in 1998 2018 {
-	use "${CLEANDATADIR}/maxFPL`year'.dta", clear 
-	merge 1:1 STATEFP using US_database
-
-	drop if _merge!=3
-	format cut %4.0f
-
-	* Graph
-	spmap cut using US_coordinates if NAME!="Alaska" & NAME!="Hawaii", id(id) ///
-	fcolor(YlOrRd) clmethod(custom) clbreaks(100 150 200 250 300 350 400 450) ///
-	legstyle(2) legend(pos(7) size(medsmall)) legtitle("% of FPL line") 
+	maptile cut`year', geo(state) geoid(statefips) fcolor(YlOrRd) ///
+	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) legend(pos(5)) legtitle("% of FPL") line(data(line_data)) ) legformat(%4.0f) 
 	graph export "${FIGUREDIR}/MapFPL`year'.pdf", replace
 }
-
-* To-do
-* Label legend: % eligible 	// legend: < 200% of FPL (4 States)
-* Maybe also do by age groups
-* How to add labels for the states: need X and Y coordiantes
-* For note() NOTE: FPL... SOURCE: ...
-* Title: Elgibility for Medicaid/CHIP by Income as % of the FPL
-
 
 ********************************************************************************
 ************************* MEDIAN SIMULATED ELIGIBILITY *************************
@@ -153,4 +148,6 @@ label var median_states "Median % of eligible children"
 scatter median_states year, connect(L) msymbol(D) //scheme(s1mono)
 
 * Median for each year by age group
+
+
 

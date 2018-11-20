@@ -37,7 +37,7 @@ gen Elig2018 = simulatedElig100 if year == 2018
 statastates, fips(statefip) nogenerate   // abbreviation for state
 save "${TEMPDATADIR}/simulatedElig100.dta", replace
 
-collapse Elig1998 Elig2018, by(state_name)
+collapse Elig1998 Elig2018, by(state_abbrev)    // state_abbrev
 gen Diff = Elig2018 - Elig1998
 label var Elig1998 "1998"
 label var Elig2018 "2018"
@@ -57,9 +57,9 @@ addnotes("Based on March CPS data" "from 1998-2018.") mlabels("\% eligible \\ Ye
 * Medicaid eligbility by state and year
 use "${TEMPDATADIR}/DiffElig.dta", clear
 eststo clear
-estpost tabstat Elig1998 Elig2018 Diff, by(state_name) nototal
+estpost tabstat Elig1998 Elig2018 Diff, by(state_abbrev) nototal
 eststo
 esttab . using "${TABLEDIR}/simulatedEligbility_state.tex", replace label ///
 nonumber cells("Elig1998(fmt(a3) label(1998)) Elig2018(fmt(a3) label(2018)) Diff(fmt(a3) label(Diff))") noobs ///
 title("Medicaid eligibility by state") compress ///
-addnotes("Based on March CPS data from 1998 and 2018.") longtable nomtitle
+addnotes("Based on March CPS data" "from 1998 and 2018.") longtable nomtitle
