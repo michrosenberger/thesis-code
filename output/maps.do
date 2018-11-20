@@ -96,6 +96,7 @@ line(data(line_data)) legtitle("% of children") legcount) legformat(%4.1f)
 * For note() NOTE: FPL... SOURCE: ...
 * Title: Elgibility for Medicaid/CHIP by Income as % of the FPL
 * Delete individual eligibility
+* Average years elgible
 
 
 ************************************
@@ -141,13 +142,29 @@ order statefip year age
 sort statefip year age
 label var year "Year"
 
-* Median for each year
-egen median_states = median(simulatedElig), by(year)
-label var median_states "Median % of eligible children"
+gen Elig0 = .	// 0
+replace Elig0 = simulatedElig if age == 0
+
+gen Elig1 = .	// 1-5
+replace Elig1 = simulatedElig if ( age == 1 | age == 2 | age == 3 | age == 4 | age == 5 )
+
+gen Elig6 = .	// 6-18
+replace Elig6 = simulatedElig if ( age > 5 )
+
+* Mean for each age group
+bysort year: egen mean_Elig0 = mean(Elig0)
+bysort year: egen mean_Elig1 = mean(Elig1)
+bysort year: egen mean_Elig6 = mean(Elig6)
+label var mean_Elig0 "Age 0"
+label var mean_Elig1 "Ages 1 - 5"
+label var mean_Elig6 "Ages 6 - 8"
+
+scatter mean_Elig0 year, ytitle("Fraction of eligible children") ///
+note("Note: This graph shows the mean fraction of simulated eligible children across all"  "states in a given year. Source: March CPS data 1998-2018") ///
+xlabel(1998 (4) 2018) connect(L) msymbol(o)  scheme(vg_outc) || connected mean_Elig1 year, ///
+msymbol(o) || connected mean_Elig6 year, msymbol(o)
+graph export "${FIGUREDIR}/ChangeEligibility.pdf", replace
+
+
 *  graph query, schemes
-scatter median_states year, connect(L) msymbol(D) //scheme(s1mono)
-
-* Median for each year by age group
-
-
 

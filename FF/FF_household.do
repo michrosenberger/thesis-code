@@ -24,6 +24,7 @@ global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
 global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
+global TABLEDIR         "${USERPATH}/output/tables"
 cd ${CODEDIR}
 
 ********************************************************************************
@@ -64,30 +65,35 @@ foreach var in gender moAge moWhite moBlack moHispanic moOther moEduc {
     egen    `var' = max(`var'_temp), by(id) 
     drop    `var'_temp
 }
+gen female = . 
+replace female = 1 if gender == 2
+replace female = 0 if gender == 1
+drop gender
 
 * LABEL
 label data              "Household structure FF"
 label var year          "Year interview"
-label var famSize       "Number of family members in hh"
-label var hhSize        "Number of hh members"
+label var famSize       "No. of fam members"
+label var hhSize        "No. of household members"
 label var incRatio_FF   "Poverty ratio % from FF"
-label var avgInc        "Avg. hh income"
+label var avgInc        "Family income"
 label var hhInc         "Household income"
 label var age           "Age child (years)"
-label var gender        "Gender cild"
+label var female        "Child female"
 label var wave          "Wave"
-label var moAge         "Age mother"
-label var moWhite       "Mother white (race)"
-label var moBlack       "Mother black (race)"
-label var moHispanic    "Mother hispanic (race)"
-label var moOther       "Mother other (race)"
+label var moAge         "Mother's age at birth"
+label var moWhite       "Mother's race: White"
+label var moBlack       "Mother's race: Black"
+label var moHispanic    "Mother's race: Hispanic"
+label var moOther       "Mother's race: Other"
+label var moEduc        "Mother's education"
 label var ratio_size    "Ratio hh size to family size"
 label var statefip      "State of residence fips codes"
 
-label define gender 1 "Male" 2 "Female"
-label values gender gender
+label define female 0 "Male" 1 "Female"
+label values female female
 
-order id wave year age famSize statefip gender
+order id wave year age famSize statefip female
 sort id wave
 
 * LIMIT SAMPLE
@@ -100,7 +106,7 @@ sort id wave
     bysort id: egen countMedi = count(observation)
     drop if countMedi < 3
     drop observation
-    label var countMedi "Number of observation per child"
+    label var countMedi "No. of observations"
 
     * Drop if no income value
     drop if hhInc == .
@@ -117,6 +123,16 @@ drop chLiveMo moHH_size_c
 describe
 save "${TEMPDATADIR}/household_FF.dta", replace
 
+* Summary statistics
+* Make family income in thousand
+* Make child race
+* tabstat famSize female female if wave == 0, columns(statistics)  statistics(mean sd min max)
+sum famSize female avgInc moAge moWhite moBlack moHispanic moOther ///
+moEduc countMedi if wave == 0
+
+sutex famSize female avgInc moAge moWhite moBlack moHispanic moOther ///
+moEduc countMedi if wave == 0, labels digits(2) nobs ///
+title("Summary statistics Fragile Families") file("${TABLEDIR}/SumStat_Y0.tex") replace
 
 /*
 * ACTUAL ELIGIBILITY
