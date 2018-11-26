@@ -87,7 +87,7 @@ foreach year in 1998 2018 {
 	legjunction(" to ") ///
 	legend(pos(5)) legtitle("% of children") line(data(line_data))) ///
 	legformat(%4.0f) cutp(break2) 
-	graph export "${FIGUREDIR}/MapElig`year'.pdf", replace
+	graph export "${FIGUREDIR}/MapElig`year'.png", replace
 }
 
 /*
@@ -156,7 +156,7 @@ foreach year in 1998 2018 {
 	legjunction(" to ") ///
 	legend(pos(5)) legtitle("% of FPL") line(data(line_data)) ) ///
 	legformat(%4.0f) cutp(break2) 
-	graph export "${FIGUREDIR}/MapFPL`year'.pdf", replace
+	graph export "${FIGUREDIR}/MapFPL`year'.png", replace
 }
 
 * Delete eligibility files
@@ -195,7 +195,7 @@ scatter mean_Elig0 year, ytitle("Fraction of eligible children") ///
 note("Note: This graph shows the mean fraction of simulated eligible children across all"  "states in a given year. Source: March CPS data 1998-2018") ///
 xlabel(1998 (4) 2018) connect(L) msymbol(o)  scheme(vg_outc) || connected mean_Elig1 year, ///
 msymbol(o) || connected mean_Elig6 year, msymbol(o)
-graph export "${FIGUREDIR}/ChangeEligibility.pdf", replace
+graph export "${FIGUREDIR}/ChangeEligibility.png", replace
 
 
 *  graph query, schemes

@@ -80,7 +80,7 @@ label var year          "Year interview"
 label var famSize       "Family members"
 label var hhSize        "No. of household members"
 label var incRatio_FF   "Poverty ratio from FF"
-label var avgInc        "Family income (in thousands)"
+label var avgInc        "Family income (in 1'000 USD)"
 label var hhInc         "Household income"
 label var age           "Age child (years)"
 label var female        "Female"
@@ -92,6 +92,7 @@ label var chOther       "Other race"
 label var chMulti       "Mutli-racial"
 label var moAge         "Mother's age at birth"
 label var moEduc        "Mother's education"
+label var moCohort      "Mother's birth year"
 label var ratio_size    "Ratio hh size to family size"
 label var statefip      "State of residence fips codes"
 
@@ -127,18 +128,6 @@ drop chLiveMo moHH_size_c
 * ONE observation per WAVE and ID
 describe
 save "${TEMPDATADIR}/household_FF.dta", replace
-
-* Summary statistics
-* Income ratio from family
-eststo clear
-estpost tabstat famSize female avgInc incRatio_FF chWhite chBlack chHispanic chOther chMulti ///
-moAge moEduc countMedi if wave == 0, columns(statistics)  statistics(mean n)
-eststo
-estpost tabstat famSize female avgInc incRatio_FF chWhite chBlack chHispanic chOther chMulti ///
-moAge moEduc countMedi if wave == 0, columns(statistics)  statistics(mean n)
-eststo
-*esttab est1 est2, cells("mean(fmt(%9.2fc))") nonumber label collabels(none) mlabels("FF" "CPS")
-esttab est1 est2 using "${TABLEDIR}/SumStat_both.tex", cells("mean(fmt(%9.2fc))") nonumber label collabels(none) mlabels("FF" "CPS") style(tex) alignment(r) replace
 
 
 /*

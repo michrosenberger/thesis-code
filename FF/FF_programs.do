@@ -331,10 +331,10 @@ program define fam_structure_income
 
     * COLLAPSE AND SAVE
     if wave == 0 {
-        keep idnum moYear moMonth ch* incRatio wave moAge moEduc moWhite moBlack moHispanic moOther moHH_size_c chLiveMo
+        keep idnum moYear moMonth ch* incRatio wave moAge moEduc moWhite moBlack moHispanic moOther moHH_size_c chLiveMo moCohort
     }
     if wave > 0 {
-        keep idnum moYear moMonth ch* incRatio wave moHH_size_c chLiveMo
+        keep idnum moYear moMonth ch* incRatio wave moHH_size_c chLiveMo moCohort
     }
     order idnum moYear moMonth
     sort idnum

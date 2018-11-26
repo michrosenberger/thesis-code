@@ -20,6 +20,10 @@ Output datasets:
 - cps.dta 					:	year age statefip incRatio
 */
 
+********************************************************************************
+*********************************** PREAMBLE ***********************************
+********************************************************************************
+
 ************************************
 * WORING DIRECTORIES AND GLOABL VARS
 ************************************
@@ -31,22 +35,39 @@ global CODEDIR			"${MYPATH}/code"
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
+
+* Setting the switches for different parts of the code
+global MERGEDATA		= 0			// merge data - time consuming
+
 log using ${CODEDIR}/CPS_household.log, replace 
+
+********************************************************************************
+************************************* DATA *************************************
+********************************************************************************
 
 ************************************
 * IMPORT DATA
 ************************************
+if ${MERGEDATA} == 1 {
 
-use "${RAWDATADIR}/cepr_march_1997.dta", clear
-foreach year of numlist 1998(1)2016 {
-	qui append using "${RAWDATADIR}/cepr_march_`year'.dta", force
-}
-foreach year of numlist 2017(1)2018 {
-	qui append using "${TEMPDATADIR}/cpsmar`year'_clean.dta", force
+	use "${RAWDATADIR}/cepr_march_1997.dta", clear
+	foreach year of numlist 1998(1)2016 {
+		qui append using "${RAWDATADIR}/cepr_march_`year'.dta", force
+	}
+	foreach year of numlist 2017(1)2018 {
+		qui append using "${TEMPDATADIR}/cpsmar`year'_clean.dta", force
+	}
+
+	keep famno pfrel hhseq female age wbho year incp_wag incp_uc incp_se ///
+	incp_cs incp_alm incp_ssi incp_ss incp_vet incp_wcp state gestfips hins ///
+	hipriv hipub hiep hipind himcaid himcc hischip pvcfam incf_all pvlfam ///
+	educ educ2 educ92
+
+	save "${TEMPDATADIR}/cps_1997-2018.dta", replace
+
 }
 
-keep famno pfrel hhseq female age wbho year incp_wag incp_uc incp_se incp_cs incp_alm ///
-state gestfips hins hipriv hipub hiep hipind himcaid himcc hischip pvcfam incf_all pvlfam
+use "${TEMPDATADIR}/cps_1997-2018.dta", clear
 
 ************************************
 * FAMILY STRUCTURE CPS
@@ -92,6 +113,26 @@ label values husband husband
 label values wife wife
 label values child1 child1
 label values unmarried unmarried
+
+************************************
+* PARENTS COHORT
+************************************
+gen moCohort_temp = .
+replace moCohort_temp = year - age if female == 1 & (pfrel == 2 | pfrel == 5)
+bysort hhseq year : egen moCohort = max(moCohort_temp)
+
+gen faCohort_temp = .
+replace faCohort_temp = year - age if female == 0 & (pfrel == 1 | pfrel == 5)
+bysort hhseq year : egen faCohort = max(faCohort_temp)
+
+drop *_temp
+
+************************************
+* PARENTS EDUCATION
+************************************
+* educ educ2 educ92
+* moEduc faEduc
+
 
 ************************************
 * INCOME
@@ -213,7 +254,7 @@ rename hischip 	childCHIP	// Child covered by SCHIP
 ************************************
 * MERGE POVERTY LEVELS
 ************************************
-merge m:1  year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
+merge m:1 year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
 keep if _merge == 3
 drop _merge
 
@@ -293,6 +334,12 @@ gen FF = 0
 * Keep only children
 keep if pfrel == 3
 
+rename white 		chWhite
+rename black 		chBlack
+rename hispanic 	chHispanic
+rename other		chOther
+
+
 /* Propsensity score matching on characteristics
 	* MERGE datasets from CPS (FF = 0) and FF baseline wave (FF = 1)
 
@@ -317,12 +364,16 @@ keep if pfrel == 3
 
 tabstat healthIns healthMedi childMedi childCHIP, by(year)
 
-keep year age statefip incRatio health* child*
+* For Summary statistics
+keep year age statefip incRatio health* child* ch* moCohort faCohort famSize female
 order year statefip age incRatio
 sort year statefip age
 
-drop year
+save "${TEMPDATADIR}/cps_summary.dta", replace
 
+
+* For analysis
+keep age state incRatio
 save "${CLEANDATADIR}/cps.dta", replace
 
 
