@@ -24,23 +24,33 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 global TABLEDIR         "${MYPATH}/output/tables"
 global FIGUREDIR        "${MYPATH}/output/figures"
-global CODEDIR          "${USERPATH}/code"
+global CODEDIR          "${MYPATH}/code"
 
-/*
+* Setting the switches for different parts of the code
+global PROGRAMS		= 0			// install the packages
+global USMAP		= 0			// download map
+
 * Install packages
-ssc install spmap
-ssc install shp2dta
-ssc install mif2dta
-ssc install geo2xy
-ssc install maptile
-*/
+if ${PROGRAMS} == 1 {
+	ssc install spmap
+	ssc install shp2dta
+	ssc install mif2dta
+	ssc install geo2xy
+	ssc install maptile
+}
+
 ********************************************************************************
 ************************** MAPS SIMULATED ELIGIBILITY **************************
 ********************************************************************************
+* Download US map
+if ${USMAP} == 1 {
+	maptile_install using "http://files.michaelstepner.com/geo_state.zip"
+}
 
 ************************************
 * % of eligible children per state
 ************************************
+* Alternative: do by age groups
 
 * Prepare simulated eligibility data
 foreach year in 1998 2018 {
@@ -50,20 +60,18 @@ foreach year in 1998 2018 {
 	replace simulatedElig = simulatedElig * 100		// in percent
 	rename simulatedElig simulatedElig`year'
 	rename statefip statefips
-	save "${CLEANDATADIR}/Elig`year'.dta", replace
+	save "${TEMPDATADIR}/Elig`year'.dta", replace
 }
 
-merge 1:1 statefips using "${CLEANDATADIR}/Elig1998.dta", nogen
-save  "${CLEANDATADIR}/Elig1998_2018.dta", replace
+merge 1:1 statefips using "${TEMPDATADIR}/Elig1998.dta", nogen
+save  "${TEMPDATADIR}/Elig1998_2018.dta", replace
 
-* Maps
-maptile_install using "http://files.michaelstepner.com/geo_state.zip"	// load US map
-
+* Map
 do "${CODEDIR}/output/maps_labels.do"	// center state names
 
-merge 1:1 statefips using "${CLEANDATADIR}/Elig1998_2018.dta", nogen // simulated Elig. data
+merge 1:1 statefips using "${TEMPDATADIR}/Elig1998_2018.dta", nogen // simulated Elig. data
 
-* Generate break data
+* Generate break data	// clmethod(custom) does not work
 gen break2 = .
 replace break2 = 25 if _ID == 26
 replace break2 = 30 if _ID == 27
@@ -75,7 +83,8 @@ replace break2 = 71 if _ID == 5
 
 foreach year in 1998 2018 {
 	maptile simulatedElig`year', geo(state) geoid(statefips) fcolor( Blues2) ///
-	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) legjunction(" to ") ///
+	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) ///
+	legjunction(" to ") ///
 	legend(pos(5)) legtitle("% of children") line(data(line_data))) ///
 	legformat(%4.0f) cutp(break2) 
 	graph export "${FIGUREDIR}/MapElig`year'.pdf", replace
@@ -89,21 +98,25 @@ legend( pos(5) label(2 "34.2-40.6% (9 states)") label(3 "40.6-42.1% (8 states)")
 line(data(line_data)) legtitle("% of children") legcount) legformat(%4.1f) 
 */
 
-* To-do
-* make comparable - same color patterns for both graphs
-* clmethod(custom) doesn't work
-* Maybe also do by age groups
-* For note() NOTE: FPL... SOURCE: ...
-* Title: Elgibility for Medicaid/CHIP by Income as % of the FPL
-* Delete individual eligibility
+* Delete eligibility files
+cd ${TEMPDATADIR}
+erase Elig1998_2018.dta
+erase Elig1998.dta
+erase Elig2018.dta
+
+
+************************************
 * Average years elgible
+************************************
+
+
 
 
 ************************************
 * % of FPL threshold per state
 ************************************
 
-* FPL data
+* Prepare FPL data
 foreach year in 1998 2018 {
 	use "${CLEANDATADIR}/cutscombined.dta", clear
 
@@ -117,21 +130,40 @@ foreach year in 1998 2018 {
 	rename statefip statefips
 	rename cut cut`year'
 
-	save "${CLEANDATADIR}/maxFPL`year'.dta", replace
+	save "${TEMPDATADIR}/maxFPL`year'.dta", replace
 }
 
-merge 1:1 statefips using "${CLEANDATADIR}/maxFPL1998.dta", nogen
-save "${CLEANDATADIR}/maxFPL1998_2018.dta", replace
+merge 1:1 statefips using "${TEMPDATADIR}/maxFPL1998.dta", nogen
+save "${TEMPDATADIR}/maxFPL1998_2018.dta", replace
 
+* Map
 do "${CODEDIR}/output/maps_labels.do"	// center state names
 
-merge 1:1 statefips using "${CLEANDATADIR}/maxFPL1998_2018.dta", nogen // data
+merge 1:1 statefips using "${TEMPDATADIR}/maxFPL1998_2018.dta", nogen // data
+
+* Generate break data	// clmethod(custom) does not work
+gen break2 = .
+replace break2 = 150 if _ID == 26
+replace break2 = 200 if _ID == 27
+replace break2 = 250 if _ID == 1
+replace break2 = 300 if _ID == 2
+replace break2 = 350 if _ID == 3
+replace break2 = 400 if _ID == 4
 
 foreach year in 1998 2018 {
-	maptile cut`year', geo(state) geoid(statefips) fcolor(YlOrRd) ///
-	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) legend(pos(5)) legtitle("% of FPL") line(data(line_data)) ) legformat(%4.0f) 
+	maptile cut`year', geo(state) geoid(statefips) fcolor(Blues2) ///
+	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) ///
+	legjunction(" to ") ///
+	legend(pos(5)) legtitle("% of FPL") line(data(line_data)) ) ///
+	legformat(%4.0f) cutp(break2) 
 	graph export "${FIGUREDIR}/MapFPL`year'.pdf", replace
 }
+
+* Delete eligibility files
+cd ${TEMPDATADIR}
+erase maxFPL1998_2018.dta
+erase maxFPL1998.dta
+erase maxFPL2018.dta
 
 ********************************************************************************
 ************************* MEDIAN SIMULATED ELIGIBILITY *************************

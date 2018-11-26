@@ -23,7 +23,13 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 global TABLEDIR         "${MYPATH}/output/tables"
 
-* ssc install statastates
+* Setting the switches for different parts of the code
+global PROGRAMS		= 0			// install the packages
+
+* Install packages
+if ${PROGRAMS} == 1 {
+    ssc install statastates
+}
 
 ********************************************************************************
 ************************* TABLES SIMULATED ELIGIBILITY *************************
@@ -63,3 +69,9 @@ esttab . using "${TABLEDIR}/simulatedEligbility_state.tex", replace label ///
 nonumber cells("Elig1998(fmt(a3) label(1998)) Elig2018(fmt(a3) label(2018)) Diff(fmt(a3) label(Diff))") noobs ///
 title("Medicaid eligibility by state") compress ///
 addnotes("Based on March CPS data" "from 1998 and 2018.") longtable nomtitle
+
+
+* Delete files
+cd ${TEMPDATADIR}
+erase simulatedElig100.dta
+erase DiffElig.dta

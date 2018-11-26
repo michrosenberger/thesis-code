@@ -60,7 +60,8 @@ drop    age_temp age_m
 gen statefip = . // as place holder for merge
 
 * GENDER, MOTHER AGE, MOTHER RACE
-foreach var in gender moAge moWhite moBlack moHispanic moOther moEduc {
+foreach var in gender moAge moWhite moBlack moHispanic moOther moEduc ///
+chBlack chHispanic chOther chMulti chWhite {
     rename  `var' `var'_temp
     egen    `var' = max(`var'_temp), by(id) 
     drop    `var'_temp
@@ -70,22 +71,26 @@ replace female = 1 if gender == 2
 replace female = 0 if gender == 1
 drop gender
 
+* FAM INCOME IN THOUSANDS
+replace avgInc = avgInc / 1000
+
 * LABEL
 label data              "Household structure FF"
 label var year          "Year interview"
-label var famSize       "No. of fam members"
+label var famSize       "Family members"
 label var hhSize        "No. of household members"
-label var incRatio_FF   "Poverty ratio % from FF"
-label var avgInc        "Family income"
+label var incRatio_FF   "Poverty ratio from FF"
+label var avgInc        "Family income (in thousands)"
 label var hhInc         "Household income"
 label var age           "Age child (years)"
-label var female        "Child female"
+label var female        "Female"
 label var wave          "Wave"
+label var chWhite       "White"
+label var chBlack       "Black"
+label var chHispanic    "Hispanic"
+label var chOther       "Other race"
+label var chMulti       "Mutli-racial"
 label var moAge         "Mother's age at birth"
-label var moWhite       "Mother's race: White"
-label var moBlack       "Mother's race: Black"
-label var moHispanic    "Mother's race: Hispanic"
-label var moOther       "Mother's race: Other"
 label var moEduc        "Mother's education"
 label var ratio_size    "Ratio hh size to family size"
 label var statefip      "State of residence fips codes"
@@ -106,7 +111,7 @@ sort id wave
     bysort id: egen countMedi = count(observation)
     drop if countMedi < 3
     drop observation
-    label var countMedi "No. of observations"
+    label var countMedi "Observations per child"
 
     * Drop if no income value
     drop if hhInc == .
@@ -124,15 +129,17 @@ describe
 save "${TEMPDATADIR}/household_FF.dta", replace
 
 * Summary statistics
-* Make family income in thousand
-* Make child race
-* tabstat famSize female female if wave == 0, columns(statistics)  statistics(mean sd min max)
-sum famSize female avgInc moAge moWhite moBlack moHispanic moOther ///
-moEduc countMedi if wave == 0
+* Income ratio from family
+eststo clear
+estpost tabstat famSize female avgInc incRatio_FF chWhite chBlack chHispanic chOther chMulti ///
+moAge moEduc countMedi if wave == 0, columns(statistics)  statistics(mean n)
+eststo
+estpost tabstat famSize female avgInc incRatio_FF chWhite chBlack chHispanic chOther chMulti ///
+moAge moEduc countMedi if wave == 0, columns(statistics)  statistics(mean n)
+eststo
+*esttab est1 est2, cells("mean(fmt(%9.2fc))") nonumber label collabels(none) mlabels("FF" "CPS")
+esttab est1 est2 using "${TABLEDIR}/SumStat_both.tex", cells("mean(fmt(%9.2fc))") nonumber label collabels(none) mlabels("FF" "CPS") style(tex) alignment(r) replace
 
-sutex famSize female avgInc moAge moWhite moBlack moHispanic moOther ///
-moEduc countMedi if wave == 0, labels digits(2) nobs ///
-title("Summary statistics Fragile Families") file("${TABLEDIR}/SumStat_Y0.tex") replace
 
 /*
 * ACTUAL ELIGIBILITY

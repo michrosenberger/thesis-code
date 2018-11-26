@@ -162,7 +162,7 @@ save "${TEMPDATADIR}/ratio_Y9.dta", replace
 ********************************************************************************
 use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear
 keep idnum cp6age cp6yagey cp6yagem cp6intyr cp6intmon cp6hhinc cp6hhimp ///
-cp6povco cp6povca cp6hhsize
+cp6povco cp6povca cp6hhsize ck6ethrace
 
 gen wave = 15
 
@@ -175,6 +175,12 @@ rename cp6age 	    moAge
 rename cp6yagem     chAge   // months
 rename cp6intyr	    moYear
 rename cp6intmon    moMonth
+rename ck6ethrace   chRace
+    gen chWhite     = chRace == 1
+    gen chBlack     = chRace == 2
+    gen chHispanic  = chRace == 3
+    gen chOther     = chRace == 4
+    gen chMulti     = chRace == 5
 gen pgCohort = moYear - moAge
 
 * HH INCOME
