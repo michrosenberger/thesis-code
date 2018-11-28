@@ -15,7 +15,7 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
-// Set working directories
+* Set working directories
 if "`c(username)'" == "michellerosenberger"  {
     global USERPATH     "~/Development/MA"
 }
@@ -25,13 +25,11 @@ global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
 
-do "${CODEDIR}/FF/FF_programs.do"      // Load programs
+* Load programs
+do "${CODEDIR}/FF/FF_programs.do"
 
 
-********************
-* PROGRAMS
-********************
-
+/* ------------------------------- PROGRAMS -------------------------------- */
 * PARENT REPORTED HEALTH
 capture program drop child_health
 program define child_health
@@ -72,15 +70,12 @@ program define medicaid
 	drop *_mo *_fa
 
 end
+/* ---------------------------------- END ---------------------------------- */
 
 
 ********************************************************************************
-********************************** OUTCOMES  ***********************************
+*********************************** BASELINE ***********************************
 ********************************************************************************
-
-********************
-* Baseline
-********************
 use "${RAWDATADIR}/00_Baseline/ffmombspv3.dta", clear
 merge 1:1 idnum using "${RAWDATADIR}/00_Baseline/ffdadbspv3.dta", nogen
 keep idnum m1g1 f1g1 m1a15 m1a13
@@ -88,56 +83,165 @@ missingvalues           // recode missing values pro.
 
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y0.dta", keepusing(chLiveMo wave) nogen
 
-* Health parents & youth
+/* -------------------- Health & Medicaid (Core report) -------------------- */
+* Health parents
 rename 	m1g1 moHealth	// health mother
 rename 	f1g1 faHealth	// health father
+
+* Health youth
 gen 	chHealth = .
 
 * Medicaid child from parents report
-gen chMediHI = .
+gen chMediHI = 0
 replace chMediHI = 1 if m1a15 == 1 | m1a15 == 101
+/* ---------------------------------- END ---------------------------------- */
 
-* Doctor visists
-gen moDoc = .
-replace moDoc = 1 if m1a13 == 1	// doctor visit for pregnancy
 
-keep idnum *Health wave
+/* --------------------------- Doctor vars (Core) -------------------------- */
+* Doctor visit for pregnancy (binary)
+rename m1a13 moDoc
+replace moDoc = 1 if moDoc == 2
+/* ---------------------------------- END ---------------------------------- */
+
+
+keep idnum *Health wave chMediHI moDoc
 save "${TEMPDATADIR}/health.dta", replace 
 
-********************
-* Wave 1
-********************
-use "${RAWDATADIR}/01_One-Year Core/ffmom1ypv2.dta", clear
-merge 1:1 idnum using "${RAWDATADIR}/01_One-Year Core/ffdad1ypv2.dta"
-keep idnum m2b2 f2b2 m2j1 f2j1 m2j3 m2j3a m2j4 m2j4a f2j3 f2j3a f2j4 f2j4a
+
+********************************************************************************
+************************************ WAVE 1 ************************************
+********************************************************************************
+use "${RAWDATADIR}/01_One-Year Core/ffmom1ypv2.dta", clear				// Core
+merge 1:1 idnum using "${RAWDATADIR}/01_One-Year Core/ffdad1ypv2.dta"	// Core
+
+keep idnum m2b2 f2b2 m2j1 f2j1 m2j3 m2j3a m2j4 m2j4a f2j3 f2j3a f2j4 f2j4a ///
+m2b11 f2b11 m2b11a f2b11a m2b11b m2b6 m2b7 mx2b7 m2b7a m2b8 m2b8a ///
+cm2gad_case cm2md_case_con cm2md_case_lib f2b11b f2b6 f2b7 fx2b7 f2b7a f2b7a ///
+f2b8 f2b8a
+
 missingvalues           // recode missing values pro.
 
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y1.dta", keepusing(chLiveMo wave) nogen
 
+/* -------------------- Health & Medicaid (Core report) -------------------- */
 * Health parents
-rename 	m2j1 moHealth	// health mother
-rename 	f2j1 faHealth	// health father
+rename 	m2j1 moHealth		// health mother
+rename 	f2j1 faHealth		// health father
 
 * Health youth by parents
-child_health m2b2 f2b2
+child_health m2b2 f2b2		// chHealth
 
 * Medicaid child from parents report
-medicaid 2j3 2j3a 2j4 2j4a
+medicaid 2j3 2j3a 2j4 2j4a	// chMediHI chPrivHI
+/* ----------------------------------  END ---------------------------------- */
 
-keep idnum *Health wave ch*
+
+/* -------------------------- Asthma (Core report) -------------------------- */
+* Has a health care professional ever told you child has asthma?
+gen everAsthma = .
+replace everAsthma = m2b11 if chLiveMo != 2	// mother + default
+replace everAsthma = f2b11 if chLiveMo == 2	// father
+replace everAsthma = 0 if everAsthma == 2
+
+* Since birth, has child had an episode of asthma or an asthma attack?
+gen asthmaAttack = .
+replace asthmaAttack = m2b11a if chLiveMo != 2	// mother + default
+replace asthmaAttack = f2b11a if chLiveMo == 2	// father
+replace asthmaAttack = 0 if asthmaAttack == 2
+
+* Since birth, has child required emergency/urgent care treatment for asthma?
+gen asthmaER = . 
+replace asthmaER = m2b11b if chLiveMo != 2		// mother + default
+replace asthmaER = f2b11b if chLiveMo == 2		// father
+replace asthmaER = 0 if asthmaER == 2
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ------------------------ Doctor vars (Core report) ----------------------- */
+* How many times since birth has child been to health car profssnal for well visit - range
+rename m2b6 monumRegDoc
+rename f2b6 fanumRegDoc
+
+* How many times since birth has child been to health care prfssnal for illness? - num
+rename m2b7 monumDocIll
+rename f2b7 fanumDocIll
+
+* How many times has child been seen by health care prof. b/c illness/injury? - num
+rename mx2b7 monumDocIllInj
+rename fx2b7 fanumDocIllInj
+
+* How many times since birth has child been to health care prfssnal for injury? - num
+rename m2b7a monumDocInj
+rename f2b7a fanumDocInj
+
+* How many times since birth has child been to emergency room? 			- num
+rename m2b8 moemRoom
+rename f2b8 faemRoom
+				
+* How many visits to emergency room for accident or injury? 			- num
+rename m2b8a moemRoomAccInj
+rename f2b8a faemRoomAccInj
+
+foreach var in numRegDoc numDocIll numDocIllInj numDocInj emRoom emRoomAccInj {
+	gen `var' = . 
+	replace `var' = mo`var' if chLiveMo != 2		// mother + default
+	replace `var' = fa`var' if chLiveMo == 2		// father
+}
+drop mo* fa*
+
+* Hospital questions not used
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* -------------------- Mother mental health (Core report) ------------------ */
+* Constructed - Mother meets anxious criteria
+rename cm2gad_case		moAnxious	// binary
+
+* Constructed - Mother meets depression criteria (conservative)
+rename cm2md_case_con 	moDepresCon	// binary	
+
+* Constructed - Mother meets depression criteria (liberal)
+rename cm2md_case_lib	moDepresLib	// binary
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* ---------------------------- Other health vars --------------------------- */
+/* m2b3	Does child have any physical disabilities?		
+m2b4a	What type of physical disability?-Cerebral Palsy		
+m2b4b	What type of physical disability?-Total blindness		
+m2b4c	What type of physical disability?-Partial blindness		
+m2b4d	What type of physical disability?-Total deafness		
+m2b4e	What type of physical disability?-Partial deafness		
+m2b4f	What type of physical disability?-Down's syndrome		
+m2b4g	What type of physical disability?-Problems with limbs		
+m2b4h	What type of physical disability?-Other */
+/* ----------------------------------  END ---------------------------------- */
+
+
+keep idnum wave *Health ch* ever* mo* num* em* asthma*
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
 
-********************
-* Wave 3
-********************
-use "${RAWDATADIR}/02_Three-Year Core/ffmom3ypv2.dta", clear
-merge 1:1 idnum using "${RAWDATADIR}/02_Three-Year Core/ffdad3ypv2.dta"
-keep idnum m3b2 f3b2 m3j1 f3j1 m3j3 m3j3a m3j4 m3j4a f3j3 f3j3a f3j4 f3j4a
+
+********************************************************************************
+************************************ WAVE 3 ************************************
+********************************************************************************
+use "${RAWDATADIR}/02_Three-Year Core/ffmom3ypv2.dta", clear						// Core
+merge 1:1 idnum using "${RAWDATADIR}/02_Three-Year Core/ffdad3ypv2.dta", nogen		// Core
+merge 1:1 idnum using "${RAWDATADIR}/02_Three-Year In-Home/InHome3yr.dta", nogen	// In-home
+
+keep idnum m3b2 f3b2 m3j1 f3j1 m3j3 m3j3a m3j4 m3j4a f3j3 f3j3a f3j4 f3j4a ///
+int5 int5_oth a1 a2 a3_1 a3_2 a3_3 a3_4 a3_5 a3_6 a3_7 a4 a5 a5a a5a_oth a7 ///
+a8 a9 a10 a15 a17 a18 a19 a19_ cm3alc_case cm3drug_case cm3gad_case ///
+cm3md_case_con cm3md_case_lib
+
 missingvalues           // recode missing values pro.
 
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y3.dta", keepusing(chLiveMo wave) nogen
 
+/* -------------------- Health & Medicaid (Core report) -------------------- */
 * Health parents
 rename m3j1 moHealth	// health mother
 rename f3j1 faHealth	// health father
@@ -147,44 +251,241 @@ child_health m3b2 f3b2
 
 * Medicaid child from parents report
 medicaid 3j3 3j3a 3j4 3j4a
+/* ----------------------------------  END ---------------------------------- */
 
-keep idnum *Health wave ch*
+
+
+/* ---------------------------- Asthma (In-Home) ---------------------------- */
+* Has a doctor or health professional ever told you that (child) has asthma? - binary
+rename a17 everAsthma
+
+* During past 12m, has (child) had an episode of asthma or an asthma attack? - binary
+rename a18 asthmaAttack
+
+* In past 12m how often did child have to visit urgent care center/er for ast - range
+rename a19 asthmaERnum
+
+* During past 12M did child have to visit ER/urg care center for asthma<Pilot - binary
+rename a19_ asthmaER
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* -------------------------- Doctor vars (In-Home) ------------------------- */
+* In past 12M, how many regular check-ups (by doctor, nurse) did child have? - range
+rename a4 	numRegDoc
+
+* In past 12M: # of times child seen by doctor/nurse for illness/accident/inj. - number
+rename a7 	numDoc
+
+* How many of those health visits were, because of an accident or injury? - number
+rename a8 	numDocAccInj
+
+* In past 12m how many times has child been taken to the emergency room	- number
+rename a9 	emRoom
+
+* How many of those ER visits were because of accident or injury? 		- number
+rename a10 	emRoomAccInj
+
+/* a5	does child have a usual place for routine health care like regular checkup?
+a5a		where does child usually go for health care?	
+a5a_oth	child usual place for health care- other (specify) */
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* -------------------- Mother mental health (Core report) ------------------ */
+* Constructed - Mother meets anxious criteria						- binary
+rename cm3gad_case		moAnxious
+
+* Constructed - Mother meets depression criteria (conservative)		- binary
+rename cm3md_case_con	moDepresCon
+
+* Constructed - Mother meets depression criteria (liberal) 			- binary
+rename cm3md_case_lib	moDepresLib
+
+/* cm3alc_case		Constructed - Mother alcohol dependence (CIDI)				
+cm3drug_case		Constructed - Mother drug dependence (CIDI)	*/
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* ---------------------------- In home variables --------------------------- */
+/* int5		relationship respondent to child
+int5_oth	other relationship respondent to child
+a1			a1: in general, wld you say child's health is 
+a2			a2: does (child) have any physical disability?					
+a3_1		a3_1: does child have cerebral palsy?					
+a3_2		a3_2: does child have total blindness?					
+a3_3		a3_3: does child have partial blindness?					
+a3_4		a3_4: does child have total deafness?					
+a3_5		a3_5: does child have partial deafness?					
+a3_6		a3_6: does child have down's syndrome?					
+a3_7		a3_7: does child have problem with limbs?
+BMI variables */
+/* ----------------------------------  END ---------------------------------- */
+
+keep idnum *Health wave ch* num* em* ever* mo* asthma*
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
 
-********************
-* Wave 5
-********************
-use "${RAWDATADIR}/03_Five-Year Core/ffmom5ypv1.dta", clear
-merge 1:1 idnum using "${RAWDATADIR}/03_Five-Year Core/ffdad5ypv1.dta"
-keep idnum m4b2 f4b2 m4j1 f4j1 m4j3 m4j3a m4j4 m4j4a f4j3 f4j3a f4j4 f4j4a
+
+********************************************************************************
+************************************ WAVE 5 ************************************
+********************************************************************************
+use "${RAWDATADIR}/03_Five-Year Core/ffmom5ypv1.dta", clear						// Core
+merge 1:1 idnum using "${RAWDATADIR}/03_Five-Year Core/ffdad5ypv1.dta", nogen	// Core
+merge 1:1 idnum using "${RAWDATADIR}/03_Five-Year In-Home/Inhome5yr2011_stata/inhome5yr2011.dta", nogen	// In-Home
+
+keep idnum m4b2 f4b2 m4j1 f4j1 m4j3 m4j3a m4j4 m4j4a f4j3 f4j3a f4j4 f4j4a ///
+m4b2a f4b2a m4b2b f4b2b m4b2c f4b2c a6 a12 a13 a14 a15 cm4md_case_con ///
+cm4md_case_lib int5 int_5ot a1 a2_a a2_b a2_c a2_d a2_e a2_f a2_g a2_h a2_i ///
+a2_j a2_k a2_l a2_m a2_n a3_a a3_b a3_c a3_d a3_e a3_f a3_g a3_h a3_i
+
 missingvalues           // recode missing values pro.
 
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y5.dta", keepusing(chLiveMo wave) nogen
 
+/* -------------------- Health & Medicaid (Core report) -------------------- */
 * Health parents
-rename m4j1 moHealth	// health mother
-rename f4j1 faHealth	// health father
+rename m4j1 moHealth		// health mother
+rename f4j1 faHealth		// health father
 
 * Health youth by parents
-child_health m4b2 f4b2
+child_health m4b2 f4b2		// chHealth
 
 * Medicaid child from parents report
-medicaid 4j3 4j3a 4j4 4j4a
+medicaid 4j3 4j3a 4j4 4j4a	// chMediHI chPrivHI
+/* ----------------------------------  END ---------------------------------- */
 
-keep idnum *Health wave ch*
+
+
+/* -------------------------- Asthma (Core report) ------------------------- */
+* Has a doctor or other health professional ever told you that child has asthma?
+gen everAsthma = .
+replace everAsthma = m4b2a if chLiveMo != 2			// mother + default
+replace everAsthma = f4b2a if chLiveMo == 2			// father
+replace everAsthma = 0 if everAsthma == 2
+
+* Since birth, has child had an episode of asthma or an asthma attack?
+gen asthmaAttack = .
+replace asthmaAttack = m4b2b if chLiveMo != 2	// mother + default
+replace asthmaAttack = f4b2b if chLiveMo == 2	// father
+replace asthmaAttack = 0 if asthmaAttack == 2
+
+* In past 12 months did child visit ER or urgent care ctr because of asthma?
+gen asthmaER = .
+replace asthmaER = m4b2c if chLiveMo != 2		// mother + default
+replace asthmaER = f4b2c if chLiveMo == 2		// father
+replace asthmaER = 0 if asthmaER == 2
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* -------------------------- Doctor vars (In-Home) ------------------------- */
+* Last 12m, how many times child been seen by doctor/hlh prof for reg chk- range
+rename a6 numRegDoc
+
+* Last 12 m: how many times child saw a dr/hlth prof for illness/accident/inj - number
+rename a12 numDoc
+
+* Was this visit/how many of (number in a12 were), b/c of an accident/injury? - number
+rename a13 numDocAccInj
+
+* How many times has child been taken to the emergency room? 		- number
+rename a14 emRoom
+
+* Was visit/how many of (# in a14 visits were) to the er b/c of accident/inju - number
+rename a15 emRoomAccInj
+
+/* a7	a7: Does child have a usual place for routine health care (regular check-ups)?
+a8	a8: Where does child usually go for health care?
+a8_ot	a8_ot: Where does (child) usually go for health care (other specify) */
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ---------------------- Past 12 months had (In-Home) ---------------------- */
+* In past 12 months, child had hay fever or respiratory allergy? 	- binary
+rename a3_a feverRespiratory
+
+* In past 12 months, has child had food or digestive allergy? 		- binary
+rename a3_b foodDigestive
+
+* In past 12 months, has child had eczema or skin allergy? 			- binary
+rename a3_c eczemaSkin
+
+* In past 12 months, child had frequent diarrhea or colitis? 		- binary
+rename a3_d diarrheaColitis
+
+* In past 12 months, has child had anemia? 							- binary
+rename a3_e anemia
+
+* In past 12 months, child had frequent headaches or migraines? 	- binary
+rename a3_f headachesMigraines
+
+* In past 12 months, has child had 3 or more ear infections? 		- binary
+rename a3_g earInfection
+
+* In past 12 months, has child had seizures? 						- binary
+rename a3_h seizures
+
+* In past 12 months, has child had stuttering or stammering? 		- binary
+rename a3_i stuttering
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* --------------------- Doctor ever diagnosed (In-Home) -------------------- */
+* Has a doctor ever told you that child has attention deficit disorder add) - binary
+rename a2_a everADHD 
+
+/* int5	int5: What is the relationship of the respondent to the child?					
+int_5ot	int_5ot: What is the relationship of the respondent to the child (oth specify)?
+a1	a1: In general, how would you describe (childís) health		
+a2_b	a2_b: Has a doctor ever told you that child has mental retardation/developmental	
+a2_c	a2_c: Has a doctor ever told you that child has downís syndrome?					
+a2_d	a2_d: Has a doctor ever told you that child has cerebral palsy?					
+a2_e	a2_e: Has a doctor ever told you that child has sickle cell anemia?					
+a2_f	a2_f: Has a doctor ever told you that child has autism?					
+a2_g	a2_g: Has a doctor ever told you that child has congenital heart disease/oth hea	
+a2_h	a2_h: Has a doctor ever told you that child has asthma?					
+a2_i	a2_i: Has a doctor ever told you that child has total blindness?					
+a2_j	a2_j: Has a doctor ever told you that child has partial blindness?					
+a2_k	a2_k: Has a doctor ever told you that child has total deafness?					
+a2_l	a2_l: Has a doctor ever told you that child has partial deafness?					
+a2_m	a2_m: Has a doctor ever told you that child has speech or language problem?
+a2_n	a2_n: Has a doctor ever told you that child has problems with limbs (specify)?*/
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* -------------------- Mother mental health (Core report) ------------------ */
+* Constructed - Mother meets depression criteria (conservative) - binary
+rename cm4md_case_con	moDepresCon
+
+* Constructed - Mother meets depression criteria (liberal) - binary
+rename cm4md_case_lib	moDepresLib	
+/* ----------------------------------  END ---------------------------------- */
+
+
+keep idnum *Health wave ch* ever* num* em*  mo* feverRespiratory ///
+foodDigestive eczemaSkin diarrheaColitis anemia headachesMigraines ///
+earInfection seizures stuttering everADHD asthma*
+
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
 
-********************
-* Wave 9
-********************
-use "${RAWDATADIR}/04_Nine-Year Core/ff_y9_pub1.dta", clear
-keep idnum p5h1 m5g1 f5g1 p5h13 p5h14 p5h3* p5l11 p5h6 p5h7 p5h9 k5h1
+
+********************************************************************************
+************************************ WAVE 9 ************************************
+********************************************************************************
+use "${RAWDATADIR}/04_Nine-Year Core/ff_y9_pub1.dta", clear		// ALL
+
+keep idnum p5h1 m5g1 f5g1 p5h13 p5h14 p5h3* p5l11 p5h6 p5h7 p5h9 k5h1 p5h1b ///
+p5h10 p5h2a hv5_12 hv5_13 p5h3a1 cm5md_case_con cm5md_case_lib
+
 missingvalues           // recode missing values pro.
 
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y9.dta", keepusing(chLiveMo wave) nogen
 
+/* -------------------- Health & Medicaid (Core report) -------------------- */
 * Health parents
 rename m5g1 moHealth	// health mother
 rename f5g1 faHealth	// health father
@@ -192,109 +493,405 @@ rename f5g1 faHealth	// health father
 * Health youth by parents
 rename p5h1 chHealth
 
+* Health youth self-report
+rename k5h1 chHealthSelf
+
 * Medicaid child - PCG report
 rename p5h13 chMediHI 	// child covered by Medicaid 
 rename p5h14 chPrivHI	// child covered by private HI
 replace chMediHI = 0 if chMediHI == 2
 replace chPrivHI = 0 if chPrivHI == 2
+/* ----------------------------------  END ---------------------------------- */
 
-* Health variables
-rename p5h3a fever_respiratory 	// Child had hay fever or respiratory allergy in last 12 months
-rename p5h3b food_digestiv 		// Child had any food or digestive allergy in last 12 months
-rename p5h3c eczema_skin 		// Child had eczema or skin allergy in last 12 months
-rename p5h3d diarrhea_colitis 	// Child had frequent diarrhea or colitis in last 12 months
-rename p5h3e anemia				// Child had anemia in last 12 months
-rename p5h3f migraines 			// Child had frequent headaches or migraines in last 12 months
-rename p5h3g ear_infection 		// Child had three or more ear infections in last 12 months
-rename p5h3h seizures 			// Child had seizures in last 12 months
-rename p5h3j diabetes 			// Child had diabetes in last 12 months
 
-* Limit acitivties / school absent
-rename p5l11 absent 			// Number of times child was absent from school during school year
+/* -------------------------- Asthma (Core report) -------------------------- */
+* Child diagnosed with asthma by doctor or health professional 		- binary
+rename p5h1b everAsthma	
+replace everAsthma = 0 if everAsthma == 2
 
-* Doctor visits youth - PCG report
-rename p5h6 docReg_num 			// Number of times child had regular check-up
-rename p5h7 docPlace 			// Child has a usual place for routine health care
-rename p5h9 docVisit 			// Number of times child saw doctor/nurse due to illness, accident, injury
+/* 	2225	"p5h1ca"	"H1CA. Amount of time asthma kept child from getting things done"
+	2226	"p5h1cb"	"H1CB. Frequency child had shortness of breath in past month"
+	2227	"p5h1cc"	"H1CC. Frequency child's asthma symptoms awoke child"
+	2228	"p5h1cd"	"H1CD. Frequency child used rescue inhaler in past month"
+	2229	"p5h1ce"	"H1CE. Rate child's control of asthma during the past month" */
+/* ----------------------------------  END ---------------------------------- */
 
-* More variables (youth report)
-rename k5h1 chHealth_self 		// Condition of health in general
 
-* Recode
-foreach var in fever_respiratory food_digestiv eczema_skin diarrhea_colitis anemia migraines ///
-	ear_infection seizures diabetes docPlace {
+/* ------------------------ Doctor vars (Core report) ----------------------- */
+*  Number of times child had regular check-up 						- range
+rename p5h6 numRegDoc
+
+* Number of times child saw doctor/nurse due to illness, accident, injury - number
+rename p5h9 numDoc
+
+* Number of times child taken to emergency room in last 12 months 	- number
+rename p5h10 emRoom	
+
+/* 	p5h7	H7. Child has a usual place for routine health care
+	p5h8	H8. Place child usually goes for health care */
+* Hospital questions omitted
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* -------------------- Past 12 months had (Core report) -------------------- */
+local MONTHSVAR	feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
+anemia headachesMigraines earInfection seizures stuttering diabetes
+
+* Child had hay fever or respiratory allergy in last 12 months 		- binary
+rename p5h3a feverRespiratory
+
+* Child had any food or digestive allergy in last 12 months 		- binary
+rename p5h3b foodDigestive
+
+* Child had eczema or skin allergy in last 12 months 				- binary
+rename p5h3c eczemaSkin
+
+* Child had frequent diarrhea or colitis in last 12 months 			- binary
+rename p5h3d diarrheaColitis
+
+* Child had anemia in last 12 months 								- binary
+rename p5h3e anemia
+
+* Child had frequent headaches or migraines in last 12 months 		- binary
+rename p5h3f headachesMigraines
+
+* Child had three or more ear infections in last 12 months 			- binary
+rename p5h3g earInfection
+
+* Child had seizures in last 12 months 								- binary
+rename p5h3h seizures
+
+* Child had stuttering or stammering in past 12 months 				- binary
+rename p5h3i stuttering
+
+* Child had diabetes in last 12 months 								- binary
+rename p5h3j diabetes
+
+foreach var in `MONTHSVAR' {
 	replace `var' = 0 if `var' == 2
 }
+/* ----------------------------------  END ---------------------------------- */
 
-* Health index
-gen healthIndex = fever_respiratory + food_digestiv + eczema_skin + diarrhea_colitis + anemia ///
-	+ migraines + ear_infection + seizures + diabetes
 
-keep idnum *Health wave ch* fever_respiratory food_digestiv eczema_skin diarrhea_colitis anemia migraines ear_infection seizures diabetes healthIndex absent doc* 
+/* ------------------- Doctor ever diagnosed (Core report) ------------------- */
+* Doctor has diagnosed ADD/ADHD - binary
+rename p5h2a everADHD
+replace everADHD = 0 if everADHD == 2
+
+/* 	p5h1a	H1A. Wheezing or whistling in child's chest
+	p5h2b	H2B. Doctor has diagnosed mental retardation or developmental delay
+	p5h2c	H2C. Doctor has diagnosed down syndrome
+	p5h2d	H2D. Doctor has diagnosed cerebral palsy
+	p5h2e	H2E. Doctor has diagnosed sickle cell anemia
+	p5h2f	H2F. Doctor has diagnosed autism
+	p5h2g	H2G. Doctor has diagnosed congenital heart disease or heart condition
+	p5h2h	H2H. Doctor has diagnosed total blindness
+	p5h2i	H2I. Doctor has diagnosed partial blindness
+	p5h2j	H2J. Doctor has diagnosed total deafness
+	p5h2k	H2K. Doctor has diagnosed partial deafness
+	p5h2l	H2L. Doctor has diagnosed a speech or language problem
+	p5h2m	H2M. Doctor has diagnosed problems with limbs */
+* 	Recode
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* --------------------- Takes medication (Core report) --------------------- */
+* Child takes medicine where a prescription was needed 				- binary
+rename p5h3a1 medication
+replace medication = 0 if medication == 2 
+
+/* 	p5h3b1_1	H3B1_1. Child takes medication for ADHD
+	p5h3b1_2	H3B1_2. Child takes medication for hay fever or respiratory allergy
+	p5h3b1_3	H3B1_3. Child takes medication for food or digestive allergy
+	p5h3b1_4	H3B1_4. Child takes medication for eczema or skin allergy
+	p5h3b1_5	H3B1_5. Child takes medication for migraines
+	p5h3b1_6	H3B1_6. Child takes medication for seizures
+	p5h3b1_7	H3B1_7. Child takes medication for depression/anxiety
+	p5h3b1_8	H3B1_8. Child takes medication for diabetes
+	p5h3b1_91	H3B1_91. Child takes medication for other
+	p5h3b1_101	H3B1_101. Child takes medication for asthma */
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ---------------- Problems without know cause (Core report) ---------------- */
+/* 	p5q3bb1 	Child has physical problems without known medical cause: Aches or pains
+	p5q3bb2 	Child has physical problems without known medical cause: Headaches
+	p5q3bb3 	Child has physical problems without known medical cause: Nausea
+	p5q3bb4 	Child has physical problems without known medical cause: Problems with ey
+	p5q3bb5 	Child has rashes other skin problems without known medical cause
+	p5q3bb6 	Child has stomach aches or cramps without known medical cause.
+	p5q3bb7 	Child has vomiting, throwing up without known medical cause.
+	p5q3bb8 	Child has physical problems without known medical cause: Other
+
+	p5q3bb_101 	Child has asthma or breathing problems without known cause
+	p5q3bb_102 	Child has allergies without known cause
+	p5q3bb_103 	Child has nose bleeds without known cause
+	p5q3bb_104 	Child has learning disability without known cause */
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ----------------------- School absent (Core report) ---------------------- */
+* Number of times child was absent from school during school year 	- range
+rename p5l11 absent
+
+/* 	p5l12a 	Illness or other physical problem
+	p5l12b 	An emotional or mental condition
+	p5l12c 	Illness in the family
+	p5l12d 	The family moved
+	p5l12e 	The student shifted to another school
+	p5l12f 	A parent wanted child at home
+	p5l12g 	Child was suspended and or expelled
+	p5l12h 	Child skipped school
+	p5l12i 	Specify if there is something else */
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ----------------------- Saliva sample (Core report) ---------------------- */
+* Mother - options
+rename hv5_12 moSaliva
+
+* Child - options
+rename hv5_13 chSaliva
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* -------------------- Mother mental health (Core report) ------------------ */
+* Constructed - Mother meets depression criteria (conservative) 	- binary
+rename cm5md_case_con moDepresCon
+
+* Constructed - Mother meets depression criteria (liberal) 			- binary
+rename cm5md_case_lib moDepresLib
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+keep idnum *Health wave ch* absent ever* num* em* everADHD `MONTHSVAR' ///
+medication absent mo*
+
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
 
-********************
-* Wave 15
-********************
-use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear
-keep idnum p6b1 p6h2 p6b31 p6b32 p6b* p6b20 p6b21 p6b22 p6b23 p6b24 p6b26 k6d3 k6d4
+********************************************************************************
+*********************************** WAVE 15 ************************************
+********************************************************************************
+use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear			// ALL
+
+keep idnum p6b1 p6h2 p6b31 p6b32 p6b* p6b20 p6b21 p6b22 p6b23 p6b24 p6b26 ///
+k6d3 k6d4 k6d37 k6d38 k6d39 k6d40 k6d41 k6d42 k6d43 k6d48 k6d49 k6d50 k6d51 ///
+k6d52 k6d53 k6d54 k6d55 k6d2ac cp6md_case_con cp6md_case_lib
+
 missingvalues           // recode missing values pro.
 
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y15.dta", keepusing(wave) nogen
 
+/* -------------------- Health & Medicaid (Core report) -------------------- */
 * Health parents
-rename p6h2 moHealth	// health PCG
+rename p6h2 moHealth
 
 * Health youth by parents
 rename p6b1 chHealth
+
+* Health youth self-report
+rename k6d3 chHealthSelf
 
 * Medicaid child - PCG report
 rename p6b31 chMediHI 	// child covered by Medicaid 
 rename p6b32 chPrivHI	// child covered by private HI
 replace chMediHI = 0 if chMediHI == 2
 replace chPrivHI = 0 if chPrivHI == 2
+/* ----------------------------------  END ---------------------------------- */
 
-* Health index child - PCG report
-rename p6b2 asthma
-rename p6b3 anemia
-rename p6b4 heartDisease
-rename p6b5 depression
-rename p6b6 diabetes
-rename p6b7 limb
-rename p6b8 seizures
-rename p6b9 otherCondition
 
-* Limit acitivties / school absent
-rename p6b20 limit				// Health problems limit youth's usual activities
-rename p6b21 absent				// Days youth absent from school due to health in past year
+/* -------------------------- Asthma (Core report) -------------------------- */
+* Doctor diagnosed youth with asthma 								- binary
+rename p6b2 everAsthma
+replace everAsthma = 0 if everAsthma == 2
+/* ----------------------------------  END ---------------------------------- */
 
-* Doctor visits youth - PCG report
-rename p6b22 docInjuryAccident 	// Youth saw doctor for accident or injury in past year
-rename p6b23 docIlness			// Youth saw doctor for an illness in past year
-rename p6b24 docReg				// Youth saw doctor for regular check-up in past year
-rename p6b26 docMedi			// Youth takes doctor prescribed medication
 
-* More variables (youth report)
-rename k6d3 chHealth_self 		// youth description own health
-rename k6d4 absent_self 		// day absent
+/* ------------------------ Doctor vars (Core report) ----------------------- */
+* Youth saw doctor for accident or injury in past year 				- binary
+rename p6b22 docInjAcc
 
-* Recode
-foreach var in asthma anemia heartDisease depression diabetes limb seizures otherCondition ///
-	docInjuryAccident docIlness docReg docMedi limit {
+* Youth saw doctor for an illness in past year 						- binary
+rename p6b23 docIln
+
+* Youth saw doctor for regular check-up in past year 				- binary
+rename p6b24 regDoc
+
+foreach var in docInjAcc docIln regDoc {
 	replace `var' = 0 if `var' == 2
 }
 
-* Health index
-gen healthIndex = asthma + anemia + heartDisease + depression + diabetes + limb + seizures + otherCondition
+/* 	p6b25	B25. Times youth has been injured in past year
+	p6b28	B28. Youth has usual place for routine health care?
+	p6b29	B29. Place youth usually goes for health care? */
+/* ----------------------------------  END ---------------------------------- */
 
-keep idnum *Health wave ch* asthma anemia heartDisease depression diabetes limb seizures otherCondition limit absent doc* healthIndex absent_self
+
+/* ------------------- Doctor ever diagnosed (Core report) ------------------- */
+* Doctor diagnosed youth with ADD/ADHD								- binary
+rename p6b10 everADHD
+replace everADHD = 0 if everADHD == 2
+
+/*	p6b3		B3. Doctor diagnosed youth with anemia
+	p6b4		B4. Doctor diagnosed youth with heart disease/condition
+	p6b5		B5. Doctor diagnosed youth with depression/anxiety
+	p6b6		B6. Doctor diagnosed youth with diabetes
+	p6b7		B7. Doctor diagnosed youth with limb problems
+	p6b8		B8. Doctor diagnosed youth with seizures
+	p6b9		B9. Doctor diagnosed youth with other condition
+	p6b9_101	B9_101. What is other health condition - Headache/Migraines
+	p6b9_102	B9_102. What is other health condition - Overweight/Obese
+	p6b9_103	B9_103. What is other health condition - Allergies
+	p6b9_104	B9_104. What is other health condition - Eczema
+	p6b9_105	B9_105. What is other health condition - Blood pressure/Cholesterol
+	p6b9_106	B9_106. What is other health condition - Scoliosis
+	p6b9_107	B9_107. What is other health condition - Unspecified
+	p6b11		B11. Doctor diagnosed youth with Autism
+	p6b12		B12. Doctor diagnosed youth with other learning disability
+	p6b12_101	B12_101. What is other learning disability - Speech problem
+	p6b12_102	B12_102. What is other learning disability - Developmental delay
+	p6b12_103	B12_103. What is other learning disability - Dyslexia
+	p6b12_104	B12_104. What is other learning disability - Reading/Math difficulty
+	p6b12_105	B12_105. What is other learning disability - Other
+	RECODE */
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* -------------------- Past 12 months had (Core report) -------------------- */
+local MONTHSVAR foodDigestive eczemaSkin diarrheaColitis headachesMigraines ///
+earInfection stuttering breathing
+
+* Youth had food/digestive allergy in past year						- binary
+rename p6b13 foodDigestive
+
+* Youth had eczema/skin allergy in past year						- binary
+rename p6b14 eczemaSkin
+
+* Youth had frequent diarrhea/colitis in past year					- binary
+rename p6b15 diarrheaColitis
+
+* Youth had frequent headaches/migraines in past year				- binary
+rename p6b16 headachesMigraines
+
+* Youth had ear infection in past year								- binary
+rename p6b17 earInfection
+
+* Youth had stuttering or stammering problem in past year			- binary
+rename p6b18 stuttering
+
+* Youth had trouble breathing/chest problem in past year			- binary
+rename p6b19 breathing
+
+foreach var in `MONTHSVAR' {
+	replace `var' = 0 if `var' == 2
+}
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* --------------------- Takes medication (Core report) --------------------- */
+* Youth takes doctor prescribed medication?							- binary
+rename p6b26 medication
+replace medication = 0 if medication == 2
+
+/*	p6b27_1		B27_1. Youth takes medication for ADD/ADHD
+	p6b27_2		B27_2. Youth takes medication for anemia
+	p6b27_3		B27_3. Youth takes medication for asthma
+	p6b27_4		B27_4. Youth takes medication for heart condition
+	p6b27_5		B27_5. Youth takes medication for depression/anxiety
+	p6b27_6		B27_6. Youth takes medication for diabetes
+	p6b27_7		B27_7. Youth takes medication for eczema
+	p6b27_8		B27_8. Youth takes medication for diarrhea or colitis
+	p6b27_9		B27_9. Youth takes medication for seizures
+	p6b27_10	B27_10. Youth takes medication for headaches or migraines
+	p6b27_11	B27_11. Youth takes medication for ear infections
+	p6b27_12	B27_12. Youth takes medication for other health condition */
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ----------------------- School absent (Core report) ---------------------- */
+* Health problems limit youth's usual activities 					- binary
+rename p6b20 limit
+replace limit = 0 if limit == 2
+
+* Days youth absent from school due to health in past year 			- number
+rename p6b21 absent
+
+* Days absent from school due to health in past year - youth report - number
+rename k6d4 absentSelf
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* --------------------- Youth health behavs (Core report) ------------------ */
+* Activity
+** Days engage in physical activity for 30+ minutes in typical week	- num
+rename k6d38 activity30
+
+** Days participate in vigorous physical activity in typical week	- num
+rename k6d39 activityVigorous
+
+* Smoking
+** Ever smoked an entire cigarette?									- binary
+rename k6d40 everSmoke
+replace everSmoke = 0 if everSmoke == 2
+
+** Age when youth first smoked a whole cigarette (years)			- num
+rename k6d41 ageSmoke
+
+** How often smoked cigarettes in past month?						- option
+rename k6d42 monthSmoke
+
+** How many cigarettes per day smoked in past month?				- option
+rename k6d43 cigsSmoke
+
+
+* Drinking
+** 	How old were you when you first drank alcohol? (years)			- num
+rename k6d49 ageDrink 
+
+** 	How often drank alcohol in past month?							- option
+rename k6d50 monthDrink
+
+** How often drank alcohol in past year?							- option
+rename k6d52 yearDrink
+
+** Ever drank alcohol more than two times without parents?			- binary
+rename k6d48 everDrink
+replace everDrink = 0 if everDrink == 2
+
+
+* Mental health
+* I feel depressed 													- options
+rename k6d2ac depressed
+
+/* 	k6d51	How many alcoholic drinks had each time in past month?
+	k6d53	How many alcoholic drinks had each time in past year?
+	k6d54	How often drank five or more alcoholic drinks in past year?
+	k6d55	How often got drunk in past year? */
+* BMI in data
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ---------------------- PCG mental health (Core report) ------------------- */
+* Constructed - Mother meets depression criteria (conservative) 	- binary
+rename cp6md_case_con moDepresCon
+
+* Constructed - Mother meets depression criteria (liberal) 			- binary
+rename cp6md_case_lib moDepresLib
+/* ----------------------------------  END ---------------------------------- */
+
+
+keep idnum *Health wave ch* regDoc ever* docInjAcc docIln everADHD ///
+`MONTHSVAR' medication limit absent* activity* *Smoke *Drink depressed
+
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
 
-********************
-* General
-********************
+
+********************************************************************************
+************************************ General ***********************************
+********************************************************************************
 
 order idnum wave
 sort idnum wave
@@ -302,65 +899,22 @@ label var chHealth "Child health rated by primary caregiver"
 label var moHealth "Mother health (self-report)"
 label var faHealth "Father health (self-report)"
 
-label define health 1 "Excellent" 2 "Very good" 3 "Good" 4 "Fair" 5 "Poor"
-label define YESNO 0 "No" 1 "Yes"
+label define health 	1 "1 Excellent" 2 "2 Very good" 3 "3 Good" 4 "4 Fair" 5 "5 Poor"
+label define YESNO 		0 "0 No" 1 "1 Yes"
+label define chLiveMo 	1 "1 Mother" 2 "Father"
 
-label values chHealth moHealth faHealth health
-label values asthma anemia heartDisease depression diabetes limb seizures otherCondition ///
-	fever_respiratory food_digestiv eczema_skin diarrhea_colitis migraines ear_infection ///
-	docInjuryAccident docIlness docReg docMedi docPlace limit chMediHI chPrivHI YESNO
+label values chHealth moHealth faHealth chHealthSelf health
 
+label values chLiveMo chLiveMo
+
+label values everAsthma everADHD foodDigestive eczemaSkin diarrheaColitis ///
+headachesMigraines earInfection stuttering breathing limit docInjAcc docIln ///
+medication chMediHI chPrivHI moDepresCon moDepresLib everSmoke everDrink ///
+feverRespiratory anemia seizures diabetes moAnxious moDoc regDoc ///
+asthmaAttack asthmaER YESNO
+
+describe
 save "${TEMPDATADIR}/health.dta", replace 
-
-
-********************
-* Regressions
-********************
-use "${TEMPDATADIR}/health.dta", clear
-rename idnum id
-
-merge 1:1 id wave using "${TEMPDATADIR}/household_FF.dta"
-keep if _merge == 3
-drop _merge
-
-* Total eligibility
-egen allMediHI = total(chMediHI), by(id)	// number of years covered by Medicaid in total
-
-foreach wave in 9 15 {
-	* Regressions
-	gen chHealth_`wave' = chHealth if wave == `wave'	// child health in a year
-	reg chHealth chMediHI if wave == `wave'		// current year coverage on current year health
-	reg chHealth_`wave' allMediHI age gender if wave == `wave'	// total years coverage on health in a wave
-
-	* As percentage of a standard deviation
-	local beta_allMediHI_`wave' = _b[allMediHI]
-	sum chHealth_`wave'
-	local chHealth_`wave'_sd = r(sd)
-	*di " Increases on average by " (`beta_allMediHI_15' / `chHealth_15_sd') " of a standard deviation"
-	listcoef, help
-}
-
-
-
-
-
-
-
-
-
-/* Some regressions
-reg chHealth chMediHI if wave == 9
-listcoef, help
-* A one year increase in allMediHI increases on average parent-rated health by 0.1880 (bStdY) standard devation
-
-reg chHealth_15 allMediHI age gender if wave == 15
-listcoef, help
-
-* A one standard deviation increase in allMediHI (1.81 years) produces on average an increase of 0.12 (bStdX) in parent rated health
-* A one year increase in Medicaid coverage (allMediHI) increases parent rated health by 0.12/1.81
-* A one year increase in allMediHI increases on average parent-rated health by 0.0782 (bStdY) standard devation
-*/
-
 
 
 

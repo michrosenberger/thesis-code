@@ -105,6 +105,68 @@ refcat(famSize "Child" chWhite "Race" moCohort "Mother", nolabel) wide
 
 
 ********************************************************************************
+******************************* SUM STATS HEALTH *******************************
+********************************************************************************
+
+** ADD DOCTOR VISIST QUESITONS
+
+use "${TEMPDATADIR}/health.dta", clear
+
+local SUMSTATVARS badHealth feverRespiratory anemia seizures ///
+foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection ///
+asthmaAttack everAsthma everADHD limit absent depressed activity30 ///
+everSmoke everDrink chMediHI medication
+
+* Fair or poor health
+tab chHealth, gen(health_temp)
+egen badHealth = rowmax(health_temp4 health_temp5) // fair or poor health
+
+* Fragile families sum stat	// if regsample == 1
+eststo clear
+foreach wave of numlist 1 3 5 9 15 {
+	di "Wave `wave'"
+	estpost tabstat `SUMSTATVARS' if wave == `wave', columns(statistics) statistics(mean sd min max n)
+	eststo
+}
+
+* LaTex table
+label var everAsthma			"Doctor diagnosed youth with asthma"
+label var asthmaAttack			"Youth had an episode of asthma in past year"
+label var everADHD				"Doctor diagnosed youth with ADD/ADHD"
+label var foodDigestive 		"Youth had food/digestive allergy in past year"
+label var eczemaSkin			"Youth had eczema/skin allergy in past year"
+label var diarrheaColitis 		"Youth had frequent diarrhea/colitis in past year"
+label var headachesMigraines 	"Youth had frequent headaches/migraines in past year"
+label var earInfection 			"Youth had ear infection in past year"
+label var feverRespiratory 		"Youth had hay fever or respiratory allergy in past year"
+label var anemia				"Youth had anemia in past year"
+label var seizures				"Youth had seizures in past year"
+label var depressed				"Youth feels depressed"
+label var badHealth 			"Youth Fair or poor health"
+label var chMediHI				"Coverage"
+label var limit					"Health problems limit youth’s usual activities"
+label var absent 				"Days youth absent from school due to health in past year"
+label var medication			"Youth takes doctor prescribed medication"
+label var activity30			"Days engage in physical activity for 30+ minutes in typical week"
+label var everSmoke				"Ever smoked an entire cigarette"
+label var everDrink				"Ever drank alcohol more than two times without parents"
+
+foreach var of varlist `SUMSTATVARS' {
+    label variable `var' `"\:\:\:\: `: variable label `var''"'
+}
+
+esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health.tex", ///
+nonumber label collabels(none) cells("mean(fmt(%9.2fc))") ///
+stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
+mlabels("Age 1" "Age 3" "Age 5" "Age 9" "Age 15")  replace compress ///
+refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid", nolabel) ///
+note("Standard deviation reported in brackets. Sample ...") ///
+title("Means of several health variables") // sd(par fmt(%9.2fc))
+
+
+
+
+********************************************************************************
 ************************* TABLES SIMULATED ELIGIBILITY *************************
 ********************************************************************************
 

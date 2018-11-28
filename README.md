@@ -1,4 +1,4 @@
-# MASTER THESIS GENERAL <!-- omit in toc -->
+# Code for Master Thesis <!-- omit in toc -->
 
 - [Overview](#overview)
 - [Data](#data)
@@ -8,29 +8,34 @@
 
 
 ## Overview
-This code ...
+This code performs the data cleaning and analysis for my master thesis.
 
 
 ## Data
 Data from the following sources were used:
 
-**Add Health Dataset**  
-Downloaded from:
-
 **Federal Poverty Line**  
-Data for the years 1998 - 2017 were downloaded from: https://aspe.hhs.gov/prior-hhs-poverty-guidelines-and-federal-register-references
+Data for the years 1997 - 2018 were downloaded from:  
+https://aspe.hhs.gov/prior-hhs-poverty-guidelines-and-federal-register-references
 
 **Fragile Families Dataset**  
-Downloaded from:
+Downloaded from:  
+[Link here]
 
 **KFF Reports**  
-Reports for the years 2012 - 2018 were downloaded from: https://www.kff.org/medicaid/report/annual-updates-on-eligibility-rules-enrollment-and/
+Reports for the years 2012 - 2018 were downloaded from:  
+https://www.kff.org/medicaid/report/annual-updates-on-eligibility-rules-enrollment-and/
 
 **March CPS Data**  
-Data for the years 1980 - 2016 were downloaded from: http://ceprdata.org/cps-uniform-data-extracts/march-cps-supplement/march-cps-data/
+Data for the years 1980 - 2016 were downloaded from:  
+http://ceprdata.org/cps-uniform-data-extracts/march-cps-supplement/march-cps-data/
+
+Data for the years 2017 - 2018 were downloaded from:  
+http://www.nber.org/data/cps.html
 
 **Thompson Data**  
-Data was downloaded from: https://sites.google.com/site/othompsonecon/home/publications
+Data was downloaded from:  
+https://sites.google.com/site/othompsonecon/home/publications
 
 
 ## Order of Execution
