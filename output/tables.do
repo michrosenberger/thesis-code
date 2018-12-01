@@ -38,11 +38,9 @@ if ${PROGRAMS} == 1 {
 * Summary stats FF
 ************************************
 
-* Check education mother comparable between two samples
-* CURRIE: MEDICAID ELIGBIBLE, ELIG, NUM OBSERVATIONS, NO DOCTOR VISISTS IN LAST 12 MONTHS, DOC VISIST IN LAST 2 WEEKS, HOSPITALIZATION IN LAST 12 MONTHS, DOC VISIT IN LAST 2 WEEKS 
-* Variables to include: Years of eligibility, number of times eligibility observed, health limitaitons, poor or fair self-rated health, any chronic condition, asthma attack in past year, mo highest grade completed // if regsample == 1
-* CURRIE: MEDICAID ELIGBIBLE, ELIG, NUM OBSERVATIONS, NO DOCTOR VISISTS IN LAST 12 MONTHS, DOC VISIST IN LAST 2 WEEKS, HOSPITALIZATION IN LAST 12 MONTHS, DOC VISIT IN LAST 2 WEEKS
 * Change: Income ratio from family
+* Add: any chronic conditions, doctor visits in last year, hospitalization in last year, years of eligibility, number of times observed, mother education // if regsample == 1
+* Check education mother comparable between two samples
 
 use "${TEMPDATADIR}/household_FF.dta", clear        // FRAGILE FAMILIES
 
@@ -155,6 +153,7 @@ foreach var of varlist `SUMSTATVARS' {
     label variable `var' `"\:\:\:\: `: variable label `var''"'
 }
 
+* Means
 esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health.tex", ///
 nonumber label collabels(none) cells("mean(fmt(%9.2fc))") ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
@@ -163,7 +162,14 @@ refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health beha
 note("Standard deviation reported in brackets. Sample ...") ///
 title("Means of several health variables") // sd(par fmt(%9.2fc))
 
-
+* Count
+esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health_count.tex", ///
+nonumber label collabels(none) cells("count(fmt(%9.0fc))") ///
+stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
+mlabels("Age 1" "Age 3" "Age 5" "Age 9" "Age 15")  replace compress ///
+refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid", nolabel) ///
+note("Standard deviation reported in brackets. Sample ...") ///
+title("Count of several health variables") // sd(par fmt(%9.2fc))
 
 
 ********************************************************************************
