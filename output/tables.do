@@ -106,14 +106,15 @@ refcat(famSize "Child" chWhite "Race" moCohort "Mother", nolabel) wide
 ******************************* SUM STATS HEALTH *******************************
 ********************************************************************************
 
-** ADD DOCTOR VISIST QUESITONS
-
 use "${TEMPDATADIR}/health.dta", clear
 
-local SUMSTATVARS badHealth feverRespiratory anemia seizures ///
+local HEALTHVARS badHealth feverRespiratory anemia seizures ///
 foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection ///
-asthmaAttack everAsthma everADHD limit absent depressed activity30 ///
-everSmoke everDrink chMediHI medication
+asthmaAttack
+local LIMITVARS limit absent depressed
+local BEHAVVARS activity30 everSmoke everDrink
+local MEDIVARS  chMediHI
+local DOCVARS   medication docIll numDocIll regDoc numRegDoc emRoom
 
 * Fair or poor health
 tab chHealth, gen(health_temp)
@@ -123,33 +124,36 @@ egen badHealth = rowmax(health_temp4 health_temp5) // fair or poor health
 eststo clear
 foreach wave of numlist 1 3 5 9 15 {
 	di "Wave `wave'"
-	estpost tabstat `SUMSTATVARS' if wave == `wave', columns(statistics) statistics(mean sd min max n)
+	estpost tabstat `HEALTHVARS' `LIMITVARS' `BEHAVVARS' `MEDIVARS' `DOCVARS' if wave == `wave', columns(statistics) statistics(mean sd min max n)
 	eststo
 }
 
 * LaTex table
-label var everAsthma			"Doctor diagnosed youth with asthma"
-label var asthmaAttack			"Youth had an episode of asthma in past year"
-label var everADHD				"Doctor diagnosed youth with ADD/ADHD"
-label var foodDigestive 		"Youth had food/digestive allergy in past year"
-label var eczemaSkin			"Youth had eczema/skin allergy in past year"
-label var diarrheaColitis 		"Youth had frequent diarrhea/colitis in past year"
-label var headachesMigraines 	"Youth had frequent headaches/migraines in past year"
-label var earInfection 			"Youth had ear infection in past year"
-label var feverRespiratory 		"Youth had hay fever or respiratory allergy in past year"
-label var anemia				"Youth had anemia in past year"
-label var seizures				"Youth had seizures in past year"
-label var depressed				"Youth feels depressed"
-label var badHealth 			"Youth Fair or poor health"
+label var asthmaAttack			"Had an episode of asthma $^{\text{a}}$"
+label var foodDigestive 		"Had food/digestive allergy $^{\text{a}}$"
+label var eczemaSkin			"Had eczema/skin allergy $^{\text{a}}$"
+label var diarrheaColitis 		"Had frequent diarrhea/colitis $^{\text{a}}$"
+label var headachesMigraines 	"Had frequent headaches/migraines $^{\text{a}}$"
+label var earInfection 			"Had ear infection $^{\text{a}}$"
+label var feverRespiratory 		"Had hay fever or respiratory allergy $^{\text{a}}$"
+label var anemia				"Had anemia $^{\text{a}}$"
+label var seizures				"Had seizures $^{\text{a}}$"
+label var depressed				"Feels depressed"
+label var badHealth 			"Fair or poor health $^{\text{a}}$"
 label var chMediHI				"Coverage"
-label var limit					"Health problems limit youth’s usual activities"
-label var absent 				"Days youth absent from school due to health in past year"
-label var medication			"Youth takes doctor prescribed medication"
+label var limit					"Health problems limit usual activities"
+label var absent 				"Days absent from school due to health $^{\text{a}}$"
+label var medication			"Takes doctor prescribed medication"
 label var activity30			"Days engage in physical activity for 30+ minutes in typical week"
 label var everSmoke				"Ever smoked an entire cigarette"
 label var everDrink				"Ever drank alcohol more than two times without parents"
+label var docIll                "Saw doctor for an illness $^{\text{a}}$"
+label var numDocIll             "No. visited health care professional due to illness $^{\text{a}}$"
+label var regDoc                "Saw doctor for regular check-up $^{\text{a}}$"
+label var numRegDoc             "No. regular check-ups $^{\text{a}}$"
+label var emRoom                "No. taken to emergency room $^{\text{a}}$"
 
-foreach var of varlist `SUMSTATVARS' {
+foreach var of varlist `HEALTHVARS' `LIMITVARS' `BEHAVVARS' `MEDIVARS' `DOCVARS' {
     label variable `var' `"\:\:\:\: `: variable label `var''"'
 }
 
@@ -158,8 +162,8 @@ esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health.tex", ///
 nonumber label collabels(none) cells("mean(fmt(%9.2fc))") ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
 mlabels("Age 1" "Age 3" "Age 5" "Age 9" "Age 15")  replace compress ///
-refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid", nolabel) ///
-note("Standard deviation reported in brackets. Sample ...") ///
+refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid" medication "Utilization", nolabel) ///
+note("Standard deviation reported in brackets. Sample ..." "$^{\text{a}}$ refers to past year") ///
 title("Means of several health variables") // sd(par fmt(%9.2fc))
 
 * Count
@@ -167,8 +171,8 @@ esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health_count.tex", //
 nonumber label collabels(none) cells("count(fmt(%9.0fc))") ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
 mlabels("Age 1" "Age 3" "Age 5" "Age 9" "Age 15")  replace compress ///
-refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid", nolabel) ///
-note("Standard deviation reported in brackets. Sample ...") ///
+refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid" medication "Utilization", nolabel) ///
+note("Standard deviation reported in brackets. Sample ..." "$^{\text{a}}$ refers to past year") ///
 title("Count of several health variables") // sd(par fmt(%9.2fc))
 
 

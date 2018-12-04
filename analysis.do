@@ -127,9 +127,9 @@ label values chHealth moHealth chHealth_neg
 * FACTOR SCORE: GENERAL HEALTH - INCLUDES ALL THE VARIABLES
 sem (Health -> chHealth anemia seizures foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection asthmaAttack limit), method(mlmv) var(Health@1) standardized
 foreach num of numlist 0 1 3 5 9 15 {
-	predict healthFactor_a`num' if wave == `num', latent(Health)
+	predict healthFactor_a`num' if ( e(sample) == 1 & wave == `num' ), latent(Health)
 }
-predict healthFactor_all, latent(Health)
+predict healthFactor_all if e(sample) == 1, latent(Health)
 
 foreach num of numlist 0 1 3 5 9 15 {
 	sum healthFactor_a`num'
@@ -137,12 +137,21 @@ foreach num of numlist 0 1 3 5 9 15 {
 sum healthFactor_all
 * histogram healthFactor_all
 
+* Standardize healthFactor
+foreach var in healthFactor_a {
+	foreach wave of numlist 0 1 3 5 9 15 {
+		egen `var'`wave'_std = std(`var'`wave')
+	}
+}
+
+egen healthFactor_all_std = std(healthFactor_all)
+
 * FACTOR SCORE: GENERAL HEALTH - SPECIFIC FOR EACH AGE
 sem (Health -> chHealth feverRespiratory anemia seizures foodDigestive  eczemaSkin diarrheaColitis headachesMigraines earInfection) if wave == 9, method(mlmv) var(Health@1) standardized
-predict healthFactor_e9 if wave == 9, latent(Health)
+predict healthFactor_e9 if ( e(sample) == 1 & wave == 9 ), latent(Health)
 
 sem (Health -> chHealth foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection limit) if wave == 15, method(mlmv) var(Health@1) standardized
-predict healthFactor_e15 if wave == 15, latent(Health)
+predict healthFactor_e15 if ( e(sample) == 1 & wave == 15 ), latent(Health)
 
 
 
@@ -177,7 +186,7 @@ di (0.975 + 0.843) * ((1/(0.7*0.3))^0.5) * (0.7533586/3500)^0.5 // 0.05820377
 global CONTROLS age female moEduc moAge avgInc moHealth
 
 reg chHealth 			mediCov_c15 ${CONTROLS} if wave == 15, robust
-est store chHealth_15_total
+est store chHealth_15_fifteen
 estadd local Controls 		"$\checkmark$"	// add checkmark "Controls"
 
 * Current
@@ -185,34 +194,37 @@ estadd local Controls 		"$\checkmark$"	// add checkmark "Controls"
 est store healthFactor_a15_mediCov_c15
 estadd local Controls 		"$\checkmark$"	// add checkmark "Controls" */
 
-reg healthFactor_a15 	mediCov_c15 ${CONTROLS} if wave == 15, robust
-est store healthFactor_a15_total
+reg healthFactor_a15_std 	mediCov_c15 ${CONTROLS} if wave == 15, robust
+est store healthFactor_a15_fifteen
 estadd local Controls 		"$\checkmark$"	// add checkmark "Controls"
 
 reg medication 			mediCov_c15 ${CONTROLS} if wave == 15, robust
-est store medication_total
+est store medication_fifteen
 estadd local Controls 		"$\checkmark$"	// add checkmark "Controls"
 
 reg everSmoke 			mediCov_c15 ${CONTROLS} if wave == 15, robust
-est store everSmoke_total
+est store everSmoke_fifteen
 estadd local Controls 		"$\checkmark$"	// add checkmark "Controls"
 
 reg everDrink 			mediCov_c15 ${CONTROLS} if wave == 15, robust
-est store everDrink_total
+est store everDrink_fifteen
 estadd local Controls 		"$\checkmark$"	// add checkmark "Controls"
-
 
 reg activityVigorous  	mediCov_c15 ${CONTROLS} if wave == 15, robust
-est store activityVigorous_total
+est store activityVigorous_fifteen
 estadd local Controls 		"$\checkmark$"	// add checkmark "Controls"
+
+/* reg numRegDoc  	mediCov_c9 ${CONTROLS} if wave == 9, robust
+est store numRegDoc_nine
+estadd local Controls 		"$\checkmark$"	// add checkmark "Controls" */
 
 * LaTex
 label var mediCov_c15 	"Current Medicaid Coverage"
 label var age			"Age"
 label var moHealth		"Mother health"
 
-estout healthFactor_a15_total chHealth_15_total ///
-medication_total everSmoke_total everDrink_total activityVigorous_total ///
+estout healthFactor_a15_fifteen chHealth_15_fifteen ///
+medication_fifteen everSmoke_fifteen everDrink_fifteen activityVigorous_fifteen ///
 using "${TABLEDIR}/regression.tex", replace label cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
 collabels(none) ///
 mlabels("Health index" "Child health" "Medication" "Ever smoke" "Ever drink" "Activity") ///

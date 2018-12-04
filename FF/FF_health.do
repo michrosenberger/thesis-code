@@ -189,6 +189,20 @@ foreach var in numRegDoc numDocIll numDocIllInj numDocInj emRoom emRoomAccInj {
 }
 drop mo* fa*
 
+* Binary variable derived from numRegDoc
+gen regDoc = .
+replace regDoc = 1 if ( numRegDoc == 1 | numRegDoc == 2 )
+replace regDoc = 0 if ( numRegDoc == 0 )
+
+* Binary - Youth saw doc for illness in past year (numDocIll)
+gen docIll = .
+replace docIll = 0 if numDocIll == 0
+replace docIll = 1 if (numDocIll >= 1 & numDocIll <= 90)
+
+* Labels
+label var numDocIllInj "How many times has child been seen by health care prof. b/c illness/injury?"
+label var numDocInj "How many times since birth has child been to health care prfssnal for injury?"
+
 * Hospital questions not used
 /* ----------------------------------  END ---------------------------------- */
 
@@ -220,7 +234,7 @@ m2b4h	What type of physical disability?-Other */
 /* ----------------------------------  END ---------------------------------- */
 
 
-keep idnum wave *Health ch* ever* mo* num* em* asthma*
+keep idnum wave *Health ch* ever* mo* num* em* asthma* regDoc docIll
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
 
@@ -274,11 +288,29 @@ rename a19_ asthmaER
 * In past 12M, how many regular check-ups (by doctor, nurse) did child have? - range
 rename a4 	numRegDoc
 
+	* Binary variable derived from numRegDoc
+	gen regDoc = .
+	replace regDoc = 1 if ( numRegDoc == 1 | numRegDoc == 2 )
+	replace regDoc = 0 if ( numRegDoc == 0 )
+
 * In past 12M: # of times child seen by doctor/nurse for illness/accident/inj. - number
 rename a7 	numDoc
 
 * How many of those health visits were, because of an accident or injury? - number
 rename a8 	numDocAccInj
+	
+	* Binary variable
+	gen docAccInj = .
+	replace docAccInj = 0 if ( numDocAccInj == 0 )
+	replace docAccInj = 1 if ( numDocAccInj >= 1 & numDocAccInj <= 8)
+
+	* Difference between numDoc and numDocAccInj due to illness
+	gen numDocIll = numDoc - numDocAccInj
+
+	* Binary variable
+	gen docIll = .
+	replace docIll = 0 if ( numDocIll == 0 )
+	replace docIll = 1 if ( numDocIll >= 1 & numDocIll <= 72)
 
 * In past 12m how many times has child been taken to the emergency room	- number
 rename a9 	emRoom
@@ -324,7 +356,8 @@ a3_7		a3_7: does child have problem with limbs?
 BMI variables */
 /* ----------------------------------  END ---------------------------------- */
 
-keep idnum *Health wave ch* num* em* ever* mo* asthma*
+keep idnum *Health wave ch* num* em* ever* mo* asthma* regDoc docAccInj ///
+numDocIll docIll
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
 
@@ -384,12 +417,23 @@ replace asthmaER = 0 if asthmaER == 2
 /* -------------------------- Doctor vars (In-Home) ------------------------- */
 * Last 12m, how many times child been seen by doctor/hlh prof for reg chk- range
 rename a6 numRegDoc
+recode numRegDoc 1=0 2=1 3=2	// make comparable across waves
+
+	* Binary variable derived from numRegDoc
+	gen regDoc = .
+	replace regDoc = 1 if ( numRegDoc == 1 | numRegDoc == 2 )
+	replace regDoc = 0 if ( numRegDoc == 0 )
 
 * Last 12 m: how many times child saw a dr/hlth prof for illness/accident/inj - number
 rename a12 numDoc
 
 * Was this visit/how many of (number in a12 were), b/c of an accident/injury? - number
 rename a13 numDocAccInj
+
+	* Binary from numDocAccInj
+	gen docAccInj = . 
+	replace docAccInj = 0 if ( numDocAccInj == 0 )
+	replace docAccInj = 1 if ( numDocAccInj >= 1 & numDocAccInj <= 25)
 
 * How many times has child been taken to the emergency room? 		- number
 rename a14 emRoom
@@ -467,7 +511,7 @@ rename cm4md_case_lib	moDepresLib
 
 keep idnum *Health wave ch* ever* num* em*  mo* feverRespiratory ///
 foodDigestive eczemaSkin diarrheaColitis anemia headachesMigraines ///
-earInfection seizures stuttering everADHD asthma*
+earInfection seizures stuttering everADHD asthma* regDoc docAccInj
 
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
@@ -520,6 +564,12 @@ replace everAsthma = 0 if everAsthma == 2
 /* ------------------------ Doctor vars (Core report) ----------------------- */
 *  Number of times child had regular check-up 						- range
 rename p5h6 numRegDoc
+recode numRegDoc 1=0 2=1 3=2	// make comparable across waves
+
+	* Binary variable derived from numRegDoc
+	gen regDoc = .
+	replace regDoc = 1 if ( numRegDoc == 1 | numRegDoc == 2 )
+	replace regDoc = 0 if ( numRegDoc == 0 )
 
 * Number of times child saw doctor/nurse due to illness, accident, injury - number
 rename p5h9 numDoc
@@ -666,7 +716,7 @@ rename cm5md_case_lib moDepresLib
 
 
 keep idnum *Health wave ch* absent ever* num* em* everADHD `MONTHSVAR' ///
-medication absent mo*
+medication absent mo* regDoc
 
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
@@ -711,15 +761,15 @@ replace everAsthma = 0 if everAsthma == 2
 
 /* ------------------------ Doctor vars (Core report) ----------------------- */
 * Youth saw doctor for accident or injury in past year 				- binary
-rename p6b22 docInjAcc
+rename p6b22 docAccInj
 
 * Youth saw doctor for an illness in past year 						- binary
-rename p6b23 docIln
+rename p6b23 docIll
 
 * Youth saw doctor for regular check-up in past year 				- binary
 rename p6b24 regDoc
 
-foreach var in docInjAcc docIln regDoc {
+foreach var in docAccInj docIll regDoc {
 	replace `var' = 0 if `var' == 2
 }
 
@@ -882,7 +932,7 @@ rename cp6md_case_lib moDepresLib
 /* ----------------------------------  END ---------------------------------- */
 
 
-keep idnum *Health wave ch* regDoc ever* docInjAcc docIln everADHD ///
+keep idnum *Health wave ch* regDoc ever* docAccInj docIll everADHD ///
 `MONTHSVAR' medication limit absent* activity* *Smoke *Drink depressed
 
 append using "${TEMPDATADIR}/health.dta"
@@ -895,20 +945,29 @@ save "${TEMPDATADIR}/health.dta", replace
 
 order idnum wave
 sort idnum wave
-label var chHealth "Child health rated by primary caregiver"
-label var moHealth "Mother health (self-report)"
-label var faHealth "Father health (self-report)"
+label var chHealth 	"Child health rated by primary caregiver"
+label var moHealth 	"Mother health (self-report)"
+label var faHealth 	"Father health (self-report)"
+label var numDocIll "No. of times child has been at health care professional due to illness"
+label var numRegDoc "No. regular check-ups (by doctor, nurse) in past 12 months"
+label var asthmaER 	"Emergency/urgent care treatment for asthma"
+label var asthmaAttack "Episode of asthma or asthma attack"
 
 label define health 	1 "1 Excellent" 2 "2 Very good" 3 "3 Good" 4 "4 Fair" 5 "5 Poor"
 label define YESNO 		0 "0 No" 1 "1 Yes"
 label define chLiveMo 	1 "1 Mother" 2 "Father"
 
-label values chHealth moHealth faHealth chHealthSelf health
+label define numRegDoc 	0 "0 Never" 1 "1 1-3 times" 2 "2 4+ times"
 
+label define regDoc		0 "No" 1 "Yes"
+
+label values chHealth moHealth faHealth chHealthSelf health
 label values chLiveMo chLiveMo
+label values numRegDoc numRegDoc
+label values regDoc regDoc
 
 label values everAsthma everADHD foodDigestive eczemaSkin diarrheaColitis ///
-headachesMigraines earInfection stuttering breathing limit docInjAcc docIln ///
+headachesMigraines earInfection stuttering breathing limit docAccInj docIll ///
 medication chMediHI chPrivHI moDepresCon moDepresLib everSmoke everDrink ///
 feverRespiratory anemia seizures diabetes moAnxious moDoc regDoc ///
 asthmaAttack asthmaER YESNO
