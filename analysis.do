@@ -24,12 +24,10 @@ global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
 global TABLEDIR         "${USERPATH}/output/tables"
+global FIGUREDIR        "${USERPATH}/output/figures"
+global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
 
 * log
-
-********************************************************************************
-********************************** Regressions *********************************
-********************************************************************************
 
 * Health variables
 use "${TEMPDATADIR}/health.dta", clear
@@ -39,7 +37,38 @@ rename idnum id
 merge 1:1 id wave using "${TEMPDATADIR}/household_FF.dta"
 keep if _merge == 3
 drop _merge
+rename id idnum
 
+preserve 
+	collapse chBlack chHispanic chOther chMulti chWhite, by(idnum)
+
+	* Saliva
+	merge 1:1 idnum using "${RAWDATADIR}/04_Nine-Year Core/ff_y9_pub1.dta", keepusing(ck5saliva)
+	drop if _merge != 3
+	replace ck5saliva = . if ck5saliva == -9
+	replace ck5saliva = . if ck5saliva == 0
+
+restore
+
+********************************************************************************
+********************************** POWER & MDE *********************************
+********************************************************************************
+
+/* ---------------------------------- MDE ----------------------------------- */
+* N = 3500, health factor standardized to std = 1 and mean = 0
+power twomeans 1, power(0.8 0.9) n(500 1000 1500 2000 2500 3000 3500) sd(1) graph(y(delta)) byopts(bgcolor(white))
+
+graph export "${FIGUREDIR}/MDE.png", replace
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ---------------------------- POWER CALULATION ---------------------------- */
+
+/* ----------------------------------  END ---------------------------------- */
+
+********************************************************************************
+********************************** Regressions *********************************
+********************************************************************************
 
 /* -------------------------------- HEALTH ---------------------------------- */
 * Youth health (parent-reported) observed each wave
@@ -48,6 +77,7 @@ foreach num of numlist 0 1 3 5 9 15 {
 	sum chHealth_`num'_temp
 	egen chHealth_`num' = max(chHealth_`num'_temp), by(id)
 }
+drop *_temp
 /* ----------------------------------  END ---------------------------------- */
 
 
@@ -82,7 +112,6 @@ foreach num of numlist 0 1 3 5 9 15 {
 	sum mediCov_t`num'
 	label var mediCov_t`num' "Medicaid coverage youth (parent-reported) - Total until wave `num'"
 }
-drop *_temp
 /* ----------------------------------  END ---------------------------------- */
 
 
@@ -107,10 +136,10 @@ Affective is 0.90. */
 score at each age / wave
 2. Construct a factor score for each age / wave */
 
-
+*******************************************************************************
 * RECODE such that a higher score represents better health
-global RECODEVARS anemia seizures foodDigestive eczemaSkin diarrheaColitis ///
-headachesMigraines earInfection asthmaAttack limit
+global RECODEVARS feverRespiratory anemia seizures foodDigestive eczemaSkin ///
+diarrheaColitis headachesMigraines earInfection asthmaAttack 
 
 foreach var of global RECODEVARS {
 	recode `var' 0=1 1=0
@@ -125,59 +154,52 @@ label define chHealth_neg 1 "Poor" 2 "Fair" 3 "Good" 4 "Very good" 5 "Excellent"
 label values chHealth moHealth chHealth_neg
 
 * FACTOR SCORE: GENERAL HEALTH - INCLUDES ALL THE VARIABLES
-sem (Health -> chHealth anemia seizures foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection asthmaAttack limit), method(mlmv) var(Health@1) standardized
+sem (Health -> chHealth ${RECODEVARS}), method(mlmv) var(Health@1)
 foreach num of numlist 0 1 3 5 9 15 {
-	predict healthFactor_a`num' if ( e(sample) == 1 & wave == `num' ), latent(Health)
+	predict healthFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(Health)
 }
-predict healthFactor_all if e(sample) == 1, latent(Health)
-
-foreach num of numlist 0 1 3 5 9 15 {
-	sum healthFactor_a`num'
-}
-sum healthFactor_all
-* histogram healthFactor_all
 
 * Standardize healthFactor
 foreach var in healthFactor_a {
-	foreach wave of numlist 0 1 3 5 9 15 {
+	foreach wave of numlist 1 3 5 9 15 {
 		egen `var'`wave'_std = std(`var'`wave')
 	}
 }
 
-egen healthFactor_all_std = std(healthFactor_all)
+drop healthFactor_a1-healthFactor_a15
 
-* FACTOR SCORE: GENERAL HEALTH - SPECIFIC FOR EACH AGE
-sem (Health -> chHealth feverRespiratory anemia seizures foodDigestive  eczemaSkin diarrheaColitis headachesMigraines earInfection) if wave == 9, method(mlmv) var(Health@1) standardized
-predict healthFactor_e9 if ( e(sample) == 1 & wave == 9 ), latent(Health)
+*******************************************************************************
+// * FACTOR SCORE: GENERAL HEALTH - SPECIFIC FOR EACH AGE
+// sem (Health -> chHealth ${RECODEVARS}) if wave == 9, method(mlmv) var(Health@1) standardized
+// predict healthFactor_e9 if ( e(sample) == 1 & wave == 9 ), latent(Health)
 
-sem (Health -> chHealth foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection limit) if wave == 15, method(mlmv) var(Health@1) standardized
-predict healthFactor_e15 if ( e(sample) == 1 & wave == 15 ), latent(Health)
+// sem (Health -> chHealth foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection limit) if wave == 15, method(mlmv) var(Health@1) standardized
+// predict healthFactor_e15 if ( e(sample) == 1 & wave == 15 ), latent(Health)
+// Add other ages
 
 
+*******************************************************************************
+* BEHAVIORAL QUESTIONS - activityVigorous everSmoke everDrink
+* BMI?
+* Factor score does not converge
 
+
+*******************************************************************************
+* FACTOR SCORE: Medical Utililization - INCLUDES ALL THE VARIABLES
+* higher score represents higher utilization
+* check if we have MEDICAL EXPENDITURE
+sem (Util -> medication numDocIll numRegDoc emRoom), method(mlmv) var(Util@1)
+
+foreach num of numlist 1 3 5 9 15 {
+	predict utilFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(Util)
+}
+* Standardize utilFactor
+foreach wave of numlist 1 3 5 9 15 {
+	egen utilFactor_a`wave'_std = std(utilFactor_a`wave')
+}
+drop utilFactor_a1-utilFactor_a15
 
 * Create binary index
-
-* FACTOR SCORE: BEHAVIORAL QUESTIONS
-* activity30 everSmoke everDrink
-
-
-
-* FACTOR SCORE: DOCTOR VISISTS / MEDICAL EXPENDITURE
-* medication
-
-/* ----------------------------------  END ---------------------------------- */
-
-
-
-/* ---------------------------- POWER CALULATION ---------------------------- */
-* Mean and standard deviation from healthFactor_a15 
-* N = 3500 and ratio Ntreat / Ncontrol = 2.33
-power twomeans 0.1055147, sd(0.7533586) power(0.8) n(3500) nratio(2.33) // 0.0779
-
-* egen zhealthFactor_a15 = std(healthFactor_a15)
-
-di (0.975 + 0.843) * ((1/(0.7*0.3))^0.5) * (0.7533586/3500)^0.5 // 0.05820377
 
 /* ----------------------------------  END ---------------------------------- */
 
