@@ -33,14 +33,23 @@ if ${PROGRAMS} == 1 {
 ********************************************************************************
 ************************** TABLES SUMMARY STATISTICS ***************************
 ********************************************************************************
+* Coverage: 	mediCov_c1-mediCov_c15 or mediCov_t1-mediCov_t15
+* Variables: 	chHealth_0-chHealth_15
+* No vars:		no_*
+* Health:		chHealth chHealth_neg moHealth moHealth_neg
+* General:		healthFactor_a1_std-healthFactor_a15_std
+* Utilization:	medicalFactor_a1_std-medicalFactor_a15_std
+* Never:		neverSmoke neverDrink 
+* Behaviour:	behavFactor_a15_std
+
 
 ************************************
 * Summary stats FF
 ************************************
 
 * Change: Income ratio from family
-* Add: any chronic conditions, doctor visits in last year, hospitalization in last year, years of eligibility, number of times observed, mother education // if regsample == 1
 * Check education mother comparable between two samples
+* Add Index vars
 
 use "${TEMPDATADIR}/household_FF.dta", clear        // FRAGILE FAMILIES
 
@@ -105,30 +114,55 @@ refcat(famSize "Child" chWhite "Race" moCohort "Mother", nolabel) wide
 ********************************************************************************
 ******************************* SUM STATS HEALTH *******************************
 ********************************************************************************
+* Look at number of observations
 
 use "${TEMPDATADIR}/health.dta", clear
 
 local HEALTHVARS badHealth feverRespiratory anemia seizures ///
 foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection ///
 asthmaAttack
-local LIMITVARS limit absent depressed
-local BEHAVVARS activity30 everSmoke everDrink
-local MEDIVARS  chMediHI
-local DOCVARS   medication docIll numDocIll regDoc numRegDoc emRoom
+local LIMITVARS     limit absent
+local MENTALVARS    depressed diagnosedDepression
+local BEHAVVARS     activity30 everSmoke everDrink bmi
+local MEDIVARS      chMediHI
+local DOCVARS       medication numDocIll numRegDoc emRoom // docIll regDoc
 
 * Fair or poor health
 tab chHealth, gen(health_temp)
 egen badHealth = rowmax(health_temp4 health_temp5) // fair or poor health
 
-* Fragile families sum stat	// if regsample == 1
-eststo clear
+foreach var in healthFactor chHealth_ mediCov_c mediCov_t medicalFactor behavFactor {
+    gen `var' = . 
+
+}
+
 foreach wave of numlist 1 3 5 9 15 {
+    replace healthFactor    = healthFactor_a`wave'_std  if wave == `wave'
+    replace chHealth_       = chHealth_`wave'           if wave == `wave'
+    replace mediCov_c       = mediCov_c`wave'           if wave == `wave' 
+    replace mediCov_t       = mediCov_t`wave'           if wave == `wave'
+    replace medicalFactor   = medicalFactor_a`wave'_std if wave == `wave'
+}
+
+replace behavFactor = behavFactor_a15_std
+
+* Fragile families sum stat
+eststo clear
+foreach wave of numlist 1 3 5 9 15 { // chHealth_ healthFactor behavFactor mediCov_c mediCov_t medicalFactor
 	di "Wave `wave'"
-	estpost tabstat `HEALTHVARS' `LIMITVARS' `BEHAVVARS' `MEDIVARS' `DOCVARS' if wave == `wave', columns(statistics) statistics(mean sd min max n)
+	estpost tabstat `HEALTHVARS' `LIMITVARS' ///
+    `MENTALVARS' `BEHAVVARS' `MEDIVARS' `DOCVARS' if wave == `wave', ///
+    columns(statistics) statistics(mean sd min max n)
 	eststo
 }
 
 * LaTex table
+label var chHealth_             "Child health"
+label var healthFactor          "General health index"
+label var mediCov_c             "Medical coverage - each year"
+label var mediCov_t             "Medical coverage - cummulative"
+label var medicalFactor         "Utilization index"
+label var behavFactor           "Health behaviours index "
 label var asthmaAttack			"Had an episode of asthma $^{\text{a}}$"
 label var foodDigestive 		"Had food/digestive allergy $^{\text{a}}$"
 label var eczemaSkin			"Had eczema/skin allergy $^{\text{a}}$"
@@ -153,7 +187,8 @@ label var regDoc                "Saw doctor for regular check-up $^{\text{a}}$"
 label var numRegDoc             "No. regular check-ups $^{\text{a}}$"
 label var emRoom                "No. taken to emergency room $^{\text{a}}$"
 
-foreach var of varlist `HEALTHVARS' `LIMITVARS' `BEHAVVARS' `MEDIVARS' `DOCVARS' {
+foreach var of varlist `HEALTHVARS' `LIMITVARS' `MENTALVARS' `BEHAVVARS' ///
+    `MEDIVARS' `DOCVARS' { // chHealth_ healthFactor mediCov_c mediCov_t medicalFactor behavFactor
     label variable `var' `"\:\:\:\: `: variable label `var''"'
 }
 
@@ -162,18 +197,18 @@ esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health.tex", ///
 nonumber label collabels(none) cells("mean(fmt(%9.2fc))") ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
 mlabels("Age 1" "Age 3" "Age 5" "Age 9" "Age 15")  replace compress ///
-refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid" medication "Utilization", nolabel) ///
+refcat(badHealth "Health conditions" limit "Limitations" depressed "Mental health" activity30 "Health behaviours" chMediHI "Medicaid" medication "Utilization", nolabel) ///
 note("Standard deviation reported in brackets. Sample ..." "$^{\text{a}}$ refers to past year") ///
-title("Means of several health variables") // sd(par fmt(%9.2fc))
+title("Means of several health variables\label{means}") // sd(par fmt(%9.2fc))
 
 * Count
 esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health_count.tex", ///
 nonumber label collabels(none) cells("count(fmt(%9.0fc))") ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
 mlabels("Age 1" "Age 3" "Age 5" "Age 9" "Age 15")  replace compress ///
-refcat(badHealth "Health conditions" limit "Limitations" activity30 "Health behaviors" chMediHI "Medicaid" medication "Utilization", nolabel) ///
+refcat(badHealth "Health conditions" limit "Limitations" depressed "Mental health" activity30 "Health behaviours" chMediHI "Medicaid" medication "Utilization", nolabel) ///
 note("Standard deviation reported in brackets. Sample ..." "$^{\text{a}}$ refers to past year") ///
-title("Count of several health variables") // sd(par fmt(%9.2fc))
+title("Count of several health variables\label{count}") // sd(par fmt(%9.2fc))
 
 
 ********************************************************************************

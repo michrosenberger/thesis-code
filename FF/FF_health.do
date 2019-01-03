@@ -728,7 +728,7 @@ use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear			// ALL
 
 keep idnum p6b1 p6h2 p6b31 p6b32 p6b* p6b20 p6b21 p6b22 p6b23 p6b24 p6b26 ///
 k6d3 k6d4 k6d37 k6d38 k6d39 k6d40 k6d41 k6d42 k6d43 k6d48 k6d49 k6d50 k6d51 ///
-k6d52 k6d53 k6d54 k6d55 k6d2ac cp6md_case_con cp6md_case_lib
+k6d52 k6d53 k6d54 k6d55 k6d2ac cp6md_case_con cp6md_case_lib ch6cbmi
 
 missingvalues           // recode missing values pro.
 
@@ -875,6 +875,9 @@ rename k6d4 absentSelf
 
 /* --------------------- Youth health behavs (Core report) ------------------ */
 * Activity
+** Days physically active for 60+ minutes in past week
+rename k6d37 activity60
+
 ** Days engage in physical activity for 30+ minutes in typical week	- num
 rename k6d38 activity30
 
@@ -897,29 +900,41 @@ rename k6d43 cigsSmoke
 
 
 * Drinking
-** 	How old were you when you first drank alcohol? (years)			- num
-rename k6d49 ageDrink 
-
-** 	How often drank alcohol in past month?							- option
-rename k6d50 monthDrink
-
-** How often drank alcohol in past year?							- option
-rename k6d52 yearDrink
-
 ** Ever drank alcohol more than two times without parents?			- binary
 rename k6d48 everDrink
 replace everDrink = 0 if everDrink == 2
 
+** 	How old were you when you first drank alcohol? (years)			- num
+rename k6d49 ageDrink 
+
+** 	How often drank alcohol in past month?							- option
+rename k6d50 monthTimesDrink
+
+** How many alcoholic drinks had each time in past month?
+rename k6d51 monthManyDrink
+
+** How often drank alcohol in past year?							- option
+rename k6d52 yearTimesDrink
+
+** How many alcoholic drinks had each time in past year?
+rename k6d53 yearManyDrink
+
+
+* BMI
+** Constructed - Youth's Body Mass Index (BMI)
+rename ch6cbmi bmi
+
 
 * Mental health
-* I feel depressed 													- options
+** Doctor diagnosed youth with depression/anxiety
+rename p6b5 diagnosedDepression
+replace diagnosedDepression = 0 if diagnosedDepression == 2
+
+** I feel depressed (youth)											- options
 rename k6d2ac depressed
 
-/* 	k6d51	How many alcoholic drinks had each time in past month?
-	k6d53	How many alcoholic drinks had each time in past year?
-	k6d54	How often drank five or more alcoholic drinks in past year?
+/* 	k6d54	How often drank five or more alcoholic drinks in past year?
 	k6d55	How often got drunk in past year? */
-* BMI in data
 /* ----------------------------------  END ---------------------------------- */
 
 
@@ -933,7 +948,8 @@ rename cp6md_case_lib moDepresLib
 
 
 keep idnum *Health wave ch* regDoc ever* docAccInj docIll everADHD ///
-`MONTHSVAR' medication limit absent* activity* *Smoke *Drink depressed
+`MONTHSVAR' medication limit absent* activity* *Smoke *Drink depressed bmi ///
+diagnosedDepression
 
 append using "${TEMPDATADIR}/health.dta"
 save "${TEMPDATADIR}/health.dta", replace 
@@ -970,7 +986,174 @@ label values everAsthma everADHD foodDigestive eczemaSkin diarrheaColitis ///
 headachesMigraines earInfection stuttering breathing limit docAccInj docIll ///
 medication chMediHI chPrivHI moDepresCon moDepresLib everSmoke everDrink ///
 feverRespiratory anemia seizures diabetes moAnxious moDoc regDoc ///
-asthmaAttack asthmaER YESNO
+asthmaAttack asthmaER diagnosedDepression YESNO
+
+********************************************************************************
+***************************** Vars for regression ******************************
+********************************************************************************
+
+/* -------------------------------- HEALTH ---------------------------------- */
+* Youth health (parent-reported) observed each wave
+foreach num of numlist 0 1 3 5 9 15 {
+	gen chHealth_`num'_temp = chHealth if wave == `num'
+	sum chHealth_`num'_temp
+	egen chHealth_`num' = max(chHealth_`num'_temp), by(id)
+}
+drop *_temp
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* ------------------------------ ELIGIBILITY ------------------------------- */
+* Eligibility observed for each wave
+
+* Total eligibility
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* ------------------------- SIMULATED ELIGIBILITY -------------------------- */
+* Simulated eligibility observed for each wave
+
+* Total simulated eligibility
+/* ----------------------------------  END ---------------------------------- */
+
+
+
+/* -------------------------------- COVERAGE -------------------------------- */
+* Coverage observed for each wave
+foreach num of numlist 0 1 3 5 9 15 {
+	gen mediCov_c`num' = chMediHI if wave == `num'
+	sum mediCov_c`num'
+	label var mediCov_c`num' "Medicaid coverage youth (parent-reported) - Wave `num'"
+}
+
+* Total coverage until each year
+foreach num of numlist 0 1 3 5 9 15 {
+	egen mediCov_t`num' = total(chMediHI) if wave <= `num', by(id)
+	sum mediCov_t`num'
+	label var mediCov_t`num' "Medicaid coverage youth (parent-reported) - Total until wave `num'"
+}
+/* ----------------------------------  END ---------------------------------- */
+
+
+/* ------------------------------ FACTOR SCORE ------------------------------ */
+* A factor score variable I can leverage the correlation across the observations
+/* Manual: the output will be easier to interpret if we display standardized
+values for paths rather than path coefficients. A standardized value is in
+standard deviation units. It is the change in one variable given a change in
+another, both measured in standard deviation units. We can obtain standardized
+values by specifying sem’s standardized option, which we can do when we fit
+the model or when we replay results.
+
+The standardized coefficients for this model can be interpreted as the
+correlation coefficients between the indicator and the latent variable
+because each indicator measures only one factor. For instance, the standardized
+path coefficient a1<-Affective is 0.90, meaning the correlation between a1 and
+Affective is 0.90. */
+
+/* FACTOR SCORES
+1. General factor score that includes all variables and the predicts factor
+score at each age / wave
+2. Construct a factor score for each age / wave */
+
+*******************************************************************************
+* RECODE such that a higher score represents better health
+global RECODEVARS feverRespiratory anemia seizures foodDigestive eczemaSkin ///
+diarrheaColitis headachesMigraines earInfection asthmaAttack 
+
+foreach var in $RECODEVARS {
+	gen no_`var' = . 
+	replace no_`var' = 1 if `var' == 0
+	replace no_`var' = 0 if `var' == 1
+}
+
+label define NOYES 0 "0 Yes" 1 "1 No"
+label values no_* NOYES
+
+foreach var in chHealth moHealth {
+	gen `var'_neg = . 
+	replace `var'_neg = 1 if `var' == 5
+	replace `var'_neg = 2 if `var' == 4
+	replace `var'_neg = 3 if `var' == 3
+	replace `var'_neg = 4 if `var' == 2
+	replace `var'_neg = 5 if `var' == 1
+}
+
+label define Health_neg 1 "Poor" 2 "Fair" 3 "Good" 4 "Very good" 5 "Excellent"
+label values chHealth_neg moHealth_neg Health_neg
+
+* FACTOR SCORE: GENERAL HEALTH - higher score, better health
+sem (GeneralHealth -> chHealth_neg no*), method(mlmv) var(GeneralHealth@1)
+foreach num of numlist 1 3 5 9 15 {
+	predict healthFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(GeneralHealth)
+}
+
+* Standardize
+foreach wave of numlist 1 3 5 9 15 {
+	egen healthFactor_a`wave'_std = std(healthFactor_a`wave')
+}
+drop healthFactor_a1-healthFactor_a15
+
+*******************************************************************************
+* FACTOR SCORE: MEDICAL UTILIZATION - higher score, higher utilization
+* check if we have MEDICAL EXPENDITURE
+sem (UtilFactor -> numDocIll medication numRegDoc emRoom), method(mlmv) var(UtilFactor@1)
+foreach num of numlist 1 3 5 9 15 {
+	predict medicalFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(UtilFactor)
+}
+
+* Standardize 
+foreach wave of numlist 1 3 5 9 15 {
+	egen medicalFactor_a`wave'_std = std(medicalFactor_a`wave')
+}	
+
+drop medicalFactor_a1-medicalFactor_a15
+*******************************************************************************
+
+*******************************************************************************
+* NO FACTOR SCORE: HEALTH BEHAVIOURS						NOT SURE IN WHICH DIRECTION
+* Check if other bmi and if for other years also
+gen neverSmoke = .
+gen neverDrink = .
+
+replace neverSmoke = 1 if everSmoke == 0
+replace neverSmoke = 0 if everSmoke == 1
+replace neverDrink = 1 if everDrink == 0
+replace neverDrink = 0 if everDrink == 1
+
+
+sem (BehavFactor -> activity30 neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1)
+foreach num of numlist 15 { // 1 3 5 9
+	predict behavFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(BehavFactor)
+}
+
+* Standardize 
+foreach wave of numlist 15 { // 1 3 5 9 
+	egen behavFactor_a`wave'_std = std(medicalFactor_a`wave')
+}	
+
+drop behavFactor_a15 // behavFactor_a1-
+
+*******************************************************************************
+* NO FACTOR SCORE: LIMITATIONS
+* limit absent
+
+* NO FACTOR SCORE: MENTAL HEALTH
+* depressed diagnosedDepression
+*******************************************************************************
+
+
+*******************************************************************************
+// * FACTOR SCORE: GENERAL HEALTH - SPECIFIC FOR EACH AGE
+// sem (Health -> chHealth ${RECODEVARS}) if wave == 9, method(mlmv) var(Health@1) standardized
+// predict healthFactor_e9 if ( e(sample) == 1 & wave == 9 ), latent(Health)
+
+// sem (Health -> chHealth foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection limit) if wave == 15, method(mlmv) var(Health@1) standardized
+// predict healthFactor_e15 if ( e(sample) == 1 & wave == 15 ), latent(Health)
+// Add other ages
+
+* Create binary index
 
 describe
 save "${TEMPDATADIR}/health.dta", replace 
