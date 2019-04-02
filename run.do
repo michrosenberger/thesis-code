@@ -51,7 +51,7 @@ do "${CODEDIR}/constructHealth_FF.do"
 
 * ----------------------------- FF STATES (RESTRICTED USE DATA)
 * ----- STATES
-do "${CODEDIR}/FF_states.do"
+do "${CODEDIR}/states_FF.do"
     di("FF states created.")
     di("Output: states.dta")
 
