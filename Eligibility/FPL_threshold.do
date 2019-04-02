@@ -1,7 +1,9 @@
+* -----------------------------------
 * Project: 	MA Thesis
 * Content:  Create FPL for each year
 * Author: 	Michelle Rosenberger
 * Date: 	Oct 15, 2018
+* -----------------------------------
 
 capture log close
 clear all
@@ -21,9 +23,7 @@ Output datasets:
 
 * ssc install statastates
 
-************************************
-* WORING DIRECTORIES AND GLOABL VARS
-************************************
+* ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
 }
@@ -31,9 +31,7 @@ global DATARAW          "${MYPATH}/data/raw/FPL"
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR      "${MYPATH}/data/temp"
 
-*************************
-* Poverty levels
-*************************
+* ----------------------------- POVERTY LEVELS
 clear all
 set obs 1
 gen state = ""
@@ -53,7 +51,7 @@ forvalues year = 1997(1)2018 {
     save "${CLEANDATADIR}/PovertyLevels.dta", replace
 }
 
-* LABELS
+* ----- LABELS
 replace state = "District of Columbia" if state == "D.C."
 label variable state ""
 label variable famSize "Family size"
@@ -62,9 +60,7 @@ label data "Poverty levels 1997 - 2018"
 
 drop if year == .
 
-*************************
-* State
-*************************
+* ----------------------------- STATE
 statastates, name(state) nogenerate   // gen statefips
 rename state_fips   statefip
 rename state        state_name
@@ -76,8 +72,7 @@ label var year          "Year"
 
 order year famSize povLevel state_abbrev state_name statefip
 
-*************************
-* Save
-*************************
+
+* ----------------------------- SAVE
 save "${CLEANDATADIR}/PovertyLevels.dta", replace
 

@@ -1,14 +1,16 @@
+* -----------------------------------
 * Project:      MA Thesis
 * Content:      Programs for household structure FF
 * Data:         Fragile families
 * Author:       Michelle Rosenberger
 * Date:         November 6, 2018
+* -----------------------------------
 
-********************************************************************************
-*********************************** PROGRAMS ***********************************
-********************************************************************************
+* ---------------------------------------------------------------------------- *
+* --------------------------------- PROGRAMS --------------------------------- *
+* ---------------------------------------------------------------------------- *
 
-* MISSING VALUES
+* ----------------------------- MISSING VALUES
 capture program drop missingvalues
 program define missingvalues
 	ds, has(type numeric)
@@ -29,7 +31,7 @@ program define missingvalues
 		}
 end
 
-* DEMOGRAPHICS
+* ----------------------------- DEMOGRAPHICS
 capture program drop demographics
 program define demographics 
     args wave
@@ -71,7 +73,7 @@ program define demographics
 
 end
 
-* HH INCOME FF
+* ----------------------------- HH INCOME FF
 capture program drop hh_incomeFF
 program define hh_incomeFF
     args wave
@@ -97,7 +99,7 @@ program define hh_incomeFF
 
 end
 
-* CONSTRUCTED HH STRUCTURE FROM INDIVIDUALS IN HH
+* ----------------------------- CONSTRUCTED HH STRUCTURE FROM INDIVIDUALS IN HH
 capture program drop hh_structure
 program define hh_structure
 
@@ -150,7 +152,7 @@ program define hh_structure
 
 end
 
-* CHILD LIVING ARR.
+* ----------------------------- CHILD LIVING ARR.
 capture program drop living_arr
 program define living_arr
     args timevar usuallyvar
@@ -166,7 +168,7 @@ program define living_arr
 end
 
 
-* RESHAPE & MISSING VALUES
+* ----------------------------- RESHAPE & MISSING VALUES
 capture program drop reshape_missing
 program define reshape_missing
 
@@ -193,7 +195,7 @@ program define reshape_missing
 
 end
 
-* PARENTS FAM STRUCTURE
+* ----------------------------- PARENTS FAM STRUCTURE
 capture program drop fam_structure
 program define fam_structure
 
@@ -294,7 +296,7 @@ program define fam_structure
 end
 
 
-* CONSTRUCTED CHILD FAM STRUCTURE & FAM / HH INCOME
+* ----------------------------- CONSTRUCTED CHILD FAM STRUCTURE & FAM / HH INCOME
 capture program drop fam_structure_income
 program define fam_structure_income
 

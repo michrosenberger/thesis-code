@@ -1,12 +1,13 @@
-* Project: 	    MA Thesis
-* Content:      Create simulated eligbility instrument
-* Author:       Thompson
-* Adapted by: 	Michelle Rosenberger
-* Date: 	    Nov 1, 2018
+* -----------------------------------
+* Project: 	MA Thesis
+* Content:  
+* Author:   Michelle Rosenberger
+* Date: 	Nov 1, 2018
+* -----------------------------------
 
-********************************************************************************
-*********************************** PREAMBLE ***********************************
-********************************************************************************
+* ---------------------------------------------------------------------------- *
+* --------------------------------- PREAMBLE --------------------------------- *
+* ---------------------------------------------------------------------------- *
 
 capture log close
 clear all
@@ -15,6 +16,7 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
+* ----------------------------- SET WORKING DIRECTORIES
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
 }
@@ -22,17 +24,19 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 global TABLEDIR         "${MYPATH}/output/tables"
 
-* Setting the switches for different parts of the code
+
+* ----------------------------- SET SWITCHES
 global PROGRAMS		= 0			// install the packages
 
-* Install packages
+
+* ----------------------------- INSTALL PACKAGES
 if ${PROGRAMS} == 1 {
     ssc install statastates
 }
 
-********************************************************************************
-************************** TABLES SUMMARY STATISTICS ***************************
-********************************************************************************
+* ---------------------------------------------------------------------------- *
+* --------------------------- TABLES SUMMARY STATS --------------------------- *
+* ---------------------------------------------------------------------------- *
 * Coverage: 	mediCov_c1-mediCov_c15 or mediCov_t1-mediCov_t15
 * Variables: 	chHealth_0-chHealth_15
 * No vars:		no_*
@@ -42,10 +46,7 @@ if ${PROGRAMS} == 1 {
 * Never:		neverSmoke neverDrink 
 * Behaviour:	behavFactor_a15_std
 
-
-************************************
-* Summary stats FF
-************************************
+* ----------------------------- SUMMARY STATS FF
 
 * Change: Income ratio from family
 * Check education mother comparable between two samples
@@ -53,7 +54,7 @@ if ${PROGRAMS} == 1 {
 
 use "${TEMPDATADIR}/household_FF.dta", clear        // FRAGILE FAMILIES
 
-* Prepare data
+* ----- PREPARE DATA
 gen wave15 = 1 if wave == 15    // limit sample to those with valid data in wave 15
 bysort id : egen wave15_max = max(wave15)
 
@@ -64,14 +65,14 @@ chOther chMulti moCohort avgInc incRatio_FF {
     label variable `var' `"\:\:\:\: `: variable label `var''"'
 }
 
-* Fragile families sum stat
+* ----- FF SUM STAT
 eststo clear
 estpost tabstat countMedi famSize female chWhite chBlack chHispanic chOther chMulti ///
 moCohort avgInc incRatio_FF if wave == 0 & wave15_max == 1, /// 
 columns(statistics) statistics(mean sd min max n)    // FRAGILE FAMILIES moEduc
 eststo
 
-* LaTex table
+* ----- LaTex TABLE
 esttab est1 using "${TABLEDIR}/SumStat_FF.tex", ///
 nonumber label collabels(none) cells("mean(fmt(%9.2fc))" sd(par fmt(%9.2fc))) ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) mlabels("Mean")  ///
@@ -80,40 +81,37 @@ refcat(countMedi "Child" chWhite "Race" moCohort "Mother" avgInc "Family", nolab
 note("Standard deviation reported in brackets below mean.")
 
 
-************************************
-* Summary stats comparison
-************************************
+* ----------------------------- SUMMARY STATS COMPARISON
 * Columns: (1) FF (2) CPS (3) CPS restricted (4) Diff (5) pval diff
 
 gen FF = 1
 append using  "${TEMPDATADIR}/cps_summary.dta"
 replace FF = 0 if FF == .
 
-* Fragile families sum stat
+* ----- FF SUM STAT
 eststo clear
 estpost tabstat famSize female chWhite chBlack chHispanic ///
 moCohort if wave == 0 & wave15_max == 1 & FF == 1, ///
 columns(statistics) statistics(mean sd min max n) // avgInc incRatio_FF moEduc
 eststo
 
-* CPS sum stat
+* ----- CPS SUM STAT
 estpost tabstat famSize female chWhite chBlack chHispanic ///
 moCohort if FF == 0, columns(statistics) statistics(mean sd min max n)
 eststo
 
-* CPS restricted sample sum stat
+* ----- CPS RESTRICTED SAMPLE SUM STAT
 
 
-* LaTex table
+* ----- LaTex TABLE
 esttab est1 est2 using "${TABLEDIR}/SumStat_both.tex", cells("mean(fmt(%9.2fc))") ///
 nonumber label collabels(none) mlabels("FF" "CPS") style(tex) alignment(r) replace ///
 refcat(famSize "Child" chWhite "Race" moCohort "Mother", nolabel) wide
 
 
-
-********************************************************************************
-******************************* SUM STATS HEALTH *******************************
-********************************************************************************
+* ---------------------------------------------------------------------------- *
+* ----------------------------- SUM STATS HEALTH ----------------------------- *
+* ---------------------------------------------------------------------------- *
 * Look at number of observations
 
 use "${TEMPDATADIR}/health.dta", clear
@@ -127,7 +125,7 @@ local BEHAVVARS     activity30 everSmoke everDrink bmi
 local MEDIVARS      chMediHI
 local DOCVARS       medication numDocIll numRegDoc emRoom // docIll regDoc
 
-* Fair or poor health
+* ----------------------------- FAIR OR POOR HEALTH
 tab chHealth, gen(health_temp)
 egen badHealth = rowmax(health_temp4 health_temp5) // fair or poor health
 
@@ -146,7 +144,7 @@ foreach wave of numlist 1 3 5 9 15 {
 
 replace behavFactor = behavFactor_a15_std
 
-* Fragile families sum stat
+* ----------------------------- FF SUM STAT
 eststo clear
 foreach wave of numlist 1 3 5 9 15 { // chHealth_ healthFactor behavFactor mediCov_c mediCov_t medicalFactor
 	di "Wave `wave'"
@@ -156,7 +154,8 @@ foreach wave of numlist 1 3 5 9 15 { // chHealth_ healthFactor behavFactor mediC
 	eststo
 }
 
-* LaTex table
+* -----------------------------  LaTex TABLE
+* ----- LABELS
 label var chHealth_             "Child health"
 label var healthFactor          "General health index"
 label var mediCov_c             "Medical coverage - each year"
@@ -192,7 +191,7 @@ foreach var of varlist `HEALTHVARS' `LIMITVARS' `MENTALVARS' `BEHAVVARS' ///
     label variable `var' `"\:\:\:\: `: variable label `var''"'
 }
 
-* Means
+* ----- MEANS
 esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health.tex", ///
 nonumber label collabels(none) cells("mean(fmt(%9.2fc))") ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
@@ -201,7 +200,7 @@ refcat(badHealth "Health conditions" limit "Limitations" depressed "Mental healt
 note("Standard deviation reported in brackets. Sample ..." "$^{\text{a}}$ refers to past year") ///
 title("Means of several health variables\label{means}") // sd(par fmt(%9.2fc))
 
-* Count
+* ----- COUNT
 esttab est1 est2 est3 est4 est5 using "${TABLEDIR}/SumStat_Health_count.tex", ///
 nonumber label collabels(none) cells("count(fmt(%9.0fc))") ///
 stats(N, fmt(%9.0f) label(Observations)) style(tex) alignment(r) ///
@@ -211,9 +210,10 @@ note("Standard deviation reported in brackets. Sample ..." "$^{\text{a}}$ refers
 title("Count of several health variables\label{count}") // sd(par fmt(%9.2fc))
 
 
-********************************************************************************
-************************* TABLES SIMULATED ELIGIBILITY *************************
-********************************************************************************
+
+* ---------------------------------------------------------------------------- *
+* ----------------------- TABLES SIMULATED ELIGIBILITY ----------------------- *
+* ---------------------------------------------------------------------------- *
 
 use "${CLEANDATADIR}/simulatedEligbility.dta", clear
 
@@ -229,9 +229,7 @@ label var Elig1998 "1998"
 label var Elig2018 "2018"
 save "${TEMPDATADIR}/DiffElig.dta", replace
 
-************************************
-* Medicaid eligbility by year
-************************************
+* ----------------------------- MEDICAID ELIGIBILITY BY YEAR
 use "${TEMPDATADIR}/simulatedElig100.dta", clear
 eststo clear
 estpost tabstat simulatedElig100, by(year) nototal
@@ -241,9 +239,8 @@ cells( mean(fmt(a3)) ) nonumber noobs nodepvars label  ///
 title("Medicaid eligibility by year") nomtitles compress collabels(none) ///
 addnotes("Based on March CPS data" "from 1998-2018.") mlabels("\% eligible \\ Year & children")
 
-************************************
-* Medicaid eligbility by state & year
-************************************
+
+* ----------------------------- MEDICAID ELIGIBILITY BY STATE & YEAR
 use "${TEMPDATADIR}/DiffElig.dta", clear
 eststo clear
 estpost tabstat Elig1998 Elig2018 Diff, by(state_abbrev) nototal
@@ -254,7 +251,7 @@ title("Medicaid eligibility by state") compress ///
 addnotes("Based on March CPS data" "from 1998 and 2018.") longtable nomtitle
 
 
-* Delete files
+* ----------------------------- DELETE FILES
 cd ${TEMPDATADIR}
 erase simulatedElig100.dta
 erase DiffElig.dta

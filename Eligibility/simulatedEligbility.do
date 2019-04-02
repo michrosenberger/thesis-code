@@ -1,8 +1,10 @@
+* -----------------------------------
 * Project: 	    MA Thesis
-* Content:      Create simulated eligbility instrument
+* Content:      Create Simulated Eligbility
 * Author:       Thompson
-* Adapted by: 	Michelle Rosenberger
+* Adapted by:   Michelle Rosenberger
 * Date: 	    Nov 1, 2018
+* -----------------------------------
 
 capture log close
 clear all
@@ -22,9 +24,8 @@ Output datasets:
 Note:
 - Thompson uses CPS data from 1980 - 1999, but does not use years but all observations combined */
 
-************************************
-* WORING DIRECTORIES AND GLOABL VARS
-************************************
+
+* ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
 }
@@ -33,10 +34,8 @@ global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 // log using ${CODEDIR}/CPS.log, replace 
 
-************************************
-* CREATE SIMULATED INSTRUMENT
-************************************
-foreach var in statefip year age {  // create new dataset
+* ----------------------------- CREATE SIMULATED INSTRUMENT
+foreach var in statefip year age {
     gen `var' = .
 }
 save "${CLEANDATADIR}/simulatedEligbility.dta", replace

@@ -1,7 +1,9 @@
+* -----------------------------------
 * Project: 	MA Thesis
 * Content:	Create CPS households
 * Author: 	Michelle Rosenberger
 * Date: 	Oct 1, 2018
+* -----------------------------------
 
 capture log close
 clear all
@@ -20,13 +22,11 @@ Output datasets:
 - cps.dta 					:	year age statefip incRatio
 */
 
-********************************************************************************
-*********************************** PREAMBLE ***********************************
-********************************************************************************
+* ---------------------------------------------------------------------------- *
+* --------------------------------- PREAMBLE --------------------------------- *
+* ---------------------------------------------------------------------------- *
 
-************************************
-* WORING DIRECTORIES AND GLOABL VARS
-************************************
+* ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
 }
@@ -36,18 +36,17 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 
-* Setting the switches for different parts of the code
+* ----------------------------- SWITCHES
 global MERGEDATA		= 0			// merge data - time consuming
 
 log using ${CODEDIR}/CPS_household.log, replace 
 
-********************************************************************************
-************************************* DATA *************************************
-********************************************************************************
 
-************************************
-* IMPORT DATA
-************************************
+* ---------------------------------------------------------------------------- *
+* ----------------------------------- DATA ----------------------------------- *
+* ---------------------------------------------------------------------------- *
+
+* ----------------------------- IMPORT DATA
 if ${MERGEDATA} == 1 {
 
 	use "${RAWDATADIR}/cepr_march_1997.dta", clear
@@ -69,10 +68,10 @@ if ${MERGEDATA} == 1 {
 
 use "${TEMPDATADIR}/cps_1997-2018.dta", clear
 
-************************************
-* FAMILY STRUCTURE CPS
-************************************
-* Conditions: primary family member, not other relative and child not older than 18 in family unit
+* ----------------------------- FAMILY STRUCTURE CPS
+/* Conditions: Primary family member, not other relative and child
+not older than 18 in family unit */
+
 keep if famno == 1				// primary family member
 drop if pfrel == 4				// other relative
 drop if pfrel == 3 & age > 18	// child younger than 18
@@ -96,7 +95,7 @@ drop *_temp
 
 gen famSize = husband + wife + numChild + unmarried
 
-* LABELS
+* ----- LABELS
 label var child1		"Child indicator in family"
 label var numChild		"Number of children in family"
 label var husband		"Husband indicator in family"
@@ -114,9 +113,8 @@ label values wife wife
 label values child1 child1
 label values unmarried unmarried
 
-************************************
-* PARENTS COHORT
-************************************
+
+* ----------------------------- PARENTS COHORT
 gen moCohort_temp = .
 replace moCohort_temp = year - age if female == 1 & (pfrel == 2 | pfrel == 5)
 bysort hhseq year : egen moCohort = max(moCohort_temp)
@@ -127,16 +125,11 @@ bysort hhseq year : egen faCohort = max(faCohort_temp)
 
 drop *_temp
 
-************************************
-* PARENTS EDUCATION
-************************************
+* ----------------------------- PARENTS EDUCATION
 * educ educ2 educ92
 * moEduc faEduc
 
-
-************************************
-* INCOME
-************************************
+* ----------------------------- INCOME
 * Note: famInc income only includes parents income
 
 if year < 2014 {
@@ -167,17 +160,13 @@ label var famInc	"Family income"
 
 rename child1 child
 
-************************************
-* RACE
-************************************
+* ----------------------------- RACE
 gen white 		= wbho == 1
 gen black 		= wbho == 2
 gen hispanic 	= wbho == 3
 gen other 		= wbho == 4
 
-************************************
-* STATES
-************************************
+* ----------------------------- STATES
 gen statefip = .
 
 if year <= 2016 {
@@ -238,9 +227,7 @@ replace statefip = gestfips if year == 2017
 replace statefip = gestfips if year == 2018
 drop state gestfips
 
-************************************
-* HEALTH COVERAGE
-************************************
+* ----------------------------- HEALTH COVERAGE
 * More child covered by ... options
 
 rename hins		healthIns	// Health Ins.
@@ -251,17 +238,13 @@ rename himcaid	healthMedi	// Health Ins., Medicaid
 rename himcc 	childMedi	// Child covered by Medicaid
 rename hischip 	childCHIP	// Child covered by SCHIP
 
-************************************
-* MERGE POVERTY LEVELS
-************************************
+* ----------------------------- MERGE POVERTY LEVELS
 merge m:1 year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
 keep if _merge == 3
 drop _merge
 
-************************************
-* Income ratio
-************************************
-* Divide CPS fam income by poverty line based on fam size and composition
+* ----------------------------- INCOME RATIO
+* IDEA: Divide CPS fam income by poverty line based on fam size and composition
 gen incRatio = famInc / povLevel
 label var incRatio	"Family poverty level"
 
@@ -282,9 +265,7 @@ label var serial "Unique identifier for each hh"
 label var pernum "Unique person identifier inside hh"
 label data "CPS March data 1998-2018"
 
-************************************
-* Subsample
-************************************
+* ----------------------------- SUBSAMPLE
 * Mirrors FF composition (by mother)
 
 /*
@@ -331,7 +312,8 @@ keep if typeFFhh == 1
 gen FF = 0
 */
 
-* Keep only children
+
+* ----- KEEP ONLY CHILDREN
 keep if pfrel == 3
 
 rename white 		chWhite
@@ -364,15 +346,15 @@ rename other		chOther
 
 tabstat healthIns healthMedi childMedi childCHIP, by(year)
 
-* For Summary statistics
+
+* ----- DATASET FOR SUMMARY STATS
 keep year age statefip incRatio health* child* ch* moCohort faCohort famSize female
 order year statefip age incRatio
 sort year statefip age
-
 save "${TEMPDATADIR}/cps_summary.dta", replace
 
 
-* For analysis
+* ----- DATASET FOR ANALYSIS
 keep age state incRatio
 save "${CLEANDATADIR}/cps.dta", replace
 

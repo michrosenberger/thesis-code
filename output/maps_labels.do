@@ -1,10 +1,15 @@
+* -----------------------------------
 * Project:  MA Thesis
-* Content:  State labels maptile
+* Content:  Add lines + state labels
 * Author: 	Michelle Rosenberger
 * Date:     Nov 19, 2018
+* -----------------------------------
 
+* ----------------------------- SET WORKING DIRECTORIES
 cd "~/Library/Application Support/Stata/ado/personal/maptile_geographies"
 
+
+* ----------------------------- PREPARE DATA
 use state_coords_clean, clear
     
 bysort _ID: egen xcoord = median(_X)
@@ -20,7 +25,7 @@ restore
     
 merge 1:1 _ID using state_id_fips, update replace nogen
 
-* Lines for states
+* ----------------------------- LINES STATES ON MAP
 preserve
     rename xcoord _X
     rename ycoord _Y 
@@ -66,7 +71,7 @@ preserve
     save line_data.dta, replace
 restore
 
-* Center all state labels
+* ----------------------------- CENTER ALL STATE LABELS
 replace xcoord = xcoord + 0.75 	if state == "AL"
 replace ycoord = ycoord + 2.5 	if state == "AL"
 replace xcoord = xcoord + 0.5	if state == "AK"

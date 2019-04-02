@@ -1,8 +1,10 @@
+* -----------------------------------
 * Project: 	MA Thesis
-* Content: 	Simulated eligbility instrument
+* Content: 	Prepare Simulated Eligbility
 * Author: 	Thompson, 2018
 * Adapted:  Michelle Rosenberger
 * Date:     October 17, 2018
+* -----------------------------------
 
 capture log close
 clear all
@@ -14,17 +16,15 @@ set maxvar 10000
 /* This code merges the data for the eligibility criteria. 
 
 Input datasets:
-- cutoff.dta 				:	Currie & Decker data 		(1986 - 2005)
-- KFFTranscriptions.xlsx	:	Thompson KFF data			(2006 - 2011)
-- KFFTranscriptions_M.xlsx 	:	Own transcripts of KFF data (2012 - 2018)
+- cutoff.dta 				:	Currie & Decker data 	 (1986 - 2005)
+- KFFTranscriptions.xlsx	:	Thompson KFF data		 (2006 - 2011)
+- KFFTranscriptions_M.xlsx 	:	Own transcripts KFF data (2012 - 2018)
 
 Output datasets:
-- cutscombined.dta 			: 	statefip year age medicut schipcut bpost1983 cut
+- cutscombined.dta 			: 	statefip year age medicut schipcut bpost1983
 */
 
-************************************
-* WORING DIRECTORIES AND GLOABL VARS
-************************************
+* ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
 }
@@ -34,10 +34,8 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 
-************************************
-* Currie & Decker data
-************************************
-* 1986 - 2005	(from Thompson)
+* ----------------------------- CURRIE & DECKER DATA
+* YEARS: 1986 - 2005	(from Thompson)
 
 use "${RAWDATA}/cutoff.dta", clear 
 gen bpost1983 = birthyear > 1983
@@ -49,10 +47,8 @@ reshape long medicut schipcut, i(state year  bpost1983) j(age)
 save "${CLEANDATADIR}/cutscombined.dta", replace
 
 
-************************************
-* KFF data
-************************************
-* 2006 - 2018	(from Thompson)
+* ----------------------------- KFF data
+* YEARS: 2006 - 2018	(from Thompson)
 
 * Import own transcriptions of KFF reports
 import excel "${MYDATA}/KFFTranscriptions_M.xlsx", sheet("sheet1") firstrow clear
@@ -89,9 +85,8 @@ append using "${CLEANDATADIR}/cutscombined.dta"
 
 keep if year >= 1998
 
-************************************
-* LABELS
-************************************
+
+* ----- LABELS & SAVE
 label var statefip 	"State of residence (FIPS) coding"
 label var year		"Year"
 label var age		"Age"

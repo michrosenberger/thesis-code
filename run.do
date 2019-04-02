@@ -1,7 +1,9 @@
+* -----------------------------------
 * Project: 	MA Thesis
-* Content:  Master file
+* Content:  Runs everything
 * Author: 	Michelle Rosenberger
 * Date: 	Nov 1, 2018
+* -----------------------------------
 
 capture log close
 clear all
@@ -10,55 +12,78 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
-************************************
-* WORING DIRECTORIES AND GLOABL VARS
-************************************
+* ----------------------------- WORING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
     global CODEDIR		"~/Development/MA/code"
 }
 
-** Simulated Eligibility Instrument
+
+* ----------------------------- INSTRUMENT
+* ----- FEDERAL POVERTY LINE
 do "${CODEDIR}/FPL_threshold.do"
-    display("Federal poverty line created.")
-    display("Creates: PovertyLevels.dta")
+    di("Federal poverty line created.")
+    di("Output: PovertyLevels.dta")
 
+* ----- 
 do "${CODEDIR}/medicaidEligibility.do"
-    display("Eligibility data created.")
-    display("Creates: cutscombined.dta")
+    di("Eligibility data created.")
+    di("Output: cutscombined.dta")
 
+* -----
 do "${CODEDIR}/CPS_household.do"
-    display("CPS household data created.")
-    display("Creates: cps.dta")
+    di("CPS household data created.")
+    display("Output: cps.dta")
 
+* -----
 do "${CODEDIR}/simulatedEligibility.do"
-   display("Instrument created.")
+   di("Instrument created.")
+
+* ----------------------------- FF OUTCOME VARIABLES
+* ----- PREPARE
+do "${CODEDIR}/prepareHealth_FF.do"
+    di("FF health data prepared.")
+    di("Output: prepareHealth.dta")
+
+* ----- COMBINE
+do "${CODEDIR}/constructHealth_FF.do"
+    di("FF health data combined.")
+    di("Output: health.dta")
+
+* ----------------------------- FF STATES (RESTRICTED USE DATA)
+* ----- STATES
+do "${CODEDIR}/FF_states.do"
+    di("FF states created.")
+    di("Output: states.dta")
 
 
-** Fragile families data household panel
-do "${CODEDIR}/FF_prepareHH.do"
-    display("Prepare FF household data created.")
-    display("Creates: parents_Y0.dta - parents_Y15.dta")
+* ----------------------------- FF HOUSEHOLD PANEL
+* ----- 
+do "${CODEDIR}/prepareHH_FF.do"
+    di("FF household data prepared.")
+    di("Output: parents_Y0.dta - parents_Y15.dta")
 
-do "${CODEDIR}/FF_household.do"
-    display("FF household data created.")
-    display("Creates: household_FF.dta")
-
-
-** Fragile families outcome variables
-do "${CODEDIR}/FF_health.do"
-    display("FF health data created.")
-    display("Creates: health.dta")
-
-* School / teacher outcomes
-
-** Combine
+* ----- 
+do "${CODEDIR}/constructHH_FF.do"
+    di("FF household data combined.")
+    di("Output: household_FF.dta")
 
 
-** Outcomes
+
+
+* ----------------------------- ANALYSIS
+* ----- REGRESSIONS
+
+
+* ----- ROBUSTNESS CHECKS
+
+
+* ----------------------------- OUTCOMES
+* ----- TABLES
 do "${CODEDIR}/tables.do"
     display("Tables created.")
-    display("Creates: *")
+    display("Output: *")
 
+* ----- MAPS
 do "${CODEDIR}/maps.do"
     display("Maps created.")
-    display("Creates: *")
+    display("Output: *")

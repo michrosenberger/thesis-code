@@ -1,13 +1,14 @@
-* Project: 	    MA Thesis
-* Content:      Create simulated eligbility instrument
-* Author:       Thompson
-* Adapted by: 	Michelle Rosenberger
-* Date: 	    Nov 1, 2018
+* -----------------------------------
+* Project:	MA Thesis
+* Content:      
+* Author:	Michelle Rosenberger
+* Date: 	Nov 1, 2018
+* -----------------------------------
 
 
-********************************************************************************
-*********************************** PREAMBLE ***********************************
-********************************************************************************
+* ---------------------------------------------------------------------------- *
+* --------------------------------- PREAMBLE --------------------------------- *
+* ---------------------------------------------------------------------------- *
 
 capture log close
 clear all
@@ -16,6 +17,7 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
+* ----------------------------- SET WORKING DIRECTORIES
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
 }
@@ -26,11 +28,13 @@ global TABLEDIR         "${MYPATH}/output/tables"
 global FIGUREDIR        "${MYPATH}/output/figures"
 global CODEDIR          "${MYPATH}/code"
 
-* Setting the switches for different parts of the code
+
+* ----------------------------- SET SWITCHES
 global PROGRAMS		= 0			// install the packages
 global USMAP		= 0			// download map
 
-* Install packages
+
+* ----------------------------- INSTALL PACKAGES
 if ${PROGRAMS} == 1 {
 	ssc install spmap
 	ssc install shp2dta
@@ -39,20 +43,20 @@ if ${PROGRAMS} == 1 {
 	ssc install maptile
 }
 
-********************************************************************************
-************************** MAPS SIMULATED ELIGIBILITY **************************
-********************************************************************************
+* ---------------------------------------------------------------------------- *
+* ------------------------- MAPS SIMULATED ELIGIBILITY ----------------------- *
+* ---------------------------------------------------------------------------- *
+
+* ----- DOWNLOAD US MAP
 * Download US map
 if ${USMAP} == 1 {
 	maptile_install using "http://files.michaelstepner.com/geo_state.zip"
 }
 
-************************************
-* % of eligible children per state
-************************************
+* ----------------------------- % OF ELIGIBLE CHILDREN PER STATE
 * Alternative: do by age groups
 
-* Prepare simulated eligibility data
+* ----- PREPARE SIMLUATED ELIGIBILITY DATA
 foreach year in 1998 2018 {
 	use "${CLEANDATADIR}/simulatedEligbility.dta", clear
 	keep if year == `year'
@@ -66,12 +70,13 @@ foreach year in 1998 2018 {
 merge 1:1 statefips using "${TEMPDATADIR}/Elig1998.dta", nogen
 save  "${TEMPDATADIR}/Elig1998_2018.dta", replace
 
-* Map
+* ----- MAP
 do "${CODEDIR}/output/maps_labels.do"	// center state names
 
 merge 1:1 statefips using "${TEMPDATADIR}/Elig1998_2018.dta", nogen // simulated Elig. data
 
-* Generate break data	// clmethod(custom) does not work
+* ----- GENERATE BREAK DATA
+// clmethod(custom) does not work
 gen break2 = .
 replace break2 = 25 if _ID == 26
 replace break2 = 30 if _ID == 27
@@ -98,25 +103,22 @@ legend( pos(5) label(2 "34.2-40.6% (9 states)") label(3 "40.6-42.1% (8 states)")
 line(data(line_data)) legtitle("% of children") legcount) legformat(%4.1f) 
 */
 
-* Delete eligibility files
+* ----- DELETE ELIGIBILITY FILES
 cd ${TEMPDATADIR}
 erase Elig1998_2018.dta
 erase Elig1998.dta
 erase Elig2018.dta
 
 
-************************************
-* Average years elgible
-************************************
+* ----------------------------- AVERAGE YEARS ELIGIBLE
 
 
 
 
-************************************
-* % of FPL threshold per state
-************************************
 
-* Prepare FPL data
+
+* ----------------------------- % OF FPL THRESHOLD PER STATE
+* ----- PREPARE FPL DATA
 foreach year in 1998 2018 {
 	use "${CLEANDATADIR}/cutscombined.dta", clear
 
@@ -136,12 +138,13 @@ foreach year in 1998 2018 {
 merge 1:1 statefips using "${TEMPDATADIR}/maxFPL1998.dta", nogen
 save "${TEMPDATADIR}/maxFPL1998_2018.dta", replace
 
-* Map
+* ----- MAP
 do "${CODEDIR}/output/maps_labels.do"	// center state names
 
 merge 1:1 statefips using "${TEMPDATADIR}/maxFPL1998_2018.dta", nogen // data
 
-* Generate break data	// clmethod(custom) does not work
+* ----- GENERATE BREAK DATA
+// clmethod(custom) does not work
 gen break2 = .
 replace break2 = 150 if _ID == 26
 replace break2 = 200 if _ID == 27
@@ -159,15 +162,16 @@ foreach year in 1998 2018 {
 	graph export "${FIGUREDIR}/MapFPL`year'.png", replace
 }
 
-* Delete eligibility files
+* ----- DELETE ELIGIBILITY FILES
 cd ${TEMPDATADIR}
 erase maxFPL1998_2018.dta
 erase maxFPL1998.dta
 erase maxFPL2018.dta
 
-********************************************************************************
-************************* MEDIAN SIMULATED ELIGIBILITY *************************
-********************************************************************************
+
+* ---------------------------------------------------------------------------- *
+* ------------------------ MEDIAN SIMULATED ELIGIBILITY ---------------------- *
+* ---------------------------------------------------------------------------- *
 
 use "${CLEANDATADIR}/simulatedEligbility.dta", clear
 order statefip year age
@@ -183,7 +187,7 @@ replace Elig1 = simulatedElig if ( age == 1 | age == 2 | age == 3 | age == 4 | a
 gen Elig6 = .	// 6-18
 replace Elig6 = simulatedElig if ( age > 5 )
 
-* Mean for each age group
+* ----- MEAN FOR EACH AGE GROUP
 bysort year: egen mean_Elig0 = mean(Elig0)
 bysort year: egen mean_Elig1 = mean(Elig1)
 bysort year: egen mean_Elig6 = mean(Elig6)

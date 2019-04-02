@@ -14,8 +14,8 @@ clear all
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
 }
-global RAWDATADIR		"${MYPATH}/data/raw/MarchCPS"
-global CODEDIR			"${MYPATH}/code"
+global RAWDATADIR			"${MYPATH}/data/raw/MarchCPS"
+global CODEDIR				"${MYPATH}/code"
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
