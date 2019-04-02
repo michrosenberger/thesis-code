@@ -39,7 +39,8 @@ global TEMPDATADIR  	"${MYPATH}/data/temp"
 * ----------------------------- SWITCHES
 global MERGEDATA		= 0			// merge data - time consuming
 
-log using ${CODEDIR}/CPS_household.log, replace 
+* ----------------------------- LOG FILE
+* log using ${CODEDIR}/CPS_household.log, replace 
 
 
 * ---------------------------------------------------------------------------- *

@@ -32,7 +32,8 @@ if "`c(username)'" == "michellerosenberger"  {
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
-// log using ${CODEDIR}/CPS.log, replace 
+* ----------------------------- LOG FILE
+* log using ${CODEDIR}/CPS.log, replace 
 
 * ----------------------------- CREATE SIMULATED INSTRUMENT
 foreach var in statefip year age {
