@@ -16,7 +16,6 @@ and regressions (OLS, RF, FS, IV-2SLS).
 	- CHECK EVERYTHING + THOMPSON
 	- CHECK CUMULATIVE HEALTH
 	- CHECK MODELS CORRECTLY SPECIFIED
-
 */
 
 * ---------------------------------------------------------------------------- *
@@ -35,17 +34,17 @@ if "`c(username)'" == "michellerosenberger"  {
     global USERPATH     "~/Development/MA"
 }
 
-global CLEANDATADIR  	"${USERPATH}/data/clean"
+global CLEANDATADIR		"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
-global CODEDIR				"${USERPATH}/code"
-global TABLEDIR       "${USERPATH}/output/tables"
-global FIGUREDIR      "${USERPATH}/output/figures"
-global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
+global CODEDIR			"${USERPATH}/code"
+global TABLEDIR			"${USERPATH}/output/tables"
+global FIGUREDIR		"${USERPATH}/output/figures"
+global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 
 * ----------------------------- SET SWITCHES
-global POWER				= 0			// MDE + Power Calculations
+global POWER			= 0			// MDE + Power Calculations
 global PREPARE 			= 1			// Prepare data
-global REGRESSIONS 	= 1 		// Perform regressions
+global REGRESSIONS 		= 1 		// Perform regressions
 
 * ----------------------------- LOG FILE
 
@@ -175,7 +174,6 @@ if ${POWER} == 1 {
 
 
 
-
 * ---------------------------------------------------------------------------- *
 * ------------------------------- REGRESSIONS -------------------------------- *
 * ---------------------------------------------------------------------------- *
@@ -193,8 +191,8 @@ if ${REGRESSIONS} == 1 {
 	egen race = max(chRace), by(idnum)
 
 	* ----------------------------- GLOBAL VARIABLES
-	global ELIG 			elig										// elig eligALL_9
-	global SIMELIG 		simulatedElig						// simulatedElig simEligALL_9
+	global ELIG 		elig						// elig eligALL_9
+	global SIMELIG 		simulatedElig				// simulatedElig simEligALL_9
 	global CONTROLS 	age female race moAge		// moEduc
 	global OUTCOMES 	healthFactor_a9_std chHealth_neg numRegDoc absent
 
@@ -203,8 +201,8 @@ if ${REGRESSIONS} == 1 {
 		di "****** OLS for `outcome'"
 		reg `outcome' ${ELIG} ${CONTROLS} i.statefip if wave == 9,  cluster(statefip) // cluster at state level
 		est store `outcome'_OLS_9
-		estadd local Controls 		"$\checkmark$"
-		estadd local StateFE 			"$\checkmark$"
+		estadd local Controls		"$\checkmark$"
+		estadd local StateFE		"$\checkmark$"
 	}
 
 	* ----------------------------- REDUCED FORM
@@ -212,8 +210,8 @@ if ${REGRESSIONS} == 1 {
 		di "****** OLS for `outcome'"
 		reg `outcome' ${SIMELIG} ${CONTROLS} i.statefip if wave == 9,  cluster(statefip)
 		est store `outcome'_RF_9
-		estadd local Controls 		"$\checkmark$"
-		estadd local StateFE 			"$\checkmark$"
+		estadd local Controls		"$\checkmark$"
+		estadd local StateFE		"$\checkmark$"
 	}
 
 	* ----------------------------- FIRST STAGE
@@ -238,7 +236,7 @@ if ${REGRESSIONS} == 1 {
 		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG} = ${SIMELIG}) if wave == 9,  cluster(statefip)
 		est store `outcome'_IV_9
 		estadd local Controls 		"$\checkmark$"
-		estadd local StateFE 			"$\checkmark$"
+		estadd local StateFE 		"$\checkmark$"
 	}
 
 
@@ -272,50 +270,76 @@ if ${REGRESSIONS} == 1 {
 	keep(${ELIG} age female moAge) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
 	starlevels(* .1 ** .05 *** .01) numbers
 
+
+	* ----------------------------- OUTPUT Latex
+	* ----- LABELS
+	label var age		"Age"
+	label var elig		"Elgibility"
+
+	* ----- AGE 9
+	* TO-DO: also include without controls
+	* TO-DO: check number of observation, something does not add up (too much)
+	estout healthFactor_a9_std_OLS_9 healthFactor_a9_std_IV_9 chHealth_neg_OLS_9 chHealth_neg_IV_9 ///
+	absent_OLS_9 absent_IV_9 numRegDoc_OLS_9 numRegDoc_IV_9 ///
+	using "${TABLEDIR}/regression9.tex", replace label collabels(none) style(tex) ///
+	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
+	keep(${ELIG} age female moAge _cons) order(${ELIG} age female moAge _cons) /// 		"\ "
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 						stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///							stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///				stats
+	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Doc", ///			mgroups
+	pattern(1 0 1 0 1 0 1 0) span ///													mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///		mgroups
+	varlabels(_cons Constant, blist(${ELIG} "\hline ")) //								varlabels
+
+	* ----- AGE 15
+	* TO-DO: also include without controls
+	* TO-DO: add correct measures (for age 15)
+	estout healthFactor_a9_std_OLS_9 healthFactor_a9_std_IV_9 chHealth_neg_OLS_9 chHealth_neg_IV_9 ///
+	absent_OLS_9 absent_IV_9 numRegDoc_OLS_9 numRegDoc_IV_9 ///
+	using "${TABLEDIR}/regression15.tex", replace label collabels(none) style(tex) ///
+	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
+	keep(${ELIG} age female moAge _cons) order(${ELIG} age female moAge _cons) /// 		"\ "
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 						stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///							stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///				stats
+	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Doc", ///			mgroups
+	pattern(1 0 1 0 1 0 1 0) span ///													mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///		mgroups
+	varlabels(_cons Constant, blist(${ELIG} "\hline ")) //								varlabels
+
+
+
 } // END REGRESSIONS
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-* ----------------------------- OUTPUT Latex
-// * LaTex
-// label var mediCov_c15 	"Current Medicaid Coverage"
-// label var age			"Age"
-// label var moHealth		"Mother health"
-
-// estout healthFactor_a15_fifteen chHealth_15_fifteen ///
-// medication_fifteen everSmoke_fifteen everDrink_fifteen activityVigorous_fifteen ///
-// using "${TABLEDIR}/regression.tex", replace label cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-// collabels(none) ///
-// mlabels("Health index" "Child health" "Medication" "Ever smoke" "Ever drink" "Activity") ///
-// style(tex) starlevels(* .1 ** .05 *** .01) numbers ///
-// stats(Controls N r2, fmt(%9.0f %9.0f %9.3f) label(Controls Obs. "\$R^{2}$")) ///
-// varlabels(_cons Constant, blist(mediCov_c15 "\hline ") elist(_cons \hline)) // keep order
-// * numbers mlabels("" "" "" "" "") mgroups("`pheno'", pattern(1 0 0 0 0) prefix(\multicolumn{@span}{c}{) suffix(}) span erepeat(\cmidrule(lr){@span}))
-
-
-
 
 
 * capture log close
 
+
+/* ----------------------------- EXAMPLE OUTPUT
+					TABLE X - OUTCOMES AT AGES 9 AND 15
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+						AGE 9								AGE 15
+		--------------------------------	--------------------------------
+			OUT 1			OUT 2				OUT 1			OUT 2	
+		--------------	--------------		--------------	--------------
+		OLS 	IV		OLS		IV			OLS		IV		OLS		IV
+		(1)		(2)		(3)		(4)			(5)		(6)		(7)		(8)
+----------------------------------------------------------------------------
+VAR 1	XX		XX		XX		XX			XX		XX		XX		XX	
+VAR 2	XX		XX		XX		XX			XX		XX		XX		XX
+VAR 3	XX		XX		XX		XX			XX		XX		XX		XX
+
+CONT	Y		Y		Y		Y			Y		Y		Y		Y
+FE		Y		Y		Y		Y			Y		Y		Y		Y
+R2		XX		XX		XX		XX			XX		XX		XX		XX
+N		XX		XX		XX		XX			XX		XX		XX		XX
+----------------------------------------------------------------------------
+NOTES: XXX
+*/
 
 
 * ----------------------------- NOTE USED
