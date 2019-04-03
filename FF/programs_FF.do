@@ -1,6 +1,6 @@
 * -----------------------------------
 * Project:      MA Thesis
-* Content:      Programs for household structure FF
+* Content:      Programs for FF
 * Data:         Fragile families
 * Author:       Michelle Rosenberger
 * Date:         November 6, 2018
@@ -30,6 +30,50 @@ program define missingvalues
 		replace `vars' = .k if `vars' == -12 // Shelter/Street 
 		}
 end
+
+
+* ----------------------------- PARENT REPORTED HEALTH
+capture program drop child_health
+program define child_health
+	args moreport fareport
+
+	gen chHealth = .
+	replace chHealth = `moreport' if chLiveMo != 2 	// mother + default
+	replace chHealth = `fareport' if chLiveMo == 2	// father
+end
+
+
+* ----------------------------- MEDICAID CHILD
+capture program drop medicaid
+program define medicaid
+	args mo_covered mo_who fa_covered fa_who
+
+	* Medicaid parents report
+	local int = 1
+	local num : word count mo fa
+	while `int' <= `num' {
+		local parent    : word `int' of     mo  fa
+		local letter    : word `int' of     m   f
+		local int = `int' + 1
+
+		gen chMediHI_`parent' 		= 0
+		replace chMediHI_`parent' 	= 1 if `letter'`mo_covered' == 1 & (`letter'`mo_who' == 2 | `letter'`mo_who' == 3)
+		replace chMediHI_`parent'	= . if `letter'`mo_covered' >= .
+		gen chPrivHI_`parent'		= 0
+		replace chPrivHI_`parent' 	= 1 if `letter'`fa_covered' == 1 & (`letter'`fa_who' == 2 | `letter'`fa_who' == 3)
+		replace chPrivHI_`parent'	= . if `letter'`fa_covered' >= .
+	}
+
+	* Medicaid child
+	foreach healthins in chMediHI chPrivHI {
+		gen `healthins' = .
+		replace `healthins' = `healthins'_mo if chLiveMo != 2	// mother + default
+		replace `healthins' = `healthins'_fa if chLiveMo == 2	// father
+	}
+	drop *_mo *_fa
+
+end
+
 
 * ----------------------------- DEMOGRAPHICS
 capture program drop demographics
