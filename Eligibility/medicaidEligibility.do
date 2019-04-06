@@ -38,9 +38,9 @@ global TEMPDATADIR  	"${MYPATH}/data/temp"
 * YEARS: 1986 - 2005	(from Thompson)
 
 use "${RAWDATA}/cutoff.dta", clear 
-gen bpost1983 = birthyear > 1983
-collapse medicut schipcut, by(statefip year age bpost1983) 
-reshape wide medicut schipcut, i(state year  bpost1983) j(age) 
+gen bpost1983 	= birthyear > 1983
+collapse 		medicut schipcut, by(statefip year age bpost1983) 
+reshape wide 	medicut schipcut, i(state year  bpost1983) j(age) 
 gen medicut18 	= medicut17
 gen schipcut18 	= schipcut17
 reshape long medicut schipcut, i(state year  bpost1983) j(age)
@@ -61,9 +61,9 @@ merge 1:1 statefip using "${TEMPDATADIR}/KFFTranscriptions_M.dta", label
 drop _merge
 
 expand 	13
-bysort 	statefip : 		egen year=seq(), from(2006) to(2018)
+bysort 	statefip 		: egen year=seq(), from(2006) to(2018)
 expand 	19
-bysort 	statefip year : egen age=seq(), from(0) to(18)
+bysort 	statefip year	: egen age=seq(), from(0) to(18)
 gen 	medicut 	= .
 gen 	schipcut 	= .
 
@@ -95,3 +95,4 @@ label var schipcut	"S-CHIP threshold"
 label var bpost1983	"Child born after 1983"
 
 save "${CLEANDATADIR}/cutscombined.dta", replace		// data 1995-2018
+

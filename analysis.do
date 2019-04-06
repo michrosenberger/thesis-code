@@ -8,14 +8,12 @@
 /* This code performs the analysis part. It includes power calculations, MDE,
 and regressions (OLS, RF, FS, IV-2SLS).
 
-- Datasets needed:
+Input datasets:
+- 	health.dta; household_FF.dta; ff_gen_9y_pub4.dta; cutscombined.dta; 
+	simulatedEligbility.dta; 
 
-- TO-DO:
-	- CHECK ALL MERGES ARE GOOD AND IDENTIFY OBSERVATIONS UNIQUELY
-	- CHECK CONSTRUCTION OF VARIABLES
-	- CHECK EVERYTHING + THOMPSON
-	- CHECK CUMULATIVE HEALTH
-	- CHECK MODELS CORRECTLY SPECIFIED
+Output datasets:
+-	analysis.dta
 */
 
 * ---------------------------------------------------------------------------- *
@@ -42,11 +40,19 @@ global FIGUREDIR		"${USERPATH}/output/figures"
 global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 
 * ----------------------------- SET SWITCHES
-global POWER			= 0			// MDE + Power Calculations
-global PREPARE 			= 1			// Prepare data
-global REGRESSIONS 		= 1 		// Perform regressions
+global PREPARE 			= 1		// Prepare data
+global POWER			= 0		// MDE + Power Calculations
+global REGRESSIONS 		= 1 	// Perform regressions
+global ROBUSTNESS		= 0		// Perform robustness checks
 
 * ----------------------------- LOG FILE
+
+
+* ----------------------------- TO-DO
+	* NOTE: Check why so many missing state / age
+	* NOTE: CHECK if add age 0
+	* CHECK: If fam size missing impute ratio from previous wave (mostly if no wave 9)
+	* SHOW f-stat in FS table
 
 
 * ---------------------------------------------------------------------------- *
@@ -65,73 +71,68 @@ if ${PREPARE} == 1 {
 	preserve
 		use "${RAWDATADIR}/rawData/ff_gen_9y_pub4.dta", clear
 		gen wave = 9
+		mvdecode gm5* gk5*, mv(-9 = .a \ -7 = .b \ -5 = .c \ -3 = .d \ -1 = .e)
 		save "${TEMPDATADIR}/genetic.dta", replace
-		* TO-DO: check missing values in genetic data
 
 	restore
 
 	* ----- MERGE
 	merge 1:1 idnum wave using "${TEMPDATADIR}/genetic.dta", nogen
 
-
-
-	/* ----------------------------- SAMPLE SELECTION
-	* Drop if family didn't complete interview
-	drop if year == .
-
-	* Do with actual medi
-	* Drop if not enough observations per person (min. 3 observations out of 6)
-	gen observation = 1 if year != .
-	bysort idnum: egen countMedi = count(observation)
-	drop if countMedi < 3
-	drop observation
-	label var countMedi "Observations per child"
-
-	* Drop if no income value
-	drop if hhInc == .
-
-	* Replace age in wave 0
-
-	* If fam size missing impute ratio from previous wave (mostly if no wave 9)
-
-
-	tab year
-	drop chLiveMo moHH_size_c
-	*/
-
-
 	* ----------------------------- MERGE ACTUAL AND SIMULATED ELIGIBILITY TO REST
 	* ----- PREPARE
-	preserve
-		use "${CLEANDATADIR}/cutscombined.dta", clear
-		merge m:1 age statefip year using "${CLEANDATADIR}/simulatedEligbility.dta", nogen
-		save "${CLEANDATADIR}/eligibility_final.dta", replace
-		* VARIABLES: statefip year age medicut schipcut bpost1983 simulatedElig
-	restore
+	gen bpost1983 = year > 1983
+	replace age = 0 if wave == 0
 
 	* ----- MERGE
-	* TO-DO: Neither do uniquely identify - check bpost1983
-	merge m:m age statefip year using "${CLEANDATADIR}/eligibility_final.dta"
-	drop if idnum == ""
+	merge m:1 age statefip year bpost1983 	using "${CLEANDATADIR}/cutscombined.dta"
+	drop if _merge == 2
+	drop _merge
 
+	merge m:1 age statefip year 			using "${CLEANDATADIR}/simulatedEligbility.dta"
+	drop if _merge == 2
+	drop _merge
 
 	* ----------------------------- ELIGIBILITY
 	* ----- Calculate eligibility through income ratio and thresholds
 	gen elig = . 
 	replace elig = incRatio_FF <= medicut | incRatio_FF <= schipcut
-	replace elig =. if medicut==. | schipcut==. | incRatio_FF==.
+	replace elig = . if medicut == . | schipcut == . | incRatio_FF == .
 
-
-	* ----- CUMULATED ELIGIBILITY
-	foreach wave in 0 1 3 5 9 15 {
-		egen eligALL_`wave' = sum(elig) if wave <= `wave', by(idnum)
+	* ----- ELIGIBILITY AT EACH AGE
+	foreach elig in elig simulatedElig {
+		foreach wave in 0 1 3 5 9 15 {
+			gen `elig'`wave'_temp = `elig' if wave == `wave'
+			bysort idnum: egen `elig'`wave' = max(`elig'`wave'_temp)
+			drop `elig'`wave'_temp
+		}
 	}
 
-	* ----- CUMULATED SIMULATED ELIGIBILITY
-	foreach wave in 0 1 3 5 9 15 {
-		egen simEligALL_`wave' = sum(simulatedElig) if wave <= `wave', by(idnum)
+	* ----- AVERAGE ELIGIBILITY ACROSS CHILDHOOD 		// eligAvg9 simulatedEligAvg9
+	foreach elig in elig simulatedElig {
+		egen `elig'Avg9 	= rowmean(`elig'1 `elig'3 `elig'5 `elig'9)
+		egen `elig'Avg15 	= rowmean(`elig'1 `elig'3 `elig'5 `elig'9 `elig'15)
+
+		replace `elig'Avg9 	= `elig'Avg9*4
+		replace `elig'Avg15 = `elig'Avg15*5
 	}
 
+	* ----- CUMULATED ACTUAL + SIMULATED ELIGIBILITY	// eligAll9 simulatedElig9
+	foreach elig in elig simulatedElig {
+		foreach wave in 1 3 5 9 15 {
+			egen `elig'All`wave' = sum(`elig') if wave <= `wave', by(idnum)
+		}
+	}
+
+	* ----------------------------- SAMPLE SELECTION
+	* ----- HOW MANY NON-MISSING ELIG OBSERVATIONS
+	gen observation = 1 if elig != .
+	bysort idnum: egen obs9 	= count(observation) if wave <= 9	// keep if obs9 >= 2
+	bysort idnum: egen obs15 	= count(observation) if wave <= 15	// keep if obs15 >= 3
+
+	drop observation
+
+	* ----------------------------- SAVE
 	save "${CLEANDATADIR}/analysis.dta", replace
 
 } // END PREPARE
@@ -177,145 +178,258 @@ if ${POWER} == 1 {
 * ---------------------------------------------------------------------------- *
 * ------------------------------- REGRESSIONS -------------------------------- *
 * ---------------------------------------------------------------------------- *
-* Coverage: 		mediCov_c1-mediCov_c15 or mediCov_t1-mediCov_t15
-* Variables: 		chHealth_0-chHealth_15
-* No vars:			no_*
-* Health:				chHealth chHealth_neg moHealth moHealth_neg
-* General:			healthFactor_a1_std-healthFactor_a15_std
-* Utilization:	medicalFactor_a1_std-medicalFactor_a15_std
-* Never:				neverSmoke neverDrink 
-* Behaviour:		behavFactor_a15_std
+* NOTE: when running separate regressions: preserve keep if obs9 > X restore
+
+
+* General health FACTOR (9)			: child health + had in past 12 months (no_)
+* Limitations 			(9 & 15)	: limit absent
+* Health behav FACTOR	(15)		: smoke, drink, vigorous activity
+* WEIGHT							: BMI + indicator for overweight
+* Mental health			(15)		: Self report dep + doctor diagnosed
+* Uitlization FACTOR	(9 & 15)	: medication + doc illness + doc regular + ER
 
 if ${REGRESSIONS} == 1 {
 
-	egen race = max(chRace), by(idnum)
+	rename medicalFactor_a15_std medFac_a15_std
 
 	* ----------------------------- GLOBAL VARIABLES
-	global ELIG 		elig						// elig eligALL_9
-	global SIMELIG 		simulatedElig				// simulatedElig simEligALL_9
-	global CONTROLS 	age female race moAge		// moEduc
-	global OUTCOMES 	healthFactor_a9_std chHealth_neg numRegDoc absent
+	global CONTROLS 	age female race moAge	// moEduc
 
-	* ----------------------------- OLS
-	foreach outcome in $OUTCOMES {
-		di "****** OLS for `outcome'"
-		reg `outcome' ${ELIG} ${CONTROLS} i.statefip if wave == 9,  cluster(statefip) // cluster at state level
+	global ELIG9 		eligAll9				// elig eligAll9 eligAvg9 
+	global SIMELIG9 	simulatedEligAll9		// simulatedElig simulatedEligAll9 simulatedEligAvg9
+	global OUTCOMES9 	chHealth_neg healthFactor_a9_std medicalFactor_a9_std absent
+
+	global ELIG15 		eligAll15				// elig eligAll15 eligAvg15
+	global SIMELIG15 	simulatedEligAll15		// simulatedElig simulatedEligAll15 simulatedEligAvg15
+	global OUTCOMES15 	chHealth_neg behavFactor_a15_std medFac_a15_std absent limit bmi
+
+
+	* ----------------------------- OUTCOMES AGE 9
+	foreach outcome in $OUTCOMES9 {
+		* ----- OLS
+		reg `outcome' ${ELIG9} ${CONTROLS} i.statefip if wave == 9, cluster(statefip)
+
 		est store `outcome'_OLS_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
-	}
 
-	* ----------------------------- REDUCED FORM
-	foreach outcome in $OUTCOMES {
-		di "****** OLS for `outcome'"
-		reg `outcome' ${SIMELIG} ${CONTROLS} i.statefip if wave == 9,  cluster(statefip)
+		* ----- RF
+		reg `outcome' ${SIMELIG9} ${CONTROLS} i.statefip if wave == 9,  cluster(statefip)
+
 		est store `outcome'_RF_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
-	}
 
-	* ----------------------------- FIRST STAGE
-	*** CHECK F-STATISTIK IN FIRST STAGE
-	foreach outcome in $OUTCOMES {
-		di "****** IV 2SLS for `outcome'"
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG} = ${SIMELIG}) if wave == 9, first cluster(statefip)
+		* ----- FS
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG9} = ${SIMELIG9}) if wave == 9, first cluster(statefip)
+
+		gen samp_`outcome'9 = e(sample)
 		estat firststage
-	}
+		* mat fstat = r(singleresults)
+		* estadd scalar `outcome'_FStat = fstat[1,4] // can add in stat() in the regression
 
-	/* TO SAVE F-STAT
-	mat fstat = r(singleresults)
-	estadd scalar fs = fstat[1,4] 
-	
-	esttab a  using table1.tex, collabels(none)  cells(b(star fmt(3) vacant({--})))  label replace ///
-	stats(N r2 fs, fmt(0 3) layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}")  labels(`"Observations"' `"\(R^{2}\)"' `"\(F\)"')) drop(_cons) 
-	*/
+		reg ${ELIG9} ${SIMELIG9} ${CONTROLS} i.statefip if (wave == 9 & samp_`outcome'9 == 1), cluster(statefip)
+		est store `outcome'_FS_9
+		estadd local Controls		"$\checkmark$"
+		estadd local StateFE		"$\checkmark$"
 
-	* ----------------------------- IV-2SLS
-	foreach outcome in $OUTCOMES {
-		di "****** IV 2SLS for `outcome'"
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG} = ${SIMELIG}) if wave == 9,  cluster(statefip)
+		* ----- IV-2SLS
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG9} = ${SIMELIG9}) if wave == 9,  cluster(statefip)
+
 		est store `outcome'_IV_9
 		estadd local Controls 		"$\checkmark$"
 		estadd local StateFE 		"$\checkmark$"
 	}
 
+	* ----------------------------- OUTCOMES AGE 15
+	foreach outcome in $OUTCOMES15 {
+		* ----- OLS
+		reg `outcome' ${ELIG15} ${CONTROLS} i.statefip if wave == 15, cluster(statefip)
+		est store `outcome'_OLS_15
+		estadd local Controls		"$\checkmark$"
+		estadd local StateFE		"$\checkmark$"
 
-	* ----------------------------- OUTPUT Window
-	/* ----- RF
-	estout healthFactor_a9_std_RF_9 chHealth_neg_RF_9 numRegDoc_RF_9, ///
-	keep(simulatedElig age female moAge) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-	starlevels(* .1 ** .05 *** .01) numbers */
+		* ----- RF
+		reg `outcome' ${SIMELIG15} ${CONTROLS} i.statefip if wave == 15,  cluster(statefip)
 
-	* ----- OLS and IV factor + health
-	estout healthFactor_a9_std_OLS_9 healthFactor_a9_std_IV_9, ///
-	mlabels("Factor OLS" "Factor IV") ///
-	keep(${ELIG} age female moAge) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-	starlevels(* .1 ** .05 *** .01) numbers
+		est store `outcome'_RF_15
+		estadd local Controls		"$\checkmark$"
+		estadd local StateFE		"$\checkmark$"
 
-	* ----- OLS and IV health
-	estout chHealth_neg_OLS_9 chHealth_neg_IV_9, ///
-	mlabels("Health OLS" "Health IV") ///
-	keep(${ELIG} age female moAge) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-	starlevels(* .1 ** .05 *** .01) numbers
+		* ----- FS
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG15} = ${SIMELIG15}) if wave == 15, first cluster(statefip)
 
-	* ----- OLS and IV absent
-	estout absent_OLS_9 absent_IV_9, ///
-	mlabels("Absent OLS" "Absent IV") ///
-	keep(${ELIG} age female moAge) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-	starlevels(* .1 ** .05 *** .01) numbers
+		gen samp_`outcome'15 = e(sample)
+		estat firststage
+		* mat fstat = r(singleresults)
+		* estadd scalar `outcome'_FStat = fstat[1,4] // can add in stat() in the regression
 
-	* ----- OLS and IV numRegDoc
-	estout numRegDoc_OLS_9 numRegDoc_IV_9, ///
-	mlabels("NumRegDoc OLS" "NumRegDoc IV") ///
-	keep(${ELIG} age female moAge) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-	starlevels(* .1 ** .05 *** .01) numbers
+		reg ${ELIG15} ${SIMELIG15} ${CONTROLS} i.statefip if (wave == 15 & samp_`outcome'15 == 1), cluster(statefip)
+		est store `outcome'_FS_15
+		estadd local Controls		"$\checkmark$"
+		estadd local StateFE		"$\checkmark$"
+
+		* ----- IV-2SLS
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG15} = ${SIMELIG15}) if wave == 15,  cluster(statefip)
+
+		est store `outcome'_IV_15
+		estadd local Controls 		"$\checkmark$"
+		estadd local StateFE 		"$\checkmark$"
+	}
+
+
+	* ----------------------------- CHILD HEALTH BY AGE (IV)
+	* ----- CURRENT HEALTH
+	foreach outcome in chHealth_neg {
+		foreach wave in 1 3 5 9 15 {
+			di "****** "
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (elig = simulatedElig) if wave == `wave',  cluster(statefip)
+			est store `outcome'_IV_SEP_`wave'
+			estadd local Controls 		"$\checkmark$"
+			estadd local StateFE 		"$\checkmark$"
+		}
+	}	
+
+	* ----- CUMULATED HEALTH
+	foreach outcome in chHealth_neg {
+		foreach wave in 1 3 5 9 15 {
+			di "****** "
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (eligAll`wave' = simulatedEligAll`wave') ///
+			if wave == `wave',  cluster(statefip)
+
+			est store `outcome'_IV_SEP2_`wave'
+			estadd local Controls 		"$\checkmark$"
+			estadd local StateFE 		"$\checkmark$"
+		}
+	}	
 
 
 	* ----------------------------- OUTPUT Latex
 	* ----- LABELS
-	label var age		"Age"
-	label var elig		"Elgibility"
+	label var age				"Age"
+	label var race				"Race"
+	label var ${ELIG9}			"Eligibility"
+	label var ${ELIG15}			"Eligibility"
+	label var ${SIMELIG9}		"Simulated Elig"
+	label var ${SIMELIG15}		"Simulated Elig"
+	label var medFac_a15_std	"Utilization"
 
-	* ----- AGE 9
-	* TO-DO: also include without controls
-	* TO-DO: check number of observation, something does not add up (too much)
+	* ----- OLS & IV (AGE 9)
 	estout healthFactor_a9_std_OLS_9 healthFactor_a9_std_IV_9 chHealth_neg_OLS_9 chHealth_neg_IV_9 ///
-	absent_OLS_9 absent_IV_9 numRegDoc_OLS_9 numRegDoc_IV_9 ///
+	absent_OLS_9 absent_IV_9 medicalFactor_a9_std_OLS_9 medicalFactor_a9_std_IV_9 ///
 	using "${TABLEDIR}/regression9.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
-	keep(${ELIG} age female moAge _cons) order(${ELIG} age female moAge _cons) /// 		"\ "
+	keep(${ELIG9} ${CONTROLS} _cons) order(${ELIG9} ${CONTROLS} _cons) /// 					"\ "
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 						stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///							stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///				stats
-	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Doc", ///			mgroups
-	pattern(1 0 1 0 1 0 1 0) span ///													mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///		mgroups
-	varlabels(_cons Constant, blist(${ELIG} "\hline ")) //								varlabels
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Utilization", ///		mgroups
+	pattern(1 0 1 0 1 0 1 0) span ///														mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
+	varlabels(_cons Constant, blist(${ELIG9} "\hline ")) //									varlabels
 
-	* ----- AGE 15
-	* TO-DO: also include without controls
-	* TO-DO: add correct measures (for age 15)
-	estout healthFactor_a9_std_OLS_9 healthFactor_a9_std_IV_9 chHealth_neg_OLS_9 chHealth_neg_IV_9 ///
-	absent_OLS_9 absent_IV_9 numRegDoc_OLS_9 numRegDoc_IV_9 ///
+	* ----- OLS & IV (AGE 15)
+	estout behavFactor_a15_std_OLS_15 behavFactor_a15_std_IV_15 chHealth_neg_OLS_15 chHealth_neg_IV_15 ///
+	absent_OLS_15 absent_IV_15 limit_OLS_15 limit_IV_15 medFac_a15_std_OLS_15 medFac_a15_std_IV_15 ///
 	using "${TABLEDIR}/regression15.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
-	keep(${ELIG} age female moAge _cons) order(${ELIG} age female moAge _cons) /// 		"\ "
+	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
+	keep(${ELIG15} ${CONTROLS} _cons) order(${ELIG15} ${CONTROLS} _cons) /// 					"\ "
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 						stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///							stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///				stats
-	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Doc", ///			mgroups
-	pattern(1 0 1 0 1 0 1 0) span ///													mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///		mgroups
-	varlabels(_cons Constant, blist(${ELIG} "\hline ")) //								varlabels
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 								stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///									stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///						stats
+	mgroups("\rule{0pt}{3ex} Factor Behav" "Child Health" "Absent" "Limit" "Utilization", ///	mgroups
+	pattern(1 0 1 0 1 0 1 0 1 0) span ///														mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///				mgroups
+	varlabels(_cons Constant, blist(${ELIG15} "\hline ")) //									varlabels
 
+	* ----- RF & FS (9)
+	estout healthFactor_a9_std_FS_9 healthFactor_a9_std_RF_9 chHealth_neg_FS_9 chHealth_neg_RF_9 ///
+	absent_FS_9 absent_RF_9 medicalFactor_a9_std_FS_9 medicalFactor_a9_std_RF_9 ///
+	using "${TABLEDIR}/RF_FS_9.tex", replace label collabels(none) style(tex) ///
+	mlabels("\rule{0pt}{3ex} FS" "RF" "FS" "RF" "FS" "RF" "FS" "RF") nonumbers ///
+	keep(${SIMELIG9} ${CONTROLS} _cons) order(${SIMELIG9} ${CONTROLS} _cons) /// 			"\ "
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Utilization", ///		mgroups
+	pattern(1 0 1 0 1 0 1 0) span ///														mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
+	varlabels(_cons Constant, blist(${SIMELIG9} "\hline ")) //								varlabels
 
+	* ----- RF & FS (15)
+	estout behavFactor_a15_std_FS_15 behavFactor_a15_std_RF_15 chHealth_neg_FS_15 chHealth_neg_RF_15 ///
+	absent_FS_15 absent_RF_15 limit_FS_15 limit_RF_15 medFac_a15_std_FS_15 medFac_a15_std_RF_15 ///
+	using "${TABLEDIR}/RF_FS_15.tex", replace label collabels(none) style(tex) ///
+	mlabels("\rule{0pt}{3ex} FS" "RF" "FS" "RF" "FS" "RF" "FS" "RF" "FS" "RF") nonumbers ///
+	keep(${SIMELIG15} ${CONTROLS} _cons) order(${SIMELIG15} ${CONTROLS} _cons) /// 				"\ "
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 								stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///									stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///						stats
+	mgroups("\rule{0pt}{3ex} Factor Behav" "Child Health" "Absent" "Limit" "Utilization", ///	mgroups
+	pattern(1 0 1 0 1 0 1 0 1 0) span ///														mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///				mgroups
+	varlabels(_cons Constant, blist(${SIMELIG15} "\hline ")) //									varlabels
+
+	* ----- CHILD HEALTH BY AGE (OLS & IV) - CURRENT ELIGIBILITY
+	estout chHealth_neg_IV_SEP_1 chHealth_neg_IV_SEP_3 chHealth_neg_IV_SEP_5 ///
+	chHealth_neg_IV_SEP_9 chHealth_neg_IV_SEP_15 ///
+	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
+	mlabels("\rule{0pt}{3ex}"  "" "" "" "" "" "" "" "" "") numbers ///
+	keep(elig ${CONTROLS} _cons) order(elig ${CONTROLS} _cons) /// 							"\ "
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
+	pattern(1 1 1 1 1) span ///																mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
+	varlabels(_cons Constant, blist(elig "\hline ")) //										varlabels	
+
+	* ----- CHILD HEALTH BY AGE (OLS & IV) - CUMULATED ELIGIBILITY
+	estout chHealth_neg_IV_SEP2_1 chHealth_neg_IV_SEP2_3 chHealth_neg_IV_SEP2_5 ///
+	chHealth_neg_IV_SEP2_9 chHealth_neg_IV_SEP2_15 ///
+	using "${TABLEDIR}/chHealth_all2.tex", replace label collabels(none) style(tex) ///
+	mlabels("\rule{0pt}{3ex}"  "" "" "" "" "" "" "" "" "") numbers ///
+	keep(eligAll1 eligAll3 eligAll5 eligAll9 eligAll15 ${CONTROLS} _cons) ///
+	order(eligAll1 eligAll3 eligAll5 eligAll9 eligAll15 ${CONTROLS} _cons) /// 				"\ "
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
+	pattern(1 1 1 1 1) span ///																mgroups
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
+	varlabels(_cons Constant, blist(eligAll1 "\hline ")) //									varlabels	
 
 } // END REGRESSIONS
 
 
+
+* ---------------------------------------------------------------------------- *
+* -------------------------------- ROBUSTNESS -------------------------------- *
+* ---------------------------------------------------------------------------- *
+
+if ${ROBUSTNESS} == 1 {
+
+	* IV with and without controls & FE
+	* Selection / Drop-out
+	* Covariates
+
+} // END ROBUSTNESS
+
+
+
+
+
+
+
 * capture log close
+
+
 
 
 /* ----------------------------- EXAMPLE OUTPUT
@@ -340,17 +454,5 @@ N		XX		XX		XX		XX			XX		XX		XX		XX
 ----------------------------------------------------------------------------
 NOTES: XXX
 */
-
-
-* ----------------------------- NOTE USED
-/* 	Interpretation code
-	regression here
-	* As percentage of a standard deviation
-	local beta_allMediHI_`wave' = _b[allMediHI]
-	sum chHealth_`wave'
-	local chHealth_`wave'_sd = r(sd)
-	*di " Increases on average by " (`beta_allMediHI_15' / `chHealth_15_sd') " of a standard deviation"
-	listcoef, help */
-
 
 

@@ -15,11 +15,11 @@ set maxvar 10000
 
 /*
 Input datasets:
-- cps :           age statefip incRatio year
-- cutscombined :  age statefip year medicuat schipcut bpost1983
+- cps                   : age statefip year incRatio
+- cutscombined          : age statefip year medicut schipcut bpost1983
 
 Output datasets:
-- simulatedEligbility : age statefip year simelig
+- simulatedEligbility   : age statefip year simelig
 
 Note:
 - Thompson uses CPS data from 1980 - 1999, but does not use years but all observations combined */
@@ -47,17 +47,25 @@ levelsof statefip, local(states)
 foreach age of numlist 0/18 {
     foreach state of local states {
         foreach year of numlist 1998/2018 {
-            di "Age: `age', Year: `year', State: `state'"
-            qui use "${CLEANDATADIR}/cps.dta" if age==`age', clear
-            qui drop if statefip==`state'   // drops those obs from the state in question
-            qui drop statefip               // takes the obs from all states
-            qui g bpost1983=`year'-`age'>1983
-            qui g statefip=`state'          // create obs for state in question
-            qui g year=`year'               // create obs for year in question
+            di "* ----- Age: `age', Year: `year', State: `state'"
+            qui use "${CLEANDATADIR}/cps.dta" if age == `age' , clear
+
+            * Drops those obs from the state in question
+            qui drop if statefip == `state'
+
+            * Takes the obs from all states
+            qui drop statefip
+            qui gen bpost1983   = `year' - `age' > 1983
+
+            * Create obs for state & year in question
+            qui gen statefip    = `state'
+            qui gen year        = `year'
+
             qui merge m:1 statefip year age bpost1983 using "${CLEANDATADIR}/cutscombined.dta", norep
-            qui keep if _merge==3
-            qui g simulatedElig=incRatio<=medicut | incRatio<=schipcut
-            qui collapse simulatedElig, by(statefip year age)
+            qui keep if _merge == 3
+            qui gen simulatedElig = incRatio <= medicut | incRatio <= schipcut
+
+            qui collapse (mean) simulatedElig, by(statefip year age)
             qui append using "${CLEANDATADIR}/simulatedEligbility.dta"
             qui save "${CLEANDATADIR}/simulatedEligbility.dta", replace
         }

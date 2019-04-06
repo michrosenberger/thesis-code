@@ -1,7 +1,23 @@
+* -----------------------------------
+* Content: 			Clean CPS 2017
+* Author:				Jean Roth
+* Modified by: 	Michelle Rosenberger
+* Date: 				November 15, 2018
+* -----------------------------------
+
 capture log close
 capture label drop _all
 clear all
-*log using cpsmar2017.log, replace
+
+* ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
+if "`c(username)'" == "michellerosenberger"  {
+    global MYPATH			"~/Development/MA"
+}
+global RAWDATADIR			"${MYPATH}/data/raw/MarchCPS"
+global CODEDIR				"${MYPATH}/code"
+global CLEANDATADIR  	"${MYPATH}/data/clean"
+global TEMPDATADIR  	"${MYPATH}/data/temp"
+
 
 /*------------------------------------------------
   by Jean Roth Thu Oct 12 15:43:03 EDT 2017
@@ -10,14 +26,6 @@ clear all
   See end of this file and http://www.gnu.org/licenses/ for details.
   Run with do cpsmar2017
 ----------------------------------------------- */
-
-if "`c(username)'" == "michellerosenberger"  {
-    global MYPATH		"~/Development/MA"
-}
-global RAWDATADIR			"${MYPATH}/data/raw/MarchCPS"
-global CODEDIR				"${MYPATH}/code"
-global CLEANDATADIR  	"${MYPATH}/data/clean"
-global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 /* The following line should contain
    the complete path and name of the raw data file.

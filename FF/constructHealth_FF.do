@@ -9,11 +9,15 @@
 /* This code combines and constructs the relevant health outcomes across all
 waves from the Fragile Families data.
 
-Input datasets:
-- "${TEMPDATADIR}/prepareHealth.dta"
+Input datasets (TEMPDATADIR):
+prepareHealth.dta
 
-Output datasets:
-- "${TEMPDATADIR}/health.dta"
+Output datasets (TEMPDATADIR):
+health.dta
+
+TO-DO:
+- CHECK if we have MEDICAL EXPENDITURE
+- CHECK BMI
 */
 
 * ---------------------------------------------------------------------------- *
@@ -38,10 +42,6 @@ global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
 
 
-* ----------------------------- LOAD PROGRAMS
-do "${CODEDIR}/FF/programs_FF.do"
-
-
 * ----------------------------- LOAD DATA
 use "${TEMPDATADIR}/prepareHealth.dta", clear 
 
@@ -61,15 +61,15 @@ label var asthmaER 		"Emergency/urgent care treatment for asthma"
 label var asthmaAttack 	"Episode of asthma or asthma attack"
 
 label define health 	1 "1 Excellent" 2 "2 Very good" 3 "3 Good" 4 "4 Fair" 5 "5 Poor"
-label define YESNO 		0 "0 No" 1 "1 Yes"
-label define chLiveMo 	1 "1 Mother" 2 "Father"
+label define YESNO 		0 "0 No" 		1 "1 Yes"
+label define moReport 	0 "Father" 		1 "1 Mother"
 
-label define numRegDoc 	0 "0 Never" 1 "1 1-3 times" 2 "2 4+ times"
+label define numRegDoc 	0 "0 Never" 	1 "1 1-3 times" 2 "2 4+ times"
 
-label define regDoc		0 "No" 1 "Yes"
+label define regDoc		0 "No" 			1 "Yes"
 
 label values chHealth moHealth faHealth chHealthSelf health
-label values chLiveMo chLiveMo
+label values moReport moReport
 label values numRegDoc numRegDoc
 label values regDoc regDoc
 
@@ -84,33 +84,46 @@ asthmaAttack asthmaER diagnosedDepression YESNO
 * ---------------------------- CONSTRUCT VARIABLES --------------------------- *
 * ---------------------------------------------------------------------------- *
 
-* ----------------------------- HEALTH 
-* Youth health (parent-reported) observed each wave
-foreach num of numlist 0 1 3 5 9 15 {
-	gen chHealth_`num'_temp = chHealth if wave == `num'
-	sum chHealth_`num'_temp
-	egen chHealth_`num' = max(chHealth_`num'_temp), by(id)
-}
-drop *_temp
+* ----------------------------- RECODE VARIABLES
+* RECODE such that a higher score represents better health
+
+* ----- CHILD & MOTHER HEALTH
+recode chHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(chHealth_neg)
+recode moHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(moHealth_neg)
+
+label define healthneg 1 "1 Poor" 2 "2 Fair" 3 "3 Good" 4 "4 Very good" 5 "5 Excellent"
+label values chHealth_neg moHealth_neg healthneg
 
 
+* ----- CHILD HAD ...
+recode feverRespiratory 	(1 = 0) (0 = 1), gen(no_feverRespiratory)
+recode anemia				(1 = 0) (0 = 1), gen(no_anemia)
+recode seizures 			(1 = 0) (0 = 1), gen(no_seizures)
+recode foodDigestive 		(1 = 0) (0 = 1), gen(no_foodDigestive)
+recode eczemaSkin 			(1 = 0) (0 = 1), gen(no_eczemaSkin)
+recode diarrheaColitis 		(1 = 0) (0 = 1), gen(no_diarrheaColitis)
+recode headachesMigraines	(1 = 0) (0 = 1), gen(no_headachesMigraines)
+recode earInfection 		(1 = 0) (0 = 1), gen(no_earInfection)
+recode asthmaAttack 		(1 = 0) (0 = 1), gen(no_asthmaAttack)
 
-* ----------------------------- ELIGIBILITY 
-* ----- ELIGIBILITY OBSERVED FOR EACH WAVE
-
-* ----- TOTAL ELIGIBILITY
+label define NOYES 0 "0 Had" 1 "1 Never"
+label values no_* NOYES
 
 
+* ----- HEALTH BEHAVIOURS
+recode everSmoke 	(1 = 0) (0 = 1), gen(neverSmoke)
+recode everDrink 	(1 = 0) (0 = 1), gen(neverDrink)
 
 
-* ----------------------------- SIMULATED ELIGIBILITY
-* ----- SIMULATED ELIGIBILITY OBSERVED FOR EACH WAVE
+* ----------------------------- CHILD HEALTH IN EACH WAVE
+gen chHealth_9_temp = chHealth if wave == 9
+egen chHealth_9 = max(chHealth_9_temp), by(idnum)
 
-* ----- TOTAL SIMULATED ELIGIBILITY
+gen chHealth_15_temp = chHealth if wave == 15
+egen chHealth_15 = max(chHealth_15_temp), by(idnum)
 
 
-
-* ----------------------------- COVERAGE
+* ----------------------------- MEDICAID COVERAGE
 * ----- COVERAGE EACH WAVE
 foreach num of numlist 0 1 3 5 9 15 {
 	gen mediCov_c`num' = chMediHI if wave == `num'
@@ -128,6 +141,88 @@ foreach num of numlist 0 1 3 5 9 15 {
 
 
 * ----------------------------- FACTOR SCORE
+* NOTE: HIGHER SCORE REPRESENTS A BETTER OUTCOME 
+
+* ----------------------------- FACTOR SCORE: GENERAL HEALTH (AGE 9 & 15)
+* ----- SEM
+* child health + had in past 12 months (no_)
+sem (GeneralHealth -> chHealth_neg no*), method(mlmv) var(GeneralHealth@1)
+predict healthFactor_a9 	if (e(sample) == 1 & wave == 9),	latent(GeneralHealth)
+predict healthFactor_a15 	if (e(sample) == 1 & wave == 15),	latent(GeneralHealth)
+
+
+* ----- STANDARDIZE
+egen healthFactor_a9_std 	= std(healthFactor_a9)
+egen healthFactor_a15_std 	= std(healthFactor_a15)
+
+drop healthFactor_a9 healthFactor_a15
+
+* ----- BINARY
+
+* ----------------------------- FACTOR SCORE: MEDICAL UTILIZATION (AGE 9 & 15)
+* ----- SEM
+* medication + doc illness + doc regular + ER
+sem (UtilFactor -> numDocIll medication numRegDoc emRoom), method(mlmv) var(UtilFactor@1) 
+predict medicalFactor_a9 	if (e(sample) == 1 & wave == 9),	latent(UtilFactor)
+predict medicalFactor_a15 	if (e(sample) == 1 & wave == 15),	latent(UtilFactor)
+
+* ----- STANDARDIZE 
+egen medicalFactor_a9_std 	= std(medicalFactor_a9)
+egen medicalFactor_a15_std 	= std(medicalFactor_a15)
+
+drop medicalFactor_a9 medicalFactor_a15
+
+* ----- BINARY
+
+
+* ----------------------------- HEALTH BEHAVIOURS (AGE 15)
+* ----- SEM
+sem (BehavFactor -> activityVigorous neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1) // bmi
+predict behavFactor_a15 if (e(sample) == 1 & wave == 15),	latent(BehavFactor)
+
+* ----- STANDARDIZE 
+egen behavFactor_a15_std = std(behavFactor_a15)
+drop behavFactor_a15
+
+* ----- BINARY
+
+* ----------------------------- BMI
+* BMI + indicator for overweight
+
+
+* ----------------------------- LIMITATIONS (AGE 9 & 15)
+* limit (AGE 15)
+* absent (AGE 9 & 15)
+
+
+* ----------------------------- MENTAL HEALTH (AGE 15)
+* depressed diagnosedDepression
+
+
+
+
+* ----------------------------- SAVE
+describe
+save "${TEMPDATADIR}/health.dta", replace 
+
+
+
+
+
+
+
+
+* ----------------------------- NOT USED
+* ----- SEM (SPECIFIC FOR EACH AGE)
+// sem (Health -> chHealth_neg no*) if wave == 9, method(mlmv) var(Health@1) standardized
+// predict healthFactor_e9 	if (e(sample) == 1 & wave == 9), latent(Health)
+
+* ----- STANDARDIZE (SPECIFIC FOR EACH AGE)
+// egen healthFactor_e9_std = std(healthFactor_e9)
+// drop healthFactor_e9
+
+
+* ----------------------------- INFO FACTOR SCORE
 * A factor score variable I can leverage the correlation across the observations
 /* Manual: the output will be easier to interpret if we display standardized
 values for paths rather than path coefficients. A standardized value is in
@@ -142,118 +237,6 @@ because each indicator measures only one factor. For instance, the standardized
 path coefficient a1<-Affective is 0.90, meaning the correlation between a1 and
 Affective is 0.90. */
 
-/* FACTOR SCORES
-1. General factor score that includes all variables and the predicts factor
-score at each age / wave
-2. Construct a factor score for each age / wave */
 
 
-* ----------------------------- RECODE VARIABLES
-* RECODE such that a higher score represents better health
-global RECODEVARS feverRespiratory anemia seizures foodDigestive eczemaSkin ///
-diarrheaColitis headachesMigraines earInfection asthmaAttack 
-
-foreach var in $RECODEVARS {
-	gen no_`var' = . 
-	replace no_`var' = 1 if `var' == 0
-	replace no_`var' = 0 if `var' == 1
-}
-
-label define NOYES 0 "0 Yes" 1 "1 No"
-label values no_* NOYES
-
-foreach var in chHealth moHealth {
-	gen `var'_neg = . 
-	replace `var'_neg = 1 if `var' == 5
-	replace `var'_neg = 2 if `var' == 4
-	replace `var'_neg = 3 if `var' == 3
-	replace `var'_neg = 4 if `var' == 2
-	replace `var'_neg = 5 if `var' == 1
-}
-
-label define Health_neg 1 "Poor" 2 "Fair" 3 "Good" 4 "Very good" 5 "Excellent"
-label values chHealth_neg moHealth_neg Health_neg
-
-
-
-* ----------------------------- FACTOR SCORE: GENERAL HEALTH - higher score, better health
-* ----- SEM
-sem (GeneralHealth -> chHealth_neg no*), method(mlmv) var(GeneralHealth@1)
-foreach num of numlist 1 3 5 9 15 {
-	predict healthFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(GeneralHealth)
-}
-
-* ----- STANDARDIZE 
-foreach wave of numlist 1 3 5 9 15 {
-	egen healthFactor_a`wave'_std = std(healthFactor_a`wave')
-}
-drop healthFactor_a1-healthFactor_a15
-
-
-* ----------------------------- FACTOR SCORE: MEDICAL UTILIZATION
-* NOTE: higher score, higher utilization
-* NOTE: check if we have MEDICAL EXPENDITURE
-
-* ----- SEM
-sem (UtilFactor -> numDocIll medication numRegDoc emRoom), method(mlmv) var(UtilFactor@1)
-foreach num of numlist 1 3 5 9 15 {
-	predict medicalFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(UtilFactor)
-}
-
-* ----- STANDARDIZE 
-foreach wave of numlist 1 3 5 9 15 {
-	egen medicalFactor_a`wave'_std = std(medicalFactor_a`wave')
-}	
-
-drop medicalFactor_a1-medicalFactor_a15
-
-
-* ----------------------------- HEALTH BEHAVIOURS
-* NOTE: NOT SURE IN WHICH DIRECTION
-* NOTE: Check if other bmi and if for other years also
-gen neverSmoke = .
-gen neverDrink = .
-
-replace neverSmoke = 1 if everSmoke == 0
-replace neverSmoke = 0 if everSmoke == 1
-replace neverDrink = 1 if everDrink == 0
-replace neverDrink = 0 if everDrink == 1
-
-* ----- SEM
-sem (BehavFactor -> activity30 neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1)
-foreach num of numlist 15 { // 1 3 5 9
-	predict behavFactor_a`num' if (e(sample) == 1 & wave == `num'), latent(BehavFactor)
-}
-
-* ----- STANDARDIZE 
-foreach wave of numlist 15 { // 1 3 5 9 
-	egen behavFactor_a`wave'_std = std(medicalFactor_a`wave')
-}	
-
-drop behavFactor_a15 // behavFactor_a1-
-
-
-* ----------------------------- LIMITATIONS
-* limit absent
-
-
-* ----------------------------- MENTAL HEALTH
-* depressed diagnosedDepression
-
-
-
-* ----------------------------- FACTOR SCORE: GENERAL HEALTH - SPECIFIC FOR EACH AGE
-// sem (Health -> chHealth ${RECODEVARS}) if wave == 9, method(mlmv) var(Health@1) standardized
-// predict healthFactor_e9 if ( e(sample) == 1 & wave == 9 ), latent(Health)
-
-// sem (Health -> chHealth foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection limit) if wave == 15, method(mlmv) var(Health@1) standardized
-// predict healthFactor_e15 if ( e(sample) == 1 & wave == 15 ), latent(Health)
-// Add other ages
-
-* Create binary index
-
-
-* ----------------------------- SAVE
-describe
-save "${TEMPDATADIR}/health.dta", replace 
 

@@ -1,12 +1,14 @@
+* -----------------------------------
 * Content: 		Clean CPS data 2017-2018
 * Author:		Copyright 2016 CEPR, John Schmitt, Hye Jin Rho, Janelle Jones, Cherrie Bucknor
 * Modified by: 	Michelle Rosenberger
 * Date: 		November 15, 2018
+* -----------------------------------
 
-/* This file is composed from several parts from the cepr_march_master.do programs
+/* This file is composed by several parts from the cepr_march_master.do programs
 which were created by CEPR. These files are distributed by CEPR under the GNU General
-Public License (See copyright notice at end of program).See the following homepage for
-all the relevant files:
+Public License (See copyright notice at end of program). See the following homepage
+for all the relevant files:
 http://ceprdata.org/cps-uniform-data-extracts/march-cps-supplement/march-cps-programs/
 The relevenat code parts were inlcuded in this file to make the years 2017 and 2018
 comparable with the previous years. */

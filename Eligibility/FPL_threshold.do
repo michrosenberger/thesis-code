@@ -34,10 +34,10 @@ global TEMPDATADIR      "${MYPATH}/data/temp"
 * ----------------------------- POVERTY LEVELS
 clear all
 set obs 1
-gen state = ""
-gen year = .
-gen famSize = .
-gen povLevel = .
+gen state       = ""
+gen year        = .
+gen famSize     = .
+gen povLevel    = .
 save "${CLEANDATADIR}/PovertyLevels.dta", replace
 
 forvalues year = 1997(1)2018 { 
@@ -62,8 +62,8 @@ drop if year == .
 
 * ----------------------------- STATE
 statastates, name(state) nogenerate   // gen statefips
-rename state_fips   statefip
-rename state        state_name
+rename state_fips       statefip
+rename state            state_name
 
 label var statefip 	    "State of residence fips codes"
 label var state_name 	"State of residence abbreviation"

@@ -9,17 +9,12 @@
 /* This code combines all the waves and constructs the necessary variables
 for the household structure in the Fragile Families data.
 
-Input datasets:
-- "${TEMPDATADIR}/parents_Y0.dta"
-- "${TEMPDATADIR}/parents_Y1.dta"
-- "${TEMPDATADIR}/parents_Y3.dta"
-- "${TEMPDATADIR}/parents_Y5.dta"
-- "${TEMPDATADIR}/parents_Y9.dta"
-- "${TEMPDATADIR}/parents_Y15.dta"
-- "${TEMPDATADIR}/states.dta"
+Input datasets (TEMPDATADIR):
+parents_Y0.dta; parents_Y1.dta; parents_Y3.dta; parents_Y5.dta;
+parents_Y9.dta; parents_Y15.dta; states.dta
 
-Output datasets:
-- "${TEMPDATADIR}/household_FF.dta"
+Output datasets (TEMPDATADIR):
+household_FF.dta
 */
 
 * ---------------------------------------------------------------------------- *
@@ -78,17 +73,19 @@ drop    age_temp age_m
 merge 1:1 idnum wave using "${TEMPDATADIR}/states.dta", nogen
 rename state statefip
 
-* ----------------------------- GENDER, MOTHER AGE, MOTHER RACE
+* ----------------------------- GENDER, RACE, MOTHER AGE, MOTHER RACE
 foreach var in gender moAge moWhite moBlack moHispanic moOther moEduc ///
-chBlack chHispanic chOther chMulti chWhite {
+chBlack chHispanic chOther chMulti chWhite chRace {
     rename  `var' `var'_temp
     egen    `var' = max(`var'_temp), by(idnum) 
     drop    `var'_temp
 }
-gen female = . 
-replace female = 1 if gender == 2
-replace female = 0 if gender == 1
-drop gender
+
+recode gender (2 = 1) (1 = 0)
+rename gender female
+tab female
+
+rename chRace race
 
 * ----------------------------- FAM INCOME IN THOUSANDS
 replace avgInc = avgInc / 1000

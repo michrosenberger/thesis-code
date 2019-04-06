@@ -11,8 +11,8 @@
 * ---------------------------------------------------------------------------- *
 
 * ----------------------------- MISSING VALUES
-capture program drop missingvalues
-program define missingvalues
+capture program drop    P_missingvalues
+program define          P_missingvalues
 	ds, has(type numeric)
 	global ALLVARIABLES = r(varlist)
 
@@ -33,19 +33,19 @@ end
 
 
 * ----------------------------- PARENT REPORTED HEALTH
-capture program drop child_health
-program define child_health
+capture program drop    P_childHealth
+program define          P_childHealth
 	args moreport fareport
 
 	gen chHealth = .
-	replace chHealth = `moreport' if chLiveMo != 2 	// mother + default
-	replace chHealth = `fareport' if chLiveMo == 2	// father
+	replace chHealth = `moreport' if moReport != 0 	// mother + default
+	replace chHealth = `fareport' if moReport == 0	// father
 end
 
 
 * ----------------------------- MEDICAID CHILD
-capture program drop medicaid
-program define medicaid
+capture program drop    P_medicaid
+program define          P_medicaid
 	args mo_covered mo_who fa_covered fa_who
 
 	* Medicaid parents report
@@ -67,8 +67,8 @@ program define medicaid
 	* Medicaid child
 	foreach healthins in chMediHI chPrivHI {
 		gen `healthins' = .
-		replace `healthins' = `healthins'_mo if chLiveMo != 2	// mother + default
-		replace `healthins' = `healthins'_fa if chLiveMo == 2	// father
+		replace `healthins' = `healthins'_mo if moReport != 0	// mother + default
+		replace `healthins' = `healthins'_fa if moReport == 0	// father
 	}
 	drop *_mo *_fa
 
@@ -76,8 +76,8 @@ end
 
 
 * ----------------------------- DEMOGRAPHICS
-capture program drop demographics
-program define demographics 
+capture program drop    P_demographics
+program define          P_demographics 
     args wave
 
     if wave == 0 {
@@ -118,8 +118,8 @@ program define demographics
 end
 
 * ----------------------------- HH INCOME FF
-capture program drop hh_incomeFF
-program define hh_incomeFF
+capture program drop    P_hhIncome
+program define          P_hhIncome
     args wave
 
     local int = 1
@@ -144,8 +144,8 @@ program define hh_incomeFF
 end
 
 * ----------------------------- CONSTRUCTED HH STRUCTURE FROM INDIVIDUALS IN HH
-capture program drop hh_structure
-program define hh_structure
+capture program drop    P_hhStructure
+program define          P_hhStructure
 
     args wave numpeople femvar agevar relatevar employvar
 
@@ -197,35 +197,35 @@ program define hh_structure
 end
 
 * ----------------------------- CHILD LIVING ARR.
-capture program drop living_arr
-program define living_arr
+capture program drop    P_report
+program define          P_report
     args timevar usuallyvar
 
     codebook `timevar'		    // how much time
     codebook `usuallyvar'		// usually live with
 
-    gen 	chLiveMo = .
-    replace chLiveMo = 1 if (`timevar' == 1 | `timevar' == 2)	 // mother (most & half)
-    replace chLiveMo = 2 if (`timevar' != 1 & `timevar' != 2 & `usuallyvar' == 1)	// father
-    label var chLiveMo      "Child lives with mother"
+    gen 	moReport = .
+    replace moReport = 1 if (`timevar' == 1 | `timevar' == 2)	                    // mother (most & half)
+    replace moReport = 0 if (`timevar' != 1 & `timevar' != 2 & `usuallyvar' == 1)	// father
+    label var moReport      "Child lives with mother"
 
 end
 
 
 * ----------------------------- RESHAPE & MISSING VALUES
-capture program drop reshape_missing
-program define reshape_missing
+capture program drop    P_reshapeMissing
+program define          P_reshapeMissing
 
     * RESHAPE
     if wave == 0 {
-        keep idnum mo* fa* ch* wave moWhite moBlack moHispanic moOther chLiveMo // cm1relf
+        keep idnum mo* fa* ch* wave moWhite moBlack moHispanic moOther moReport // cm1relf
         reshape long moHH_female moHH_age moHH_relate moHH_employ faHH_female faHH_age faHH_relate faHH_employ, i(idnum) j(noHH_member)
-        keep idnum mo* fa* ch* no* wave moWhite moBlack moHispanic moOther chLiveMo
+        keep idnum mo* fa* ch* no* wave moWhite moBlack moHispanic moOther moReport
     }
     if wave > 0 {
-        keep idnum mo* fa* ch* wave chLiveMo // cm1relf
+        keep idnum mo* fa* ch* wave moReport // cm1relf
         reshape long moHH_female moHH_age moHH_relate moHH_employ faHH_female faHH_age faHH_relate faHH_employ, i(idnum) j(noHH_member)
-        keep idnum mo* fa* ch* no* wave chLiveMo
+        keep idnum mo* fa* ch* no* wave moReport
     }
 
     order idnum wave
@@ -240,8 +240,8 @@ program define reshape_missing
 end
 
 * ----------------------------- PARENTS FAM STRUCTURE
-capture program drop fam_structure
-program define fam_structure
+capture program drop    P_famStructure
+program define          P_famStructure
 
     * Construct number of individuals in HH
     foreach parent in mo fa {
@@ -341,19 +341,19 @@ end
 
 
 * ----------------------------- CONSTRUCTED CHILD FAM STRUCTURE & FAM / HH INCOME
-capture program drop fam_structure_income
-program define fam_structure_income
+capture program drop    P_famSizeStructure
+program define          P_famSizeStructure
 
     * FAM STRUCTURE
-    /* IF chLiveMo missing: mother report as default */
+    /* IF moReport missing: mother report as default */
     foreach var in member female relate age employ size {
-        gen     chFAM_`var' = moFAM_`var' if chLiveMo == 1 // mother report
-        replace chFAM_`var' = faFAM_`var' if chLiveMo == 2 // father report
-        replace chFAM_`var' = moFAM_`var' if (chLiveMo != 1 & chLiveMo != 2)  // default
+        gen     chFAM_`var' = moFAM_`var' if moReport == 1 // mother report
+        replace chFAM_`var' = faFAM_`var' if moReport == 0 // father report
+        replace chFAM_`var' = moFAM_`var' if (moReport != 1 & moReport != 0)  // default
 
     }
-    gen     chFAM_size_f  = 1 if chLiveMo != 2    // mother
-    replace chFAM_size_f  = 0 if chLiveMo == 2    // father
+    gen     chFAM_size_f  = 1 if moReport != 0    // mother
+    replace chFAM_size_f  = 0 if moReport == 0    // father
     label   define chFAM_size_f 0 "Father report" 1 "Mother report"
     label   values chFAM_size_f chFAM_size_f
 
@@ -362,25 +362,25 @@ program define fam_structure_income
     gen     moAvg_inc = (moHH_income / moHH_size) * moFAM_size
     gen     faAvg_inc = (faHH_income / faHH_size) * faFAM_size
 
-    gen     chHH_size = moHH_size if chLiveMo != 2    // mo report
-    replace chHH_size = faHH_size if chLiveMo == 2    // fa report
+    gen     chHH_size = moHH_size if moReport != 0    // mo report
+    replace chHH_size = faHH_size if moReport == 0    // fa report
 
-    gen     chHH_income = moHH_income if chLiveMo != 2  // mo report
-    replace chHH_income = faHH_income if chLiveMo == 2  // fa report
+    gen     chHH_income = moHH_income if moReport != 0  // mo report
+    replace chHH_income = faHH_income if moReport == 0  // fa report
 
-    gen     chAvg_inc = moAvg_inc if chLiveMo != 2      // mo report
-    replace chAvg_inc = faAvg_inc if chLiveMo == 2      // fa report
+    gen     chAvg_inc = moAvg_inc if moReport != 0      // mo report
+    replace chAvg_inc = faAvg_inc if moReport == 0      // fa report
 
     * Poverty ratio FF (Child hh income ratio)
-    gen     incRatio = moHH_povratio if chLiveMo != 2   // mo report
-    replace incRatio = faHH_povratio if chLiveMo == 2   // fa report
+    gen     incRatio = moHH_povratio if moReport != 0   // mo report
+    replace incRatio = faHH_povratio if moReport == 0   // fa report
 
     * COLLAPSE AND SAVE
     if wave == 0 {
-        keep idnum moYear moMonth ch* incRatio wave moAge moEduc moWhite moBlack moHispanic moOther moHH_size_c chLiveMo moCohort
+        keep idnum moYear moMonth ch* incRatio wave moAge moEduc moWhite moBlack moHispanic moOther moHH_size_c moReport moCohort
     }
     if wave > 0 {
-        keep idnum moYear moMonth ch* incRatio wave moHH_size_c chLiveMo moCohort
+        keep idnum moYear moMonth ch* incRatio wave moHH_size_c moReport moCohort
     }
     order idnum moYear moMonth
     sort idnum

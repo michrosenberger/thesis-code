@@ -9,13 +9,13 @@
 /* This code extracts all the necessary health variables from the Fragile
 Families data for all the waves.
 
-Input datasets:
-ffmombspv3.dta; ffdadbspv3.dta; ffmom1ypv2.dta; ffdad1ypv2.dta; ffmom3ypv2.dta
-ffdad3ypv2.dta; InHome3yr.dta; 	ffmom5ypv1.dta; ffdad5ypv1.dta; inhome5yr2011.dta
+* ----- INPUT DATASETS (RAWDATADIR):
+ffmombspv3.dta; ffdadbspv3.dta; ffmom1ypv2.dta; ffdad1ypv2.dta; ffmom3ypv2.dta;
+ffdad3ypv2.dta; InHome3yr.dta; 	ffmom5ypv1.dta; ffdad5ypv1.dta; inhome5yr2011.dta;
 ff_y9_pub1.dta; FF_Y15_pub.dta
 
-Output datasets:
-- "${TEMPDATADIR}/prepareHealth.dta"
+* ----- OUTPUT DATASETS (TEMPDATADIR):
+prepareHealth.dta
 */
 
 * ---------------------------------------------------------------------------- *
@@ -43,8 +43,8 @@ global CODEDIR          "${USERPATH}/code"
 do "${CODEDIR}/FF/programs_FF.do"
 
 * ----------------------------- NOTE
-* If chLiveMo == 2 the father report is used
-* Otherwise (chLiveMo != 2) the mother is reported is used
+* If moReport == 0 the father report is used
+* Otherwise (moReport != 0) the mother is reported is used
 
 * ---------------------------------------------------------------------------- *
 * --------------------------------- BASELINE --------------------------------- *
@@ -54,9 +54,12 @@ merge 1:1 idnum using "${RAWDATADIR}/00_Baseline/ffdadbspv3.dta", nogen
 keep idnum m1g1 f1g1 m1a15 m1a13
 
 * ----- RECODE MISSING VALUES
-missingvalues
+P_missingvalues
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y0.dta", keepusing(chLiveMo wave) nogen
+* ----- EQUALIZE
+recode m1a13 (2 = 0)
+
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y0.dta", keepusing(moReport wave) nogen
 
 * ----------------------------- HEALTH & MEDICAID (CORE REPORT)
 * ----- HEALTH PARENTS 	(SELF-REPORTED)
@@ -67,14 +70,12 @@ rename 	f1g1 faHealth
 gen 	chHealth = .
 
 * ----- MEDICAID CHILD 	(PARENT REPORTED)
-gen chMediHI = 0
+gen 	chMediHI = 0
 replace chMediHI = 1 if m1a15 == 1 | m1a15 == 101
-
 
 * ----------------------------- DOCTOR VARS (CORE)
 * ----- DOCTOR VISIT FOR PREGNANCY (BINARY) 
 rename m1a13 moDoc
-replace moDoc = 1 if moDoc == 2
 
 * ----------------------------- SAVE
 keep idnum *Health wave chMediHI moDoc
@@ -94,9 +95,12 @@ cm2gad_case cm2md_case_con cm2md_case_lib f2b11b f2b6 f2b7 fx2b7 f2b7a f2b7a ///
 f2b8 f2b8a
 
 * ----- RECODE MISSING VALUES
-missingvalues
+P_missingvalues
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y1.dta", keepusing(chLiveMo wave) nogen
+* ----- EQUALIZE
+recode m2b11 f2b11 m2b11a f2b11a m2b11b f2b11b (2 = 0)
+
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y1.dta", keepusing(moReport wave) nogen
 
 * ----------------------------- HEALTH & MEDICAID (CORE REPORT)
 * ----- HEALTH PARENTS	(SELF-REPORTED)
@@ -104,34 +108,29 @@ rename 	m2j1 moHealth
 rename 	f2j1 faHealth
 
 * ----- HEALTH YOUTH	(PARENT REPORTED)	chHealth
-child_health m2b2 f2b2
+P_childHealth m2b2 f2b2
 
 * ----- MEDICAID CHILD 	(PARENT REPORTED)	chMediHI chPrivHI
-medicaid 2j3 2j3a 2j4 2j4a
-
+P_medicaid 2j3 2j3a 2j4 2j4a
 
 * ----------------------------- ASTHMA (CORE REPORT)
 * ----- EVER ASTHMA
 * Has a health care professional ever told you child has asthma?
 gen everAsthma = .
-replace everAsthma = m2b11 if chLiveMo != 2
-replace everAsthma = f2b11 if chLiveMo == 2
-replace everAsthma = 0 if everAsthma == 2
+replace everAsthma = m2b11 if moReport != 0
+replace everAsthma = f2b11 if moReport == 0
 
 * ----- EPISODE ASTHMA
 * Since birth, has child had an episode of asthma or an asthma attack?
 gen asthmaAttack = .
-replace asthmaAttack = m2b11a if chLiveMo != 2
-replace asthmaAttack = f2b11a if chLiveMo == 2
-replace asthmaAttack = 0 if asthmaAttack == 2
+replace asthmaAttack = m2b11a if moReport != 0
+replace asthmaAttack = f2b11a if moReport == 0
 
 * ----- ER ASTHMA
 * Since birth, has child required emergency/urgent care treatment for asthma?
 gen asthmaER = . 
-replace asthmaER = m2b11b if chLiveMo != 2
-replace asthmaER = f2b11b if chLiveMo == 2
-replace asthmaER = 0 if asthmaER == 2
-
+replace asthmaER = m2b11b if moReport != 0
+replace asthmaER = f2b11b if moReport == 0
 
 * ----------------------------- DOCTOR VARS (CORE REPORT)
 * ----- WELL VISIT DOCTOR (RANGE)
@@ -167,8 +166,8 @@ rename f2b8a faemRoomAccInj
 * ----- WHICH REPORT
 foreach var in numRegDoc numDocIll numDocIllInj numDocInj emRoom emRoomAccInj {
 	gen `var' = . 
-	replace `var' = mo`var' if chLiveMo != 2
-	replace `var' = fa`var' if chLiveMo == 2
+	replace `var' = mo`var' if moReport != 0
+	replace `var' = fa`var' if moReport == 0
 }
 drop mo* fa*
 
@@ -217,9 +216,9 @@ a8 a9 a10 a15 a17 a18 a19 a19_ cm3alc_case cm3drug_case cm3gad_case ///
 cm3md_case_con cm3md_case_lib
 
 * ----- RECODE MISSING VALUES
-missingvalues
+P_missingvalues
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y3.dta", keepusing(chLiveMo wave) nogen
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y3.dta", keepusing(moReport wave) nogen
 
 
 * ---------------------- HEALTH & MEDICAID (CORE REPORT) --------------------- *
@@ -228,11 +227,10 @@ rename m3j1 moHealth
 rename f3j1 faHealth
 
 * ----- HEALTH YOUTH 	(PARENT REPORTED)
-child_health m3b2 f3b2
+P_childHealth m3b2 f3b2
 
 * ----- MEDICAID CHILD 	(PARENT REPORTED)
-medicaid 3j3 3j3a 3j4 3j4a
-
+P_medicaid 3j3 3j3a 3j4 3j4a
 
 * ----------------------------- ASTHMA (IN-HOME) ----------------------------- *
 * ----- EVER ASTHMA (BINARY)
@@ -324,44 +322,40 @@ cm4md_case_lib int5 int_5ot a1 a2_a a2_b a2_c a2_d a2_e a2_f a2_g a2_h a2_i ///
 a2_j a2_k a2_l a2_m a2_n a3_a a3_b a3_c a3_d a3_e a3_f a3_g a3_h a3_i
 
 * ----- RECODE MISSING VALUES
-missingvalues
+P_missingvalues
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y5.dta", keepusing(chLiveMo wave) nogen
+* ----- EQUALIZE
+recode m4b2a f4b2a m4b2b f4b2b m4b2c f4b2c (2 = 0)
+
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y5.dta", keepusing(moReport wave) nogen
 
 * ---------------------- HEALTH & MEDICAID (CORE REPORT) --------------------- *
 * ----- HEALTH PARENTS	(SELF-REPORTED)
 rename m4j1 moHealth
 rename f4j1 faHealth
 
-* ----- HEALTH CHILD	(PARENT REPORTED)	chHealth
-child_health m4b2 f4b2
-
-* ----- MEDICAID CHILD	(PARENT REPORTED)	chMediHI chPrivHI
-medicaid 4j3 4j3a 4j4 4j4a
-
+* ----- HEALTH & MEDICAID CHILD	(PARENT REPORTED)
+P_childHealth	m4b2 f4b2				// chHealth
+P_medicaid 		4j3 4j3a 4j4 4j4a		// chMediHI chPrivHI
 
 * --------------------------- ASTHMA (CORE REPORT) --------------------------- *
 * ----- EVER ASTHMA
 * Has a doctor or other health professional ever told you that child has asthma?
 gen everAsthma = .
-replace everAsthma = m4b2a if chLiveMo != 2
-replace everAsthma = f4b2a if chLiveMo == 2
-replace everAsthma = 0 if everAsthma == 2
+replace everAsthma = m4b2a if moReport != 0
+replace everAsthma = f4b2a if moReport == 0
 
 * ----- EPISODE ASTHMA
 * Since birth, has child had an episode of asthma or an asthma attack?
 gen asthmaAttack = .
-replace asthmaAttack = m4b2b if chLiveMo != 2
-replace asthmaAttack = f4b2b if chLiveMo == 2
-replace asthmaAttack = 0 if asthmaAttack == 2
+replace asthmaAttack = m4b2b if moReport != 0
+replace asthmaAttack = f4b2b if moReport == 0
 
 * ----- ER ASTHMA
 * In past 12 months did child visit ER or urgent care ctr because of asthma?
 gen asthmaER = .
-replace asthmaER = m4b2c if chLiveMo != 2
-replace asthmaER = f4b2c if chLiveMo == 2
-replace asthmaER = 0 if asthmaER == 2
-
+replace asthmaER = m4b2c if moReport != 0
+replace asthmaER = f4b2c if moReport == 0
 
 * ------------------------ DOCTOR VARS (CORE REPORT) ------------------------- *
 * ----- REGULAR CHECK-UP (RANGE)
@@ -396,39 +390,22 @@ rename a14 emRoom
 rename a15 emRoomAccInj
 
 * ----------------------- PAST 12 MONTHS HAD (IN-HOME) ----------------------- *
-* ----- FEVER OF RESPIRATORY ALLERGY 	(BINARY)
+* NOTE: All are binary
 rename a3_a feverRespiratory
-
-* ----- FOOD OR DIGESTIVE ALLERGY 		(BINARY)
 rename a3_b foodDigestive
-
-* ----- ECZEMA OR SKIN ALLERGY 			(BINARY)
 rename a3_c eczemaSkin
-
-* ----- DIARRHEA OR COLITIS 			(BINARY)
 rename a3_d diarrheaColitis
-
-* ----- ANEMIA 							(BINARY)
 rename a3_e anemia
-
-* ----- HEADACHES OR MIGRAINES 			(BINARY)
 rename a3_f headachesMigraines
-
-* ----- 3+ EAR INFECTIONS		 		(BINARY)
-rename a3_g earInfection
-
-* ----- SEIZURES 						(BINARY)
+rename a3_g earInfection		// 3 or 3+
 rename a3_h seizures
-
-* ----- STUTTERING OR STAMMERING 		(BINARY)
-rename a3_i stuttering
+rename a3_i stuttering			// or stammering
 
 
 * --------------------- DOCTOR EVER DIAGNOSED (IN-HOME) ---------------------- *
 * ----- ADHD (BINARY)
 * Has a doctor ever told you that child has attention deficit disorder add)
 rename a2_a everADHD 
-
 
 * --------------------- MOTHER MENTAL HEALTH (IN-HOME) ----------------------- *
 * ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
@@ -456,9 +433,14 @@ keep idnum p5h1 m5g1 f5g1 p5h13 p5h14 p5h3* p5l11 p5h6 p5h7 p5h9 k5h1 p5h1b ///
 p5h10 p5h2a hv5_12 hv5_13 p5h3a1 cm5md_case_con cm5md_case_lib
 
 * ----- RECODE MISSING VALUES
-missingvalues
+P_missingvalues
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y9.dta", keepusing(chLiveMo wave) nogen
+* ----- EQUALIZE
+recode p5h13 p5h1b p5h3a p5h3b p5h3c p5h3d p5h3e p5h3f p5h3g p5h3h p5h3i p5h3j ///
+p5h2a p5h3a1 (2 = 0)
+
+
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y9.dta", keepusing(moReport wave) nogen
 
 * ---------------------- HEALTH & MEDICAID (CORE REPORT) --------------------- *
 * ----- HEALTH PARENTS 	(SELF-REPORTED)
@@ -474,22 +456,17 @@ rename k5h1 chHealthSelf
 * ----- MEDICAID CHILD	(PARENT REPORTED) 
 rename p5h13 chMediHI 	// child covered by Medicaid 
 rename p5h14 chPrivHI	// child covered by private HI
-replace chMediHI = 0 if chMediHI == 2
-replace chPrivHI = 0 if chPrivHI == 2
-
 
 * --------------------------- ASTHMA (CORE REPORT) --------------------------- *
 * ----- EVER ASTHMA (BINARY)
 * Child diagnosed with asthma by doctor or health professional
 rename p5h1b everAsthma	
-replace everAsthma = 0 if everAsthma == 2
-
 
 * ------------------------- DOCTOR VARS (CORE REPORT) ------------------------ *
 * ----- REGULAR CHECK-UP (RANGE)
 *  Number of times child had regular check-up
 rename p5h6 numRegDoc
-recode numRegDoc 1=0 2=1 3=2	// make comparable across waves
+recode numRegDoc (1 = 0) (2 = 1) (3 = 2)	// make comparable across waves
 
 	* Binary variable derived from numRegDoc
 	gen regDoc = .
@@ -505,62 +482,31 @@ rename p5h9 numDoc
 rename p5h10 emRoom	
 
 * --------------------- PAST 12 MONTHS HAD (CORE REPORT) --------------------- *
-local MONTHSVAR	feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
-anemia headachesMigraines earInfection seizures stuttering diabetes
-
-* ----- FEVER OR RESPIRATOR ALLERGY 	(BINARY)
 rename p5h3a feverRespiratory
-
-* ----- FOOD OR DIGESTIVE ALLERGY 		(BINARY)
 rename p5h3b foodDigestive
-
-* ----- ECZEMA OR SKIN ALLERGY 			(BINARY)
 rename p5h3c eczemaSkin
-
-* ----- DIARRHEA OR COLITIS 			(BINARY)
 rename p5h3d diarrheaColitis
-
-* ----- ANEMIA 							(BINARY)
 rename p5h3e anemia
-
-* ----- HEADACHES / MIGRAINES 			(BINARY)
 rename p5h3f headachesMigraines
-
-* ----- 3+ EAR INFECTIONS 				(BINARY)
-rename p5h3g earInfection
-
-* ----- SEIZURES 						(BINARY)
+rename p5h3g earInfection			// 3 or 3+
 rename p5h3h seizures
-
-* ----- STUTTERING/STAMMERING 			(BINARY)
-rename p5h3i stuttering
-
-* ----- DIABETES 						(BINARY)
+rename p5h3i stuttering				// or stammering
 rename p5h3j diabetes
-
-foreach var in `MONTHSVAR' {
-	replace `var' = 0 if `var' == 2
-}
 
 
 * ------------------------ DOCTOR EVER (CORE REPORT) ------------------------- *
 * ----- EVER ADHD (BINARY)
 rename p5h2a everADHD
-replace everADHD = 0 if everADHD == 2
-
 
 * ---------------------- TAKES MEDICATION (CORE REPORT) ---------------------- *
 * ----- MEDICINE IF PRESCRIPTION (BINARY)
 * Child takes medicine where a prescription was needed
 rename p5h3a1 medication
-replace medication = 0 if medication == 2 
-
 
 * ----------------------- SCHOOL ABSENT (CORE REPORT) ------------------------ *
 * ----- ABSENT SCHOOL (RANGE)
 * Number of times child was absent from school during school year
 rename p5l11 absent
-
 
 * ----------------------- SALIVA SAMPLE (CORE REPORT) ------------------------ *
 * ----- MOTHER (OPTIONS)
@@ -578,8 +524,9 @@ rename cm5md_case_lib moDepresLib
 
 
 * ----------------------------------- SAVE ----------------------------------- *
-keep idnum *Health wave ch* absent ever* num* em* everADHD `MONTHSVAR' ///
-medication absent mo* regDoc
+keep idnum *Health wave ch* absent ever* num* em* everADHD medication ///
+absent mo* regDoc feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
+anemia headachesMigraines earInfection seizures stuttering diabetes
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
@@ -595,11 +542,15 @@ k6d3 k6d4 k6d37 k6d38 k6d39 k6d40 k6d41 k6d42 k6d43 k6d48 k6d49 k6d50 k6d51 ///
 k6d52 k6d53 k6d54 k6d55 k6d2ac cp6md_case_con cp6md_case_lib ch6cbmi
 
 * ----- RECODE MISSING VALUES
-missingvalues
+P_missingvalues
+
+* ----- EQUALIZE
+recode p6b13 p6b14 p6b15 p6b16 p6b17 p6b18 p6b19 p6b20 p6b26 k6d40 ///
+k6d48 p6b5 p6b31 p6b32 p6b2 p6b24 p6b22 p6b23 p6b10 (2 = 0)
 
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y15.dta", keepusing(wave) nogen
 
-/* -------------------- Health & Medicaid (Core report) -------------------- */
+* ---------------------- HEALTH & MEDICAID (CORE REPORT) --------------------- *
 * ----- HEALTH PARENTS	(SELF-REPORTED)
 rename p6h2 moHealth
 
@@ -612,82 +563,48 @@ rename k6d3 chHealthSelf
 * ----- MEDICAID CHILD 	(PARENT REPORTED)
 rename p6b31 chMediHI 	// child covered by Medicaid 
 rename p6b32 chPrivHI	// child covered by private HI
-replace chMediHI = 0 if chMediHI == 2
-replace chPrivHI = 0 if chPrivHI == 2
-
 
 * --------------------------- ASTHMA (CORE REPORT) --------------------------- *
 * ----- EVER DIAGNOSED ASTHMA (BINARY)
 * Doctor diagnosed youth with asthma
 rename p6b2 everAsthma
-replace everAsthma = 0 if everAsthma == 2
-
 
 * ------------------------- DOCTOR VARS (CORE REPORT) ------------------------ *
 * ----- REGULAR CHECK-UP (BINARY)
 * Youth saw doctor for regular check-up in past year
 rename p6b24 regDoc
-replace regDoc = 0 if regDoc == 2
 
 * ----- DOCTOR ACCIDENT/INJURY (BINARY)
 * Youth saw doctor for accident or injury in past year
 rename p6b22 docAccInj
-replace docAccInj = 0 if docAccInj == 2
 
 * ----- DOCTOR ILLNESS (BINARY)
 * Youth saw doctor for an illness in past year
 rename p6b23 docIll
-replace docIll = 0 if docIll == 2
 
 
 * -------------------- DOCTOR EVER DIAGNOSED (CORE REPORT) ------------------- *
 * ----- ADD/ADHD (BINARY)
 rename p6b10 everADHD
-replace everADHD = 0 if everADHD == 2
-
 
 * --------------------- PAST 12 MONTHS HAD (CORE REPORT) --------------------- *
-local MONTHSVAR foodDigestive eczemaSkin diarrheaColitis headachesMigraines ///
-earInfection stuttering breathing
-
-* ----- FOOD/DIGESTIVE ALLERGY 				(BINARY)
 rename p6b13 foodDigestive
-
-* ----- ECZEMA/SKIN ALLERGY 				(BINARY)
 rename p6b14 eczemaSkin
-
-* ----- DIARRHEA/COLITIS 					(BINARY)
 rename p6b15 diarrheaColitis
-
-* ----- HEADACHES/MIGRAINES 				(BINARY)
 rename p6b16 headachesMigraines
-
-* ----- EAR INFECTION 						(BINARY)
 rename p6b17 earInfection
-
-* ----- STUTTERING/STAMMERING 				(BINARY)
 rename p6b18 stuttering
-
-* ----- TROUBLE BREATHING / CHEST PROBLEM	(BINARY)
 rename p6b19 breathing
-
-foreach var in `MONTHSVAR' {
-	replace `var' = 0 if `var' == 2
-}
-
 
 * -------------------------- MEDICATION (CORE REPORT) ------------------------ *
 * ----- PRESCRIBED MEDICATION (BINARY)
 * Youth takes doctor prescribed medication?
 rename p6b26 medication
-replace medication = 0 if medication == 2
-
 
 * ------------------------- SCHOOL ABSENT (CORE REPORT) ---------------------- *
 * ----- LIMITATIONS (BINARY)
 * Health problems limit youth's usual activities
 rename p6b20 limit
-replace limit = 0 if limit == 2
 
 * ----- ABSENT (PARENT REPORTED) (NUM)
 * Days youth absent from school due to health in past year
@@ -699,7 +616,6 @@ rename k6d4 absentSelf
 
 
 * ---------------------- YOUTH HEALTH BEHAVS (CORE REPORT) ------------------- *
-
 * ------------ ACTIVITY
 * ----- DAYS ACTIVE 60+ (NUM)
 * Days physically active for 60+ minutes in past week
@@ -718,7 +634,6 @@ rename k6d39 activityVigorous
 * ----- EVER SMOKED (BINARY)
 * Ever smoked an entire cigarette?
 rename k6d40 everSmoke
-replace everSmoke = 0 if everSmoke == 2
 
 * ----- AGE FIRST SMOKED (NUM)
 * Age when youth first smoked a whole cigarette (years)
@@ -737,7 +652,6 @@ rename k6d43 cigsSmoke
 * ----- EVER ALCOHOL WITHOUT PARENTS (BINARY)
 * Ever drank alcohol more than two times without parents?
 rename k6d48 everDrink
-replace everDrink = 0 if everDrink == 2
 
 * ----- AGE FIRST ALCOHOL (NUM)
 * How old were you when you first drank alcohol?
@@ -766,8 +680,7 @@ rename ch6cbmi bmi
 
 * ------------ MENTAL HEALTH
 * ----- DIAGNOSED WITH DEPRESSION/ANXIETY
-rname p6b5 diagnosedDepression
-replace diagnosedDepression = 0 if diagnosedDepression == 2
+rename p6b5 diagnosedDepression
 
 * ----- FEELS DEPRESSED (SELF-REPORTED)
 rename k6d2ac depressed
@@ -783,8 +696,10 @@ rename cp6md_case_lib moDepresLib
 
 * ----------------------------------- SAVE ----------------------------------- *
 keep idnum *Health wave ch* regDoc ever* docAccInj docIll everADHD ///
-`MONTHSVAR' medication limit absent* activity* *Smoke *Drink depressed bmi ///
-diagnosedDepression
+medication limit absent* activity* *Smoke *Drink depressed bmi ///
+diagnosedDepression foodDigestive eczemaSkin diarrheaColitis headachesMigraines ///
+earInfection stuttering breathing
+
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
