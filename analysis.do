@@ -8,12 +8,12 @@
 /* This code performs the analysis part. It includes power calculations, MDE,
 and regressions (OLS, RF, FS, IV-2SLS).
 
-Input datasets:
-- 	health.dta; household_FF.dta; ff_gen_9y_pub4.dta; cutscombined.dta; 
-	simulatedEligbility.dta; 
+* ----- INPUT DATASETS:
+health.dta; household_FF.dta; ff_gen_9y_pub4.dta; cutscombined.dta; 
+simulatedEligbility.dta; 
 
-Output datasets:
--	analysis.dta
+* ----- OUTPUT DATASETS:
+analysis.dta
 */
 
 * ---------------------------------------------------------------------------- *
@@ -48,13 +48,6 @@ global ROBUSTNESS		= 0		// Perform robustness checks
 * ----------------------------- LOG FILE
 
 
-* ----------------------------- TO-DO
-	* NOTE: Check why so many missing state / age
-	* NOTE: CHECK if add age 0
-	* CHECK: If fam size missing impute ratio from previous wave (mostly if no wave 9)
-	* SHOW f-stat in FS table
-
-
 * ---------------------------------------------------------------------------- *
 * ------------------------- COMBINE & PREPARE DATA --------------------------- *
 * ---------------------------------------------------------------------------- *
@@ -62,9 +55,12 @@ global ROBUSTNESS		= 0		// Perform robustness checks
 if ${PREPARE} == 1 {
 	* ----------------------------- LOAD HEALTH DATA FF
 	use "${TEMPDATADIR}/health.dta", clear
+	* TO-DO: drop not used variables (e.g. moReport)
 
 	* ----------------------------- MERGE DEMOGRAPHICS FF
 	merge 1:1 idnum wave using "${TEMPDATADIR}/household_FF.dta", nogen
+	rename chAge age
+	* TO-DO: drop not used variables (e.g. moReport)
 
 	* ----------------------------- MERGE GENETIC DATA (RESTRICTED USE DATA)
 	* ----- PREPARE
@@ -72,17 +68,20 @@ if ${PREPARE} == 1 {
 		use "${RAWDATADIR}/rawData/ff_gen_9y_pub4.dta", clear
 		gen wave = 9
 		mvdecode gm5* gk5*, mv(-9 = .a \ -7 = .b \ -5 = .c \ -3 = .d \ -1 = .e)
+		rename gk5saliva chGenetic_temp
 		save "${TEMPDATADIR}/genetic.dta", replace
-
 	restore
 
 	* ----- MERGE
 	merge 1:1 idnum wave using "${TEMPDATADIR}/genetic.dta", nogen
+    egen chGenetic = max(chGenetic_temp), by(idnum) 
+	drop chGenetic_temp
+	label define chGenetic	0 "0 No"	1 "1 Yes"
+	label values chGenetic chGenetic
 
 	* ----------------------------- MERGE ACTUAL AND SIMULATED ELIGIBILITY TO REST
 	* ----- PREPARE
 	gen bpost1983 = year > 1983
-	replace age = 0 if wave == 0
 
 	* ----- MERGE
 	merge m:1 age statefip year bpost1983 	using "${CLEANDATADIR}/cutscombined.dta"
@@ -133,6 +132,11 @@ if ${PREPARE} == 1 {
 	drop observation
 
 	* ----------------------------- SAVE
+	label var chGenetic "Child has genetic information"
+
+	order idnum wave age 
+	sort idnum wave 
+
 	save "${CLEANDATADIR}/analysis.dta", replace
 
 } // END PREPARE
@@ -180,7 +184,6 @@ if ${POWER} == 1 {
 * ---------------------------------------------------------------------------- *
 * NOTE: when running separate regressions: preserve keep if obs9 > X restore
 
-
 * General health FACTOR (9)			: child health + had in past 12 months (no_)
 * Limitations 			(9 & 15)	: limit absent
 * Health behav FACTOR	(15)		: smoke, drink, vigorous activity
@@ -193,7 +196,7 @@ if ${REGRESSIONS} == 1 {
 	rename medicalFactor_a15_std medFac_a15_std
 
 	* ----------------------------- GLOBAL VARIABLES
-	global CONTROLS 	age female race moAge	// moEduc
+	global CONTROLS 	age chFemale chRace moAge	// moEduc
 
 	global ELIG9 		eligAll9				// elig eligAll9 eligAvg9 
 	global SIMELIG9 	simulatedEligAll9		// simulatedElig simulatedEligAll9 simulatedEligAvg9
@@ -207,34 +210,34 @@ if ${REGRESSIONS} == 1 {
 	* ----------------------------- OUTCOMES AGE 9
 	foreach outcome in $OUTCOMES9 {
 		* ----- OLS
-		reg `outcome' ${ELIG9} ${CONTROLS} i.statefip if wave == 9, cluster(statefip)
+		reg `outcome' ${ELIG9} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1, cluster(statefip)
 
 		est store `outcome'_OLS_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- RF
-		reg `outcome' ${SIMELIG9} ${CONTROLS} i.statefip if wave == 9,  cluster(statefip)
+		reg `outcome' ${SIMELIG9} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1,  cluster(statefip)
 
 		est store `outcome'_RF_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- FS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG9} = ${SIMELIG9}) if wave == 9, first cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG9} = ${SIMELIG9}) if wave == 9 & chGenetic == 1, first cluster(statefip)
 
 		gen samp_`outcome'9 = e(sample)
 		estat firststage
 		* mat fstat = r(singleresults)
 		* estadd scalar `outcome'_FStat = fstat[1,4] // can add in stat() in the regression
 
-		reg ${ELIG9} ${SIMELIG9} ${CONTROLS} i.statefip if (wave == 9 & samp_`outcome'9 == 1), cluster(statefip)
+		reg ${ELIG9} ${SIMELIG9} ${CONTROLS} i.statefip if (wave == 9 & samp_`outcome'9 == 1 & chGenetic == 1), cluster(statefip)
 		est store `outcome'_FS_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- IV-2SLS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG9} = ${SIMELIG9}) if wave == 9,  cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG9} = ${SIMELIG9}) if wave == 9 & chGenetic == 1,  cluster(statefip)
 
 		est store `outcome'_IV_9
 		estadd local Controls 		"$\checkmark$"
@@ -244,33 +247,33 @@ if ${REGRESSIONS} == 1 {
 	* ----------------------------- OUTCOMES AGE 15
 	foreach outcome in $OUTCOMES15 {
 		* ----- OLS
-		reg `outcome' ${ELIG15} ${CONTROLS} i.statefip if wave == 15, cluster(statefip)
+		reg `outcome' ${ELIG15} ${CONTROLS} i.statefip if wave == 15 & chGenetic == 1, cluster(statefip)
 		est store `outcome'_OLS_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- RF
-		reg `outcome' ${SIMELIG15} ${CONTROLS} i.statefip if wave == 15,  cluster(statefip)
+		reg `outcome' ${SIMELIG15} ${CONTROLS} i.statefip if wave == 15 & chGenetic == 1,  cluster(statefip)
 
 		est store `outcome'_RF_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- FS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG15} = ${SIMELIG15}) if wave == 15, first cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG15} = ${SIMELIG15}) if wave == 15 & chGenetic == 1, first cluster(statefip)
 
 		gen samp_`outcome'15 = e(sample)
 		estat firststage
 		* mat fstat = r(singleresults)
 		* estadd scalar `outcome'_FStat = fstat[1,4] // can add in stat() in the regression
 
-		reg ${ELIG15} ${SIMELIG15} ${CONTROLS} i.statefip if (wave == 15 & samp_`outcome'15 == 1), cluster(statefip)
+		reg ${ELIG15} ${SIMELIG15} ${CONTROLS} i.statefip if (wave == 15 & samp_`outcome'15 == 1 & chGenetic == 1), cluster(statefip)
 		est store `outcome'_FS_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- IV-2SLS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG15} = ${SIMELIG15}) if wave == 15,  cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG15} = ${SIMELIG15}) if wave == 15 & chGenetic == 1,  cluster(statefip)
 
 		est store `outcome'_IV_15
 		estadd local Controls 		"$\checkmark$"
@@ -283,7 +286,7 @@ if ${REGRESSIONS} == 1 {
 	foreach outcome in chHealth_neg {
 		foreach wave in 1 3 5 9 15 {
 			di "****** "
-			ivregress 2sls `outcome' ${CONTROLS} i.statefip (elig = simulatedElig) if wave == `wave',  cluster(statefip)
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (elig = simulatedElig) if wave == `wave' & chGenetic == 1,  cluster(statefip)
 			est store `outcome'_IV_SEP_`wave'
 			estadd local Controls 		"$\checkmark$"
 			estadd local StateFE 		"$\checkmark$"
@@ -295,7 +298,7 @@ if ${REGRESSIONS} == 1 {
 		foreach wave in 1 3 5 9 15 {
 			di "****** "
 			ivregress 2sls `outcome' ${CONTROLS} i.statefip (eligAll`wave' = simulatedEligAll`wave') ///
-			if wave == `wave',  cluster(statefip)
+			if wave == `wave' & chGenetic == 1,  cluster(statefip)
 
 			est store `outcome'_IV_SEP2_`wave'
 			estadd local Controls 		"$\checkmark$"
@@ -307,7 +310,7 @@ if ${REGRESSIONS} == 1 {
 	* ----------------------------- OUTPUT Latex
 	* ----- LABELS
 	label var age				"Age"
-	label var race				"Race"
+	label var chRace			"Race"
 	label var ${ELIG9}			"Eligibility"
 	label var ${ELIG15}			"Eligibility"
 	label var ${SIMELIG9}		"Simulated Elig"
@@ -415,9 +418,16 @@ if ${REGRESSIONS} == 1 {
 
 if ${ROBUSTNESS} == 1 {
 
-	* IV with and without controls & FE
-	* Selection / Drop-out
-	* Covariates
+	* ----- BALANCE OF OBSERVABLES
+	* reg OBSERVABLE1 instrument FE control variables
+		* cluster() ?
+
+
+	* ----- SELECTION / DROP-OUT
+
+	* ----- IV WITH AND WITHOUT CONTROLS
+
+
 
 } // END ROBUSTNESS
 

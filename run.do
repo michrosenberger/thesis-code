@@ -36,13 +36,13 @@ do "${CODEDIR}/FPL_threshold.do"
     di("Federal poverty line created.")
     di("Data: PovertyLevels.dta")
 
-* ----- 
+* ----- ELIGIBILITY THRESHOLDS
 do "${CODEDIR}/medicaidEligibility.do"
     di("Eligibility data created.")
     di("Data created: cutscombined.dta")
 
 
-* -----
+* ----- CREATE SIMULATED ELIGIBILITY
 do "${CODEDIR}/simulatedEligibility.do"
    di("Instrument created.")
 
