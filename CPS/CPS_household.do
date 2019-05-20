@@ -4,7 +4,6 @@
 * Author: 	Michelle Rosenberger
 * Date: 	Oct 1, 2018
 * -----------------------------------
-
 capture log close
 clear all
 set more off
@@ -12,15 +11,13 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
-/*
-Input datasets:
+/* Input datasets:
 - cepr_march_`year'.dta		:	CPS March data 	(1998 - 2016)
 - cpsmar`year'_clean.dta	:	CPS March data 	(2017 - 2018)
 - PovertyLevels.dta 		:  	Poverty levels	(1997 - 2018)
 
 Output datasets:
-- cps.dta 					:	year age statefip incRatio
-*/
+- cps.dta 					:	year age statefip incRatio */
 
 * ---------------------------------------------------------------------------- *
 * --------------------------------- PREAMBLE --------------------------------- *
@@ -39,10 +36,8 @@ global TEMPDATADIR  	"${MYPATH}/data/temp"
 * ----------------------------- SWITCHES
 global MERGEDATA		= 0			// merge data - time consuming
 
-
 * ----------------------------- LOG FILE
 * log using ${CODEDIR}/CPS_household.log, replace 
-
 
 * ---------------------------------------------------------------------------- *
 * ----------------------------------- DATA ----------------------------------- *
@@ -59,7 +54,7 @@ if ${MERGEDATA} == 1 {
 		qui append using "${TEMPDATADIR}/cpsmar`year'_clean.dta", force
 	}
 
-	keep famno pfrel hhseq female age wbho year incp_wag incp_uc incp_se ///
+	keep famno pfrel hhseq female age race year incp_wag incp_uc incp_se ///
 	incp_cs incp_alm incp_ssi incp_ss incp_vet incp_wcp state gestfips hins ///
 	hipriv hipub hiep hipind himcaid himcc hischip pvcfam incf_all pvlfam ///
 	educ educ2 educ92
@@ -78,23 +73,24 @@ keep if famno == 1				// primary family member
 drop if pfrel == 4				// other relative
 drop if pfrel == 3 & age > 18	// child younger than 18
 
-bysort hhseq year : gen husband_temp = 1 if pfrel == 1
-bysort hhseq year : egen husband = count(husband_temp)
+bysort hhseq year : gen husband_temp 	= 1 	if pfrel == 1
+bysort hhseq year : egen husband 		= count(husband_temp)
 
-bysort hhseq year : gen wife_temp = 1 if pfrel == 2
-bysort hhseq year : egen wife = count(wife_temp)
+bysort hhseq year : gen wife_temp 		= 1		if pfrel == 2
+bysort hhseq year : egen wife 			= count(wife_temp)
 
-bysort hhseq year : gen child_temp = 1 if pfrel == 3
-bysort hhseq year : egen numChild = count(child_temp)
+bysort hhseq year : gen child_temp 		= 1		if pfrel == 3
+bysort hhseq year : egen numChild 		= count(child_temp)
 gen child1 = child_temp
 replace child1 = 0 if child1 == .
 
-bysort hhseq year : gen unmarried_temp = 1 if pfrel == 5
-bysort hhseq year : egen unmarried = count(unmarried_temp)
+bysort hhseq year : gen unmarried_temp 	= 1 	if pfrel == 5
+bysort hhseq year : egen unmarried 		= count(unmarried_temp)
 
 drop if numChild == 0	// drop if no children
 drop *_temp
 
+* ----- FAMILY SIZE
 gen famSize = husband + wife + numChild + unmarried
 
 * ----- LABELS
@@ -127,13 +123,7 @@ bysort hhseq year : egen faCohort = max(faCohort_temp)
 
 drop *_temp
 
-* ----------------------------- PARENTS EDUCATION
-* educ educ2 educ92
-* moEduc faEduc
-
 * ----------------------------- INCOME
-* Note: famInc income only includes parents income
-
 if year < 2014 {
 	/* Previous Medicaid eligibility
 	Wages, salaries (incp_wag),
@@ -153,7 +143,8 @@ if year >= 2014 {			// MAGI
 	gen persInc = incp_wag + incp_uc + incp_se + incp_alm
 }
 
-gen tempInc = persInc if (pfrel == 1 | pfrel == 2 | pfrel == 5)	// parents
+* NOTE: famInc income only includes parents income
+gen tempInc = persInc if (pfrel == 1 | pfrel == 2 | pfrel == 5)	
 bysort hhseq year: egen famInc = sum(tempInc)
 drop tempInc
 
@@ -163,75 +154,23 @@ label var famInc	"Family income"
 rename child1 child
 
 * ----------------------------- RACE
-gen white 		= wbho == 1
-gen black 		= wbho == 2
-gen hispanic 	= wbho == 3
-gen other 		= wbho == 4
+rename wbho race
+gen white 		= race == 1
+gen black 		= race == 2
+gen hispanic 	= race == 3
+gen other 		= race == 4
 
 * ----------------------------- STATES
-gen statefip = .
+decode state, gen(state2) // use labels
+statastates, fips(gestfips) nogen
+replace state2 = state_name   if state2 == ""
+drop state_abbrev state_name
 
-if year <= 2016 {
-	replace statefip = 23	if state == 11 	// Maine
-	replace statefip = 33 	if state == 12 	// New Hampshire
-	replace statefip = 50 	if state == 13 	// Vermont
-	replace statefip = 25 	if state == 14 	// Massachusetts
-	replace statefip = 44 	if state == 15 	// Rhode Island
-	replace statefip = 9  	if state == 16 	// Connecticut
-	replace statefip = 36 	if state == 21 	// New York
-	replace statefip = 34 	if state == 22 	// New Jersey
-	replace statefip = 42 	if state == 23 	// Pennsylvania
-	replace statefip = 39 	if state == 31 	// Ohio
-	replace statefip = 18 	if state == 32 	// Indiana
-	replace statefip = 17 	if state == 33 	// Illinois
-	replace statefip = 26 	if state == 34 	// Michigan
-	replace statefip = 55 	if state == 35 	// Wisconsin
-	replace statefip = 27 	if state == 41 	// Minnesota 
-	replace statefip = 19 	if state == 42 	// Iowa
-	replace statefip = 29 	if state == 43 	// Missouri
-	replace statefip = 38 	if state == 44 	// North Dakota
-	replace statefip = 46 	if state == 45 	// South Dakota
-	replace statefip = 31 	if state == 46 	// Nebraska
-	replace statefip = 20 	if state == 47 	// Kansas
-	replace statefip = 10 	if state == 51 	// Delaware
-	replace statefip = 24 	if state == 52 	// Maryland
-	replace statefip = 11 	if state == 53 	// District of Columbia
-	replace statefip = 51 	if state == 54 	// Virginia
-	replace statefip = 54 	if state == 55 	// West Virginia
-	replace statefip = 37 	if state == 56 	// North Carolina
-	replace statefip = 45 	if state == 57 	// South Carolina
-	replace statefip = 13 	if state == 58 	// Georgia
-	replace statefip = 12 	if state == 59 	// Florida 
-	replace statefip = 21 	if state == 61 	// Kentucky
-	replace statefip = 47 	if state == 62 	// Tennessee
-	replace statefip = 1 	if state == 63 	// Alabama
-	replace statefip = 28 	if state == 64 	// Mississippi
-	replace statefip = 5 	if state == 71 	// Arkansas
-	replace statefip = 22 	if state == 72 	// Louisiana
-	replace statefip = 40 	if state == 73 	// Oklahoma
-	replace statefip = 48 	if state == 74 	// Texas
-	replace statefip = 30 	if state == 81 	// Montana
-	replace statefip = 16 	if state == 82 	// Idaho
-	replace statefip = 56 	if state == 83 	// Wyoming
-	replace statefip = 8 	if state == 84 	// Colorado
-	replace statefip = 35 	if state == 85 	// New Mexico
-	replace statefip = 4 	if state == 86	// Arizona
-	replace statefip = 49 	if state == 87 	// Utah
-	replace statefip = 32 	if state == 88 	// Nevada
-	replace statefip = 53 	if state == 91 	// Washington
-	replace statefip = 41 	if state == 92 	// Oregon
-	replace statefip = 6 	if state == 93 	// California
-	replace statefip = 2 	if state == 94 	// Alaska
-	replace statefip = 15 	if state == 95	// Hawaii
-}
-
-replace statefip = gestfips if year == 2017
-replace statefip = gestfips if year == 2018
-drop state gestfips
+statastates, name(state2) nogen
+rename state_fips 	statefip 
+drop state2 state_abbrev state gestfips
 
 * ----------------------------- HEALTH COVERAGE
-* More child covered by ... options
-
 rename hins		healthIns	// Health Ins.
 rename hipriv	healthPriv	// Health Ins., private
 rename hipub	healthPubl	// Health Ins., public
@@ -246,11 +185,10 @@ keep if _merge == 3
 drop _merge
 
 * ----------------------------- INCOME RATIO
-* IDEA: Divide CPS fam income by poverty line based on fam size and composition
+* Divide CPS famInc by poverty line based on fam size and composition
 gen incRatio = famInc / povLevel
 label var incRatio	"Family poverty level"
 
-* browse famInc incf_all povLevel pvcfam incRatio  pvlfam
 save "${TEMPDATADIR}/household_cps_povlevels.dta", replace
 
 
@@ -258,14 +196,14 @@ use "${TEMPDATADIR}/household_cps_povlevels.dta", clear
 drop incp_* incf_all pvlfam persInc
 
 * Unique identifiers
-egen serial = group(hhseq year)				// identifier for each hh
-bysort hhseq year : gen pernum = _n			// person number inside hh
+egen serial = group(hhseq year)				// identifier for each HH
+bysort hhseq year : gen pernum = _n			// person number inside HH
 drop hhseq
 order year serial pernum
 
-label var serial "Unique identifier for each hh"
-label var pernum "Unique person identifier inside hh"
-label data "CPS March data 1998-2018"
+label var serial 	"Unique identifier for each hh"
+label var pernum 	"Unique person identifier inside hh"
+label data 			"CPS March data 1998-2018"
 
 * ----------------------------- SUBSAMPLE
 * Mirrors FF composition (by mother)
@@ -318,6 +256,7 @@ gen FF = 0
 * ----- KEEP ONLY CHILDREN
 keep if pfrel == 3
 
+* NOTE: if no subsample then put race before in code
 rename white 		chWhite
 rename black 		chBlack
 rename hispanic 	chHispanic
