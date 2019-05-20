@@ -53,10 +53,8 @@ global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
 
-
 * ----------------------------- LOAD PROGRAMS
 do "${CODEDIR}/FF/programs_FF.do"
-
 
 * ---------------------------------------------------------------------------- *
 * ------------------------------- VARS BASELINE ------------------------------ *

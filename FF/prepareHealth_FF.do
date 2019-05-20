@@ -44,22 +44,19 @@ do "${CODEDIR}/FF/programs_FF.do"
 
 * ----------------------------- NOTE
 * If moReport == 0 the father report is used
-* Otherwise (moReport != 0) the mother is reported is used
+* If moReport != 0 the mother report is used
 
 * ---------------------------------------------------------------------------- *
 * --------------------------------- BASELINE --------------------------------- *
 * ---------------------------------------------------------------------------- *
 use "${RAWDATADIR}/00_Baseline/ffmombspv3.dta", clear
 merge 1:1 idnum using "${RAWDATADIR}/00_Baseline/ffdadbspv3.dta", nogen
-keep idnum m1g1 f1g1 m1a15 m1a13
+keep idnum m1g1 f1g1 m1a15
 
 * ----- RECODE MISSING VALUES
 P_missingvalues
 
-* ----- EQUALIZE
-recode m1a13 (2 = 0)
-
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y0.dta", keepusing(moReport wave) nogen
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y0.dta", nogen keepus(moReport wave)
 
 * ----------------------------- HEALTH & MEDICAID (CORE REPORT)
 * ----- HEALTH PARENTS 	(SELF-REPORTED)
@@ -73,26 +70,19 @@ gen 	chHealth = .
 gen 	chMediHI = 0
 replace chMediHI = 1 if m1a15 == 1 | m1a15 == 101
 
-* ----------------------------- DOCTOR VARS (CORE)
-* ----- DOCTOR VISIT FOR PREGNANCY (BINARY) 
-rename m1a13 moDoc
-
 * ----------------------------- SAVE
-keep idnum *Health wave chMediHI moDoc
+keep idnum *Health wave chMediHI
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
-
 
 * ---------------------------------------------------------------------------- *
 * ---------------------------------- WAVE 1 ---------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/01_One-Year Core/ffmom1ypv2.dta", clear				// Core
 merge 1:1 idnum using "${RAWDATADIR}/01_One-Year Core/ffdad1ypv2.dta"	// Core
 
 keep idnum m2b2 f2b2 m2j1 f2j1 m2j3 m2j3a m2j4 m2j4a f2j3 f2j3a f2j4 f2j4a ///
-m2b11 f2b11 m2b11a f2b11a m2b11b m2b6 m2b7 mx2b7 m2b7a m2b8 m2b8a ///
-cm2gad_case cm2md_case_con cm2md_case_lib f2b11b f2b6 f2b7 fx2b7 f2b7a f2b7a ///
-f2b8 f2b8a
+m2b11 f2b11 m2b11a f2b11a m2b11b m2b6 m2b7 mx2b7 m2b7a m2b8 m2b8a cm2gad_case ///
+cm2md_case_con cm2md_case_lib f2b11b f2b6 f2b7 fx2b7 f2b7a f2b7a f2b8 f2b8a
 
 * ----- RECODE MISSING VALUES
 P_missingvalues
@@ -100,7 +90,7 @@ P_missingvalues
 * ----- EQUALIZE
 recode m2b11 f2b11 m2b11a f2b11a m2b11b f2b11b (2 = 0)
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y1.dta", keepusing(moReport wave) nogen
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y1.dta", nogen keepus(moReport wave)
 
 * ----------------------------- HEALTH & MEDICAID (CORE REPORT)
 * ----- HEALTH PARENTS	(SELF-REPORTED)
@@ -182,22 +172,11 @@ replace docIll = 0 if numDocIll == 0
 replace docIll = 1 if (numDocIll >= 1 & numDocIll <= 90)
 
 * ----- LABELS
-label var numDocIllInj 	"How many times has child been seen by health care prof. b/c illness/injury?"
-label var numDocInj 	"How many times since birth has child been to health care prfssnal for injury?"
-
-* ----------------------------- MOTHER MENTAL HEALTH (CORE REPORT)
-* ----- MOTHER MEETS ANXIOUS CRITERIA (BINARY)
-rename cm2gad_case		moAnxious
-
-* ----- MOTHER MEETS DEPRESSION CRTIERIA (CONSERVATIVE) (BINARY)
-rename cm2md_case_con 	moDepresCon	
-
-* ----- MOTHER MEETS DEPRESSION CRITIERIA (LIBERAL) (BINARY)
-rename cm2md_case_lib	moDepresLib
-
+label var numDocIllInj 	"Num times child has been seen by health care prof. b/c illness/injury?"
+label var numDocInj 	"Num times has child been to health care prfssnal for injury since birth?"
 
 * ----------------------------- SAVE
-keep idnum wave *Health ch* ever* mo* num* em* asthma* regDoc docIll
+keep idnum wave *Health ch* ever* num* em* asthma* regDoc docIll
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
 
@@ -205,7 +184,6 @@ save "${TEMPDATADIR}/prepareHealth.dta", replace
 * ---------------------------------------------------------------------------- *
 * ---------------------------------- WAVE 3 ---------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/02_Three-Year Core/ffmom3ypv2.dta", clear						// Core
 merge 1:1 idnum using "${RAWDATADIR}/02_Three-Year Core/ffdad3ypv2.dta", nogen		// Core
 merge 1:1 idnum using "${RAWDATADIR}/02_Three-Year In-Home/InHome3yr.dta", nogen	// In-home
@@ -218,8 +196,7 @@ cm3md_case_con cm3md_case_lib
 * ----- RECODE MISSING VALUES
 P_missingvalues
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y3.dta", keepusing(moReport wave) nogen
-
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y3.dta", nogen keepus(moReport wave)
 
 * ---------------------- HEALTH & MEDICAID (CORE REPORT) --------------------- *
 * ----- HEALTH PARENTS 	(SELF-REPORTED)
@@ -248,7 +225,6 @@ rename a19 asthmaERnum
 * ----- ER ASTHMA (BINARY)
 * During past 12M did child have to visit ER/urg care center for asthma<Pilot
 rename a19_ asthmaER
-
 
 * -------------------------- DOCTOR VARS (IN-HOME) --------------------------- *
 * ----- REGULAR CHECK-UP (RANGE)
@@ -290,20 +266,9 @@ rename a9 	emRoom
 rename a10 	emRoomAccInj
 
 
-* -------------------- MOTHER MENTAL HEALTH (CORE REPORT) -------------------- *
-* ----- MOTHER MEETS ANXIOUS CRITERIA (BINARY)
-rename cm3gad_case		moAnxious
+* ----------------------------- SAVE
+keep idnum *Health wave ch* num* em* ever* asthma* regDoc docAccInj numDocIll docIll mo*
 
-* ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
-rename cm3md_case_con	moDepresCon
-
-* ----- MOTHER DEPRESSION LIBERAL (BINARY)
-rename cm3md_case_lib	moDepresLib
-
-
-* ----------------------------------- SAVE ----------------------------------- *
-keep idnum *Health wave ch* num* em* ever* mo* asthma* regDoc docAccInj ///
-numDocIll docIll
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
 
@@ -327,7 +292,7 @@ P_missingvalues
 * ----- EQUALIZE
 recode m4b2a f4b2a m4b2b f4b2b m4b2c f4b2c (2 = 0)
 
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y5.dta", keepusing(moReport wave) nogen
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y5.dta", nogen keepus(moReport wave)
 
 * ---------------------- HEALTH & MEDICAID (CORE REPORT) --------------------- *
 * ----- HEALTH PARENTS	(SELF-REPORTED)
@@ -407,18 +372,10 @@ rename a3_i stuttering			// or stammering
 * Has a doctor ever told you that child has attention deficit disorder add)
 rename a2_a everADHD 
 
-* --------------------- MOTHER MENTAL HEALTH (IN-HOME) ----------------------- *
-* ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
-rename cm4md_case_con	moDepresCon
-
-* ----- MOTHER DEPRESSION LIBERAL (BINARY)
-rename cm4md_case_lib	moDepresLib	
-
-
-* ----------------------------------- SAVE ----------------------------------- *
-keep idnum *Health wave ch* ever* num* em*  mo* feverRespiratory ///
-foodDigestive eczemaSkin diarrheaColitis anemia headachesMigraines ///
-earInfection seizures stuttering everADHD asthma* regDoc docAccInj
+* ----------------------------- SAVE
+keep idnum *Health wave ch* ever* num* em* feverRespiratory foodDigestive ///
+eczemaSkin diarrheaColitis anemia headachesMigraines earInfection seizures ///
+stuttering everADHD asthma* regDoc docAccInj mo*
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
@@ -439,8 +396,7 @@ P_missingvalues
 recode p5h13 p5h1b p5h3a p5h3b p5h3c p5h3d p5h3e p5h3f p5h3g p5h3h p5h3i p5h3j ///
 p5h2a p5h3a1 (2 = 0)
 
-
-merge 1:1 idnum using "${TEMPDATADIR}/parents_Y9.dta", keepusing(moReport wave) nogen
+merge 1:1 idnum using "${TEMPDATADIR}/parents_Y9.dta", nogen keepus(moReport wave)
 
 * ---------------------- HEALTH & MEDICAID (CORE REPORT) --------------------- *
 * ----- HEALTH PARENTS 	(SELF-REPORTED)
@@ -493,7 +449,6 @@ rename p5h3h seizures
 rename p5h3i stuttering				// or stammering
 rename p5h3j diabetes
 
-
 * ------------------------ DOCTOR EVER (CORE REPORT) ------------------------- *
 * ----- EVER ADHD (BINARY)
 rename p5h2a everADHD
@@ -508,25 +463,14 @@ rename p5h3a1 medication
 * Number of times child was absent from school during school year
 rename p5l11 absent
 
-* ----------------------- SALIVA SAMPLE (CORE REPORT) ------------------------ *
-* ----- MOTHER (OPTIONS)
-rename hv5_12 moSaliva
+// * ----------------------- SALIVA SAMPLE (CORE REPORT) ------------------------ *
+// * ---- CHILD (OPTIONS)
+// rename hv5_13 chSaliva
 
-* ---- CHILD (OPTIONS)
-rename hv5_13 chSaliva
-
-* ------------------- MOTHER MENTAL HEALTH (CORE REPORT) --------------------- *
-* ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
-rename cm5md_case_con moDepresCon
-
-* ----- MOTHER DEPRESSION LIBERAL (BINARY)
-rename cm5md_case_lib moDepresLib
-
-
-* ----------------------------------- SAVE ----------------------------------- *
+* ----------------------------- SAVE
 keep idnum *Health wave ch* absent ever* num* em* everADHD medication ///
-absent mo* regDoc feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
-anemia headachesMigraines earInfection seizures stuttering diabetes
+absent regDoc feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
+anemia headachesMigraines earInfection seizures stuttering diabetes mo*
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
@@ -582,7 +526,6 @@ rename p6b22 docAccInj
 * Youth saw doctor for an illness in past year
 rename p6b23 docIll
 
-
 * -------------------- DOCTOR EVER DIAGNOSED (CORE REPORT) ------------------- *
 * ----- ADD/ADHD (BINARY)
 rename p6b10 everADHD
@@ -613,7 +556,6 @@ rename p6b21 absent
 * ----- ABSENT (SELF-REPORTED) (NUM)
 * Days absent from school due to health in past year - youth report
 rename k6d4 absentSelf
-
 
 * ---------------------- YOUTH HEALTH BEHAVS (CORE REPORT) ------------------- *
 * ------------ ACTIVITY
@@ -685,16 +627,7 @@ rename p6b5 diagnosedDepression
 * ----- FEELS DEPRESSED (SELF-REPORTED)
 rename k6d2ac depressed
 
-
-* ----------------------- PCG MENTAL HEALTH (CORE REPORT) -------------------- *
-* ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
-rename cp6md_case_con moDepresCon
-
-* ----- MOTHER DEPRESSION LIBERAL (BINARY)
-rename cp6md_case_lib moDepresLib
-
-
-* ----------------------------------- SAVE ----------------------------------- *
+* ----------------------------- SAVE
 keep idnum *Health wave ch* regDoc ever* docAccInj docIll everADHD ///
 medication limit absent* activity* *Smoke *Drink depressed bmi ///
 diagnosedDepression foodDigestive eczemaSkin diarrheaColitis headachesMigraines ///
@@ -705,4 +638,64 @@ append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
 
 
+
+
+
+* ---------------------------------------------------------------------------- *
+* ---------------------------------- NOT USED -------------------------------- *
+* ---------------------------------------------------------------------------- *
+
+* * ----------------------------- WAVE 1
+// * ----------------------------- DOCTOR VARS (CORE)
+// * ----- DOCTOR VISIT FOR PREGNANCY (BINARY) 
+// recode m1a13 (2 = 0)
+// rename m1a13 moDoc
+
+// * ----------------------------- MOTHER MENTAL HEALTH (CORE REPORT)
+// * ----- MOTHER MEETS ANXIOUS CRITERIA (BINARY)
+// rename cm2gad_case		moAnxious
+
+// * ----- MOTHER MEETS DEPRESSION CRTIERIA (CONSERVATIVE) (BINARY)
+// rename cm2md_case_con 	moDepresCon	
+
+// * ----- MOTHER MEETS DEPRESSION CRITIERIA (LIBERAL) (BINARY)
+// rename cm2md_case_lib	moDepresLib
+
+* * ----------------------------- WAVE 3
+// * -------------------- MOTHER MENTAL HEALTH (CORE REPORT) -------------------- *
+// * ----- MOTHER MEETS ANXIOUS CRITERIA (BINARY)
+// rename cm3gad_case		moAnxious
+
+// * ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
+// rename cm3md_case_con	moDepresCon
+
+// * ----- MOTHER DEPRESSION LIBERAL (BINARY)
+// rename cm3md_case_lib	moDepresLib
+
+* * ----------------------------- WAVE 5
+// * --------------------- MOTHER MENTAL HEALTH (IN-HOME) ----------------------- *
+// * ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
+// rename cm4md_case_con	moDepresCon
+
+// * ----- MOTHER DEPRESSION LIBERAL (BINARY)
+// rename cm4md_case_lib	moDepresLib	
+
+* * ----------------------------- WAVE 9
+// * ----- MOTHER (OPTIONS)
+// rename hv5_12 moSaliva
+
+// * ------------------- MOTHER MENTAL HEALTH (CORE REPORT) --------------------- *
+// * ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
+// rename cm5md_case_con moDepresCon
+
+// * ----- MOTHER DEPRESSION LIBERAL (BINARY)
+// rename cm5md_case_lib moDepresLib
+
+* * ----------------------------- WAVE 15
+// * ----------------------- PCG MENTAL HEALTH (CORE REPORT) -------------------- *
+// * ----- MOTHER DEPRESSION CONSERVATIVE (BINARY)
+// rename cp6md_case_con moDepresCon
+
+// * ----- MOTHER DEPRESSION LIBERAL (BINARY)
+// rename cp6md_case_lib moDepresLib
 

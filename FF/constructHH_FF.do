@@ -9,11 +9,11 @@
 /* This code combines all the waves and constructs the necessary variables
 for the household structure in the Fragile Families data.
 
-Input datasets (TEMPDATADIR):
+* ----- INPUT DATASETS (TEMPDATADIR):
 parents_Y0.dta; parents_Y1.dta; parents_Y3.dta; parents_Y5.dta;
 parents_Y9.dta; parents_Y15.dta; states.dta
 
-Output datasets (TEMPDATADIR):
+* ----- OUTPUT DATASETS (TEMPDATADIR):
 household_FF.dta
 */
 
@@ -47,78 +47,102 @@ cd ${CODEDIR}
 
 * ----------------------------- MERGE
 use "${TEMPDATADIR}/parents_Y0.dta", clear
-append using "${TEMPDATADIR}/parents_Y1.dta"
-append using "${TEMPDATADIR}/parents_Y3.dta"
-append using "${TEMPDATADIR}/parents_Y5.dta"
-append using "${TEMPDATADIR}/parents_Y9.dta"
-append using "${TEMPDATADIR}/parents_Y15.dta"
+
+foreach wave in 1 3 5 9 15 {
+    append using "${TEMPDATADIR}/parents_Y`wave'.dta"
+}
 
 * ----------------------------- RENAME
-rename moYear      year
-rename chFAM_size  famSize
-rename chHH_size   hhSize
-rename chAge       age
-rename chGender    gender
-rename chAvg_inc   avgInc
-rename chHH_income hhInc
-rename incRatio    incRatio_FF
+rename moYear       year
+rename chFAM_size   famSize
+rename chHH_size    hhSize
+rename chAvg_inc    avgInc
+rename chHH_income  hhInc
+rename incRatio     incRatio_FF
+rename chAge        chAge_temp
 
 * ----------------------------- AGE
-rename  age age_m
-gen     age_temp = age_m / 12
-gen     age = int(age_temp)
-drop    age_temp age_m
+bysort idnum (year) : gen diff = year[_n+1] - year[_n]
+bysort idnum (year) : replace chAge_temp =  chAge_temp[_n+1] - diff[_n]*12 if wave == 0
+
+gen chAge = int(chAge_temp / 12)
+replace chAge = 0 if chAge < 0
 
 * ----------------------------- MERGE STATE (RESTRICTED USE DATA)
 merge 1:1 idnum wave using "${TEMPDATADIR}/states.dta", nogen
 rename state statefip
 
 * ----------------------------- GENDER, RACE, MOTHER AGE, MOTHER RACE
-foreach var in gender moAge moWhite moBlack moHispanic moOther moEduc ///
-chBlack chHispanic chOther chMulti chWhite chRace {
+foreach var in chGender moAge moCohort moWhite moBlack moHispanic moOther ///
+moEduc chBlack chHispanic chOther chMulti chWhite chRace {
     rename  `var' `var'_temp
     egen    `var' = max(`var'_temp), by(idnum) 
-    drop    `var'_temp
 }
 
-recode gender (2 = 1) (1 = 0)
-rename gender female
-tab female
-
-rename chRace race
+recode chGender (2 = 1) (1 = 0)
+rename chGender chFemale
 
 * ----------------------------- FAM INCOME IN THOUSANDS
 replace avgInc = avgInc / 1000
 
-* ----------------------------- LABEL
+* ----------------------------- FORMAT & SAVE
+* ----- DROP
+drop chAge_temp diff *_temp moHH_size_c ratio_size
+
+* ----- LABELS
 label data              "Household structure FF"
+
+label var idnum         "Family ID"
 label var year          "Year interview"
-label var famSize       "Family members"
-label var hhSize        "No. of household members"
-label var incRatio_FF   "Poverty ratio from FF"
-label var avgInc        "Family income (in 1'000 USD)"
-label var hhInc         "Household income"
-label var age           "Age child (years)"
-label var female        "Female"
 label var wave          "Wave"
-label var chWhite       "White"
-label var chBlack       "Black"
-label var chHispanic    "Hispanic"
-label var chOther       "Other race"
-label var chMulti       "Mutli-racial"
+label var moReport      "Mother report used"
+label var famSize       "Family size"
+label var avgInc        "Family income (in 1'000 USD)"
+label var hhSize        "Household size"
+label var hhInc         "Household income"
+label var incRatio_FF   "Poverty ratio from FF"
+label var statefip      "State of residence (FIP)"
+label var chAge         "Child's age"
+label var chFemale      "Child female"
+label var chRace        "Child's race"
+label var chWhite       "Child's race white"
+label var chBlack       "Child's race black"
+label var chHispanic    "Child's race hispanic"
+label var chOther       "Child's race other"
+label var chMulti       "Child's race mutli-racial"
 label var moAge         "Mother's age at birth"
 label var moEduc        "Mother's education"
 label var moCohort      "Mother's birth year"
-label var ratio_size    "Ratio hh size to family size"
-label var statefip      "State of residence fips codes"
+label var moWhite       "Mother's race white"
+label var moBlack       "Mother's race black"
+label var moHispanic    "Mother's race hispanic"
+label var moOther       "Mother's race other"
 
-label define female 0 "Male" 1 "Female"
-label values female female
+* ----- VALUE LABELS
+label define chFemale       0 "0 Male"                  1 "1 Female"
+label define moReport       0 "0 No"                    1 "1 Yes"
+label define raWhite        0 "0 Non-white"             1 "1 White"
+label define raBlack        0 "0 Non-black"             1 "1 Black"
+label define raHispaninc    0 "0 Non-hispanic"          1 "1 Hispanic"
+label define raOther        0 "0 Non-other"             1 "1 Other"
+label define raMutli        0 "0 non-multi"             1 "1 Multi-racial"
+label define moEduc         1 "1 Less than HS"          2 "2 HS or equivalent" ///
+                            3 "3 Some college, tech"    4 "College or Grad"
+label define chRace         1 "1 White" 2 "2 Black" 3 "3 Hispanic" 4 "4 Other" 5 "Multi-racial"
 
+label values chFemale chFemale
+label values moReport moReport
+label values chWhite moWhite raWhite
+label values chBlack moBlack raBlack
+label values chHispanic moHispanic raHispaninc
+label values chOther moOther raOther
+label values chMulti raMutli
+label values moEduc moEduc
+label values chRace chRace
 
-* ----------------------------- SAVE
+* ----- LABELS
 * NOTE: ONE observation per WAVE and ID
-order idnum wave year age famSize statefip female
+order idnum wave year chAge famSize statefip chFemale
 sort idnum wave
 
 describe
