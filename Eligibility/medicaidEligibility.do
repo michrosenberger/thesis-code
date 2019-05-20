@@ -6,13 +6,6 @@
 * Date:     October 17, 2018
 * -----------------------------------
 
-capture log close
-clear all
-set more off
-set emptycells drop
-set matsize 10000
-set maxvar 10000
-
 /* This code merges the data for the eligibility criteria. 
 
 Input datasets:
@@ -24,6 +17,16 @@ Output datasets:
 - cutscombined.dta 			: 	statefip year age medicut schipcut bpost1983
 */
 
+* ---------------------------------------------------------------------------- *
+* --------------------------------- PREAMBLE --------------------------------- *
+* ---------------------------------------------------------------------------- *
+capture log close
+clear all
+set more off
+set emptycells drop
+set matsize 10000
+set maxvar 10000
+
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
@@ -34,45 +37,51 @@ global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 
-* ----------------------------- CURRIE & DECKER DATA
-* YEARS: 1986 - 2005	(from Thompson)
+* ---------------------------------------------------------------------------- *
+* ------------------------------- ELIGIBILITY -------------------------------- *
+* ---------------------------------------------------------------------------- *
+
+* ----------------------------- CURRIE & DECKER DATA (YEARS: 1986 - 2005)
+* SOURCE: THOMPSON
 
 use "${RAWDATA}/cutoff.dta", clear 
 gen bpost1983 	= birthyear > 1983
-collapse 		medicut schipcut, by(statefip year age bpost1983) 
-reshape wide 	medicut schipcut, i(state year  bpost1983) j(age) 
-gen medicut18 	= medicut17
-gen schipcut18 	= schipcut17
+collapse medicut schipcut, by(statefip year age bpost1983) 
+
+reshape wide medicut schipcut, i(statefip year bpost1983) j(age) 
+	gen medicut18 	= medicut17
+	gen schipcut18 	= schipcut17
 reshape long medicut schipcut, i(state year  bpost1983) j(age)
+
 save "${CLEANDATADIR}/cutscombined.dta", replace
 
 
-* ----------------------------- KFF data
-* YEARS: 2006 - 2018	(from Thompson)
+* ----------------------------- KFF data (YEARS: 2006 - 2018)
+* SOURCE: THOMPSON
 
-* Import own transcriptions of KFF reports
+* ----- IMPORT OWN TRANSCRIPTS (KFF REPORTS)
 import excel "${MYDATA}/KFFTranscriptions_M.xlsx", sheet("sheet1") firstrow clear
 save "${TEMPDATADIR}/KFFTranscriptions_M.dta", replace
 
-* Import Thompson transcripts of KFF reports & merge both datasets
+* ----- IMPORT THOMPSON TRANSCRIPTS (KFF REPORTS)
 import excel "${RAWDATA}/KFFTranscriptions.xlsx", sheet("sheet1") firstrow clear
 
-merge 1:1 statefip using "${TEMPDATADIR}/KFFTranscriptions_M.dta", label
-drop _merge
+* ----- MERGE ALL KFF REPROTS
+merge 1:1 statefip using "${TEMPDATADIR}/KFFTranscriptions_M.dta", label nogen
 
 expand 	13
-bysort 	statefip 		: egen year=seq(), from(2006) to(2018)
+bysort 	statefip		: egen year = seq(), from(2006) to(2018)
 expand 	19
-bysort 	statefip year	: egen age=seq(), from(0) to(18)
-gen 	medicut 	= .
-gen 	schipcut 	= .
+bysort 	statefip year 	: egen age = seq(), from(0) to(18)
 
+gen medicut		= .
+gen schipcut 	= .
 
-foreach year of numlist 2006/2018 {
-	replace medicut 	= zero_`year' 		if year==`year' & age==0
-	replace medicut 	= oneto5_`year' 	if year==`year' & (age>=1 & age<=5)
-	replace medicut 	= sixplus_`year'	if year==`year' & age>=6
-	replace schipcut	= CHIP_`year'		if year==`year'
+foreach year of numlist 2006(1)2018 {
+	replace medicut 	= zero_`year' 		if year == `year' & (age == 0)
+	replace medicut 	= oneto5_`year' 	if year == `year' & (age >= 1 & age <= 5)
+	replace medicut 	= sixplus_`year'	if year == `year' & (age >= 6)
+	replace schipcut	= CHIP_`year'		if year == `year'
 }
 
 replace medicut 	= medicut / 100
@@ -85,7 +94,6 @@ append using "${CLEANDATADIR}/cutscombined.dta"
 
 keep if year >= 1998
 
-
 * ----- LABELS & SAVE
 label var statefip 	"State of residence (FIPS) coding"
 label var year		"Year"
@@ -94,5 +102,5 @@ label var medicut	"Medicaid threshold"
 label var schipcut	"S-CHIP threshold"
 label var bpost1983	"Child born after 1983"
 
-save "${CLEANDATADIR}/cutscombined.dta", replace		// data 1995-2018
+save "${CLEANDATADIR}/cutscombined.dta", replace		// data 1998-2018
 
