@@ -23,15 +23,13 @@ if "`c(username)'" == "michellerosenberger"  {
 }
 
 global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
-global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
-global CODEDIR          "${USERPATH}/code"
-
 
 * ----------------------------- LOAD DATA
 use "${RAWDATADIR}/rawData/contractcity6pub.dta", clear
-
 keep idnum *stfips p6state_n
+
+merge 1:m idnum using "${TEMPDATADIR}/health.dta", keepus(moReport wave)
 
 * ----------------------------- MISSING VALUES
 foreach var in  m1stfips f1stfips m2stfips f2stfips m3stfips f3stfips ///
@@ -40,40 +38,19 @@ foreach var in  m1stfips f1stfips m2stfips f2stfips m3stfips f3stfips ///
     replace `var' = . if `var' == 66 | `var' == 72  // Guam & Puerto Rico
 }
 
-* ----------------------------- MERGE
-merge 1:m idnum using "${TEMPDATADIR}/health.dta", keepusing(moReport wave)
-
-sort    idnum wave
-order   idnum wave
-
-* ----------------------------- NOTE
-* If moReport == 0 the father report is used
-* If moReport != 0 the mother report is used
-
 * ----------------------------- REPORT USED DEPENDING ON WHERE CHILD LIVES
 gen state = .
 
-* ----- BASELINE (1)
-replace state = m1stfips if moReport != 0 & wave == 0
-replace state = f1stfips if moReport == 0 & wave == 0
+local int = 1
+while `int' <= 5 {
+    local wave  : word `int' of 1 2 3 4 5
+    local age   : word `int' of 0 1 3 5 9
+    local int = `int' + 1
 
-* ----- WAVE 1  (2)
-replace state = m2stfips if moReport != 0 & wave == 1
-replace state = f2stfips if moReport == 0 & wave == 1
+    replace state = m`wave'stfips if moReport != 0 & wave == `age' // mother report used
+    replace state = f`wave'stfips if moReport == 0 & wave == `age' // father report used
+}
 
-* ----- WAVE 3  (3)
-replace state = m3stfips if moReport != 0 & wave == 3
-replace state = f3stfips if moReport == 0 & wave == 3
-
-* ----- WAVE 5  (4)
-replace state = m4stfips if moReport != 0 & wave == 5
-replace state = f4stfips if moReport == 0 & wave == 5
-
-* ----- WAVE 9  (5)
-replace state = m5stfips if moReport != 0 & wave == 9
-replace state = f5stfips if moReport == 0 & wave == 9
-
-* ----- WAVE 15 (6)
 replace state = p6state_n if wave == 15
 
 
@@ -87,6 +64,7 @@ label var state "State of residence"
 label values state fips
 rename state statefip
 
+order idnum wave
+sort idnum wave
 keep idnum wave statefip 
 save "${TEMPDATADIR}/states.dta", replace 
-
