@@ -13,22 +13,15 @@
 * ----------------------------- MISSING VALUES
 capture program drop    P_missingvalues
 program define          P_missingvalues
+
 	ds, has(type numeric)
 	global ALLVARIABLES = r(varlist)
 
-	foreach vars in $ALLVARIABLES {
-		replace `vars' = .a if `vars' == -1 // refused
-		replace `vars' = .b if `vars' == -2 // don't know
-		replace `vars' = .c if `vars' == -3 // missing
-		replace `vars' = .d if `vars' == -4 // multiple answers
-		replace `vars' = .e if `vars' == -5 // not asked (not in survey version)
-		replace `vars' = .f if `vars' == -6 // skipped
-		replace `vars' = .g if `vars' == -7 // N/A
-		replace `vars' = .h if `vars' == -8 // out-of-range
-		replace `vars' = .i if `vars' == -9 // not in wave
-		replace `vars' = .j if `vars' == -10 // jail
-		replace `vars' = .k if `vars' == -12 // Shelter/Street 
-		}
+    /* -1 refused;  -2 don't know;  -3 missing; -4 multiple answers;    -5 not asked;
+    -6 skipped; -7 NA;  -8 out of range;    -9 not in wave; -10 jail;   -12 Shelter/Street */
+
+    mvdecode $ALLVARIABLES,  mv(-1 = .a \ -2 = .b \ -3 = .c \ -4 = .d \ -5 = .e \ -6 = .f \ -7 = .g \ -8 = .h \ -9 = .i \ -10 = .j \ -11 = .k \ -12 = .l)
+
 end
 
 
@@ -50,8 +43,7 @@ program define          P_medicaid
 
 	* Medicaid parents report
 	local int = 1
-	local num : word count mo fa
-	while `int' <= `num' {
+	while `int' <= 2 {
 		local parent    : word `int' of     mo  fa
 		local letter    : word `int' of     m   f
 		local int = `int' + 1
@@ -81,15 +73,15 @@ program define          P_demographics
     args wave
 
     if wave == 0 {
-        rename cm`wave'edu      moEduc          // mother education
-        rename cf`wave'edu      faEduc          // father education
-        rename cm`wave'ethrace  moRace          // mother race
-        rename cf`wave'ethrace  faRace          // father race
-        rename cm`wave'bsex     chGender        // child gender
-        gen moWhite             = moRace == 1   // mother white
-        gen moBlack             = moRace == 2   // mother black
-        gen moHispanic          = moRace == 3   // mother hispanic
-        gen moOther             = moRace == 4   // mother other
+        rename cm`wave'edu      moEduc
+        rename cf`wave'edu      faEduc
+        rename cm`wave'ethrace  moRace
+        rename cf`wave'ethrace  faRace
+        rename cm`wave'bsex     chGender
+        gen moWhite             = moRace == 1
+        gen moBlack             = moRace == 2
+        gen moHispanic          = moRace == 3
+        gen moOther             = moRace == 4
     }
 
     if wave == 0 | wave == 1 | wave == 3 | wave == 5 {
@@ -123,8 +115,7 @@ program define          P_hhIncome
     args wave
 
     local int = 1
-    local num : word count mo fa
-    while `int' <= `num' {
+    while `int' <= 2 {
         local parent    : word `int' of     mo  fa
         local letter    : word `int' of     m   f
         local int = `int' + 1
@@ -150,8 +141,7 @@ program define          P_hhStructure
     args wave numpeople femvar agevar relatevar employvar
 
     local int = 1
-    local num : word count mo fa
-    while `int' <= `num' {
+    while `int' <= 2 {
         local parent    : word `int' of     mo  fa
         local letter    : word `int' of     m   f
         local int = `int' + 1
@@ -201,13 +191,9 @@ capture program drop    P_report
 program define          P_report
     args timevar usuallyvar
 
-    codebook `timevar'		    // how much time
-    codebook `usuallyvar'		// usually live with
-
     gen 	moReport = .
-    replace moReport = 1 if (`timevar' == 1 | `timevar' == 2)	                    // mother (most & half)
-    replace moReport = 0 if (`timevar' != 1 & `timevar' != 2 & `usuallyvar' == 1)	// father
-    label var moReport      "Child lives with mother"
+    replace moReport = 1 if (`timevar' == 1 | `timevar' == 2)	                    // mother (0.5+)
+    replace moReport = 0 if (`timevar' != 1 & `timevar' != 2 & `usuallyvar' == 1)	// father (<0.5)
 
 end
 
@@ -358,32 +344,30 @@ program define          P_famSizeStructure
     label   values chFAM_size_f chFAM_size_f
 
     * INCOME
-    /* Divide by # of hh members and multiply by family members  */
-    gen     moAvg_inc = (moHH_income / moHH_size) * moFAM_size
-    gen     faAvg_inc = (faHH_income / faHH_size) * faFAM_size
+    * ----- DIVIDE INCOME BY HH SIZE AND MULTIPLY BY FAM SIZE
+    foreach parent in mo fa {
+        gen     `parent'Avg_inc = (`parent'HH_income / `parent'HH_size) * `parent'FAM_size
+    }
 
-    gen     chHH_size = moHH_size if moReport != 0    // mo report
-    replace chHH_size = faHH_size if moReport == 0    // fa report
+    * ----- POVERTY RATIO CHILD DEPENDING ON PARENT REPORT
+    gen     incRatio = moHH_povratio if moReport != 0
+    replace incRatio = faHH_povratio if moReport == 0
 
-    gen     chHH_income = moHH_income if moReport != 0  // mo report
-    replace chHH_income = faHH_income if moReport == 0  // fa report
+    foreach variable in size income {
+        gen     chHH_`variable' = moHH_`variable' if moReport != 0
+        replace chHH_`variable' = faHH_`variable' if moReport == 0
+    } 
 
-    gen     chAvg_inc = moAvg_inc if moReport != 0      // mo report
-    replace chAvg_inc = faAvg_inc if moReport == 0      // fa report
+    gen     chAvg_inc = moAvg_inc if moReport != 0
+    replace chAvg_inc = faAvg_inc if moReport == 0
 
-    * Poverty ratio FF (Child hh income ratio)
-    gen     incRatio = moHH_povratio if moReport != 0   // mo report
-    replace incRatio = faHH_povratio if moReport == 0   // fa report
-
-    * COLLAPSE AND SAVE
+    * ----- COLLAPSE AND SAVE
     if wave == 0 {
         keep idnum moYear moMonth ch* incRatio wave moEduc moWhite moBlack moHispanic moOther moHH_size_c moReport moCohort moAge
     }
     if wave > 0 {
         keep idnum moYear moMonth ch* incRatio wave moHH_size_c moReport
     }
-    order idnum moYear moMonth
-    sort idnum
 
     ds idnum, not
     global FINALVARS = r(varlist)
@@ -392,7 +376,7 @@ program define          P_famSizeStructure
     drop chFAM_member chFAM_female chFAM_relate chFAM_age chFAM_employ moMonth chFAM_size_f
     replace chFAM_size = . if moYear == .
 
-    * HH / Family members ratio
+    * ----- RATIO HH TO FAM SIZE
     gen ratio_size = chHH_size / chFAM_size
 
 end
