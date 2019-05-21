@@ -42,7 +42,10 @@ global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 * ----------------------------- SET SWITCHES
 global PREPARE 			= 1		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
+global DESCRIPTIVE		= 1		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
+global ASSUMPTIONS		= 1		// Check IV assumptions
+global TABLESSIMULATED	= 1
 global ROBUSTNESS		= 0		// Perform robustness checks
 
 * ----------------------------- LOG FILE
@@ -55,12 +58,12 @@ global ROBUSTNESS		= 0		// Perform robustness checks
 if ${PREPARE} == 1 {
 	* ----------------------------- LOAD HEALTH DATA FF
 	use "${TEMPDATADIR}/health.dta", clear
-	* TO-DO: drop not used variables (e.g. moReport)
+	* TO-DO: drop not used variables
 
 	* ----------------------------- MERGE DEMOGRAPHICS FF
 	merge 1:1 idnum wave using "${TEMPDATADIR}/household_FF.dta", nogen
 	rename chAge age
-	* TO-DO: drop not used variables (e.g. moReport)
+	* TO-DO: drop not used variables
 
 	* ----------------------------- MERGE GENETIC DATA (RESTRICTED USE DATA)
 	* ----- PREPARE
@@ -143,7 +146,6 @@ if ${PREPARE} == 1 {
 
 use "${CLEANDATADIR}/analysis.dta", clear
 
-
 * ---------------------------------------------------------------------------- *
 * ------------------------------- POWER & MDE -------------------------------- *
 * ---------------------------------------------------------------------------- *
@@ -178,6 +180,104 @@ if ${POWER} == 1 {
 } // END POWER
 
 
+* ---------------------------------------------------------------------------- *
+* -------------------------- DESCRIPTIVE STATISTICS -------------------------- *
+* ---------------------------------------------------------------------------- *
+if ${DESCRIPTIVE} == 1 {
+
+	preserve 
+		* ----------------------------- PREPARE DATA
+		eststo clear
+
+		global STATSVAR 	famSize female chWhite chBlack chHispanic chOther ///
+							chMulti moCohort faCohort moAge avgInc incRatio_FF ////
+							year moCollege faCollege moReport
+		* ADD health variables from analysis
+		
+		global COMPARVAR 	famSize female chWhite chBlack chHispanic moCohort
+
+        gen moCollege = moEduc == 3
+		gen faCollege = faEduc == 3
+		rename chFemale female
+		keep idnum wave $STATSVAR
+
+		* ----------------------------- SUMMARY STATS FRAGILE FAMILIES
+		* ----- PREPARE VARIABLES
+		label var female 		"Female"
+		label var chWhite 		"White"
+		label var chBlack		"Black"
+		label var chHispanic	"Hispanic"
+		label var chOther		"Other race"
+		label var chMulti		"Multi-racial"
+		label var incRatio_FF	"Poverty ratio"
+		label var year			"Birth year"
+		label var avgInc		"Family income \\ \:\:\:\:\:\:\:\: (in 1'000 USD)"
+		label var moCollege		"Mother has some college"
+		label var faCollege		"Father has some college"
+		label var moReport		"Mother report used"
+		label var faCohort		"Father's birth year"
+
+		foreach var of varlist $STATSVAR {
+			label variable `var' `"\:\:\:\: `: variable label `var''"'
+		}
+
+		* ----- FF SUMMARY STATISTICS
+		* NOTE: LIMIT TO REGRESSION SAMPLE
+		eststo statsFF: estpost tabstat $STATSVAR if wave == 0, columns(statistics) statistics(mean sd min max n) 
+
+		* ----- LaTex TABLE
+		esttab statsFF using "${TABLEDIR}/SumStat_FF.tex", style(tex) replace ///
+		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc %9.0fc %9.2fc)) sd(fmt(%9.2fc))") ///
+		label nonumber mlabels(none) /// 
+		order(year female chWhite chBlack chHispanic chMulti chOther moAge moCohort faCohort moCollege faCollege moReport famSize avgInc incRatio_FF) ///
+		stats(N, fmt(%9.0f) label(Observations)) collabels("Mean" "Standard \\ & & Deviation") ///
+		refcat(year "Child" moAge "Family", nolabel)
+
+
+		* ----------------------------- SUMMARY STATS COMPARISON CPS & FF
+		* COLUMNS: (1) FF (2) CPS (3) CPS restricted (4) Diff (5) pval diff
+
+		* ----- PREPARE VARIABLES
+		gen FF = 1
+		append using  "${TEMPDATADIR}/cps_summary.dta"
+		replace FF = 0 if FF == .
+
+		* ----- FULL FFCWS SUM STAT
+		eststo compFF1: estpost tabstat $COMPARVAR if wave == 0 & FF == 1, ///
+		columns(statistics) statistics(mean sd n) 
+		estadd local FullSamp		"$\checkmark$"
+
+		* ----- WOKRING SAMPLE FFCWS SUM STAT
+		* NOTE: LIMIT TO REGRESSION SAMPLE
+		eststo compFF2: estpost tabstat $COMPARVAR if wave == 0 & FF == 1, ///
+		columns(statistics) statistics(mean sd n)
+		estadd local WorkingSamp	"$\checkmark$"
+
+		* ----- FULL CPS SUM STAT
+		eststo compCPS1: estpost tabstat $COMPARVAR if FF == 0, ///
+		columns(statistics) statistics(mean sd n)
+		estadd local FullSamp		"$\checkmark$"
+
+		* ----- WORKING SAMPLE CPS SUM STAT
+		* NOTE: LIMIT MIRROR SAMPLE
+		eststo compCPS2: estpost tabstat $COMPARVAR if FF == 0, ///
+		columns(statistics) statistics(mean sd n)
+		estadd local WorkingSamp	"$\checkmark$"
+
+		* ----- LaTex TABLE
+		esttab compFF1 compFF2 compCPS1 compCPS2 using "${TABLEDIR}/SumStat_both.tex", replace ///
+		cells("mean(fmt(%9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc))") ///
+		order(female chWhite chBlack chHispanic famSize moCohort) ///
+		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS" "CPS") style(tex) alignment(r) ///
+		refcat(female "Child" famSize "Family", nolabel) ///
+		stats(FullSamp WorkingSamp N, fmt(%9.0f) ///
+		layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+		label("Full Sample" "Working Sample" "Observations"))
+
+	restore
+
+} // END DESCRIPTIVE
+
 
 * ---------------------------------------------------------------------------- *
 * ------------------------------- REGRESSIONS -------------------------------- *
@@ -191,21 +291,21 @@ if ${POWER} == 1 {
 * Mental health			(15)		: Self report dep + doctor diagnosed
 * Uitlization FACTOR	(9 & 15)	: medication + doc illness + doc regular + ER
 
+* ----------------------------- GLOBAL VARIABLES
+global CONTROLS 	age chFemale chRace moAge
+
+global ELIG9 		eligAll9				// elig eligAll9 eligAvg9 
+global SIMELIG9 	simulatedEligAll9		// simulatedElig simulatedEligAll9 simulatedEligAvg9
+global OUTCOMES9 	chHealth_neg healthFactor_a9_std medicalFactor_a9_std absent
+
+global ELIG15 		eligAll15				// elig eligAll15 eligAvg15
+global SIMELIG15 	simulatedEligAll15		// simulatedElig simulatedEligAll15 simulatedEligAvg15
+global OUTCOMES15 	chHealth_neg behavFactor_a15_std medFac_a15_std absent limit bmi
+
+
 if ${REGRESSIONS} == 1 {
 
 	rename medicalFactor_a15_std medFac_a15_std
-
-	* ----------------------------- GLOBAL VARIABLES
-	global CONTROLS 	age chFemale chRace moAge	// moEduc
-
-	global ELIG9 		eligAll9				// elig eligAll9 eligAvg9 
-	global SIMELIG9 	simulatedEligAll9		// simulatedElig simulatedEligAll9 simulatedEligAvg9
-	global OUTCOMES9 	chHealth_neg healthFactor_a9_std medicalFactor_a9_std absent
-
-	global ELIG15 		eligAll15				// elig eligAll15 eligAvg15
-	global SIMELIG15 	simulatedEligAll15		// simulatedElig simulatedEligAll15 simulatedEligAvg15
-	global OUTCOMES15 	chHealth_neg behavFactor_a15_std medFac_a15_std absent limit bmi
-
 
 	* ----------------------------- OUTCOMES AGE 9
 	foreach outcome in $OUTCOMES9 {
@@ -225,11 +325,7 @@ if ${REGRESSIONS} == 1 {
 
 		* ----- FS
 		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG9} = ${SIMELIG9}) if wave == 9 & chGenetic == 1, first cluster(statefip)
-
 		gen samp_`outcome'9 = e(sample)
-		estat firststage
-		* mat fstat = r(singleresults)
-		* estadd scalar `outcome'_FStat = fstat[1,4] // can add in stat() in the regression
 
 		reg ${ELIG9} ${SIMELIG9} ${CONTROLS} i.statefip if (wave == 9 & samp_`outcome'9 == 1 & chGenetic == 1), cluster(statefip)
 		est store `outcome'_FS_9
@@ -242,6 +338,10 @@ if ${REGRESSIONS} == 1 {
 		est store `outcome'_IV_9
 		estadd local Controls 		"$\checkmark$"
 		estadd local StateFE 		"$\checkmark$"
+
+		estat firststage
+		mat fstat = r(singleresults)
+		estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
 	}
 
 	* ----------------------------- OUTCOMES AGE 15
@@ -261,11 +361,7 @@ if ${REGRESSIONS} == 1 {
 
 		* ----- FS
 		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIG15} = ${SIMELIG15}) if wave == 15 & chGenetic == 1, first cluster(statefip)
-
 		gen samp_`outcome'15 = e(sample)
-		estat firststage
-		* mat fstat = r(singleresults)
-		* estadd scalar `outcome'_FStat = fstat[1,4] // can add in stat() in the regression
 
 		reg ${ELIG15} ${SIMELIG15} ${CONTROLS} i.statefip if (wave == 15 & samp_`outcome'15 == 1 & chGenetic == 1), cluster(statefip)
 		est store `outcome'_FS_15
@@ -278,6 +374,10 @@ if ${REGRESSIONS} == 1 {
 		est store `outcome'_IV_15
 		estadd local Controls 		"$\checkmark$"
 		estadd local StateFE 		"$\checkmark$"
+
+		estat firststage
+		mat fstat = r(singleresults)
+		estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
 	}
 
 
@@ -290,6 +390,10 @@ if ${REGRESSIONS} == 1 {
 			est store `outcome'_IV_SEP_`wave'
 			estadd local Controls 		"$\checkmark$"
 			estadd local StateFE 		"$\checkmark$"
+
+			estat firststage
+			mat fstat = r(singleresults)
+			estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
 		}
 	}	
 
@@ -303,6 +407,10 @@ if ${REGRESSIONS} == 1 {
 			est store `outcome'_IV_SEP2_`wave'
 			estadd local Controls 		"$\checkmark$"
 			estadd local StateFE 		"$\checkmark$"
+
+			estat firststage
+			mat fstat = r(singleresults)
+			estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
 		}
 	}	
 
@@ -324,9 +432,9 @@ if ${REGRESSIONS} == 1 {
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
 	keep(${ELIG9} ${CONTROLS} _cons) order(${ELIG9} ${CONTROLS} _cons) /// 					"\ "
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
+	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "F")) ///				stats
 	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Utilization", ///		mgroups
 	pattern(1 0 1 0 1 0 1 0) span ///														mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
@@ -339,9 +447,9 @@ if ${REGRESSIONS} == 1 {
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
 	keep(${ELIG15} ${CONTROLS} _cons) order(${ELIG15} ${CONTROLS} _cons) /// 					"\ "
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 								stats
+	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 						stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///									stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///						stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "F")) ///					stats
 	mgroups("\rule{0pt}{3ex} Factor Behav" "Child Health" "Absent" "Limit" "Utilization", ///	mgroups
 	pattern(1 0 1 0 1 0 1 0 1 0) span ///														mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///				mgroups
@@ -381,12 +489,12 @@ if ${REGRESSIONS} == 1 {
 	estout chHealth_neg_IV_SEP_1 chHealth_neg_IV_SEP_3 chHealth_neg_IV_SEP_5 ///
 	chHealth_neg_IV_SEP_9 chHealth_neg_IV_SEP_15 ///
 	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex}"  "" "" "" "" "" "" "" "" "") numbers ///
+	mlabels(none) numbers ///
 	keep(elig ${CONTROLS} _cons) order(elig ${CONTROLS} _cons) /// 							"\ "
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
+	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "F")) ///				stats
 	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
 	pattern(1 1 1 1 1) span ///																mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
@@ -396,13 +504,13 @@ if ${REGRESSIONS} == 1 {
 	estout chHealth_neg_IV_SEP2_1 chHealth_neg_IV_SEP2_3 chHealth_neg_IV_SEP2_5 ///
 	chHealth_neg_IV_SEP2_9 chHealth_neg_IV_SEP2_15 ///
 	using "${TABLEDIR}/chHealth_all2.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex}"  "" "" "" "" "" "" "" "" "") numbers ///
+	mlabels(none) numbers ///
 	keep(eligAll1 eligAll3 eligAll5 eligAll9 eligAll15 ${CONTROLS} _cons) ///
 	order(eligAll1 eligAll3 eligAll5 eligAll9 eligAll15 ${CONTROLS} _cons) /// 				"\ "
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
+	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "FS")) ///			stats
 	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
 	pattern(1 1 1 1 1) span ///																mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
@@ -411,6 +519,90 @@ if ${REGRESSIONS} == 1 {
 } // END REGRESSIONS
 
 
+* ---------------------------------------------------------------------------- *
+* -------------------------------- ASSUMPTIONS ------------------------------- *
+* ---------------------------------------------------------------------------- *
+
+if ${ASSUMPTIONS} == 1 {
+
+	/* TESTS THE IV ASSUMPTIONS. */
+
+	* ----------------------------- BALANCE OF OBSERVABLES
+	* NOTE: which option to go?
+	* NOTE: which covariates
+
+	* ----- PREDICT EACH COVARIATE WITH THE MODEL
+	foreach observable in moEduc {
+		reg `observable' ${SIMELIG9} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1,  cluster(statefip)
+		est store `observable'_9 
+	}
+
+	* ----- PREDICT INSTRUMENT WITH ALL COVARIATES
+	reg ${SIMELIG9} moEduc if wave == 9 & chGenetic == 1
+
+	* ----- LaTex
+	estout moEduc_9 using "${TABLEDIR}/balance.tex", replace label style(tex) ///
+	collabels("Coefficient" "SD" "P-value") nonumbers keep(${SIMELIG9}) ///
+	starlevels(* .1 ** .05 *** .01) cells("b(fmt(%9.3fc) star) se(fmt(%9.3fc)) p") ///
+	mlabels(none) varlabels(, blist(${SIMELIG9} "\hline ")) ///
+	mgroups("\rule{0pt}{3ex} Insert text here" , ///
+	pattern(1 0 0 0) span prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) 
+
+} // END ASSUMPTIONS
+
+* ---------------------------------------------------------------------------- *
+* ----------------------- TABLES SIMULATED ELIGIBILITY ----------------------- *
+* ---------------------------------------------------------------------------- *
+
+if ${TABLESSIMULATED} == 1 {
+
+	/* CREATES ...  */
+
+	preserve
+
+		use "${CLEANDATADIR}/simulatedEligbility.dta", clear
+
+		gen simulatedElig100 = simulatedElig*100
+		gen Elig1998 = simulatedElig100 if year == 1998
+		gen Elig2018 = simulatedElig100 if year == 2018
+		statastates, fips(statefip) nogenerate   // abbreviation for state
+		save "${TEMPDATADIR}/simulatedElig100.dta", replace
+
+		collapse Elig1998 Elig2018, by(state_abbrev)    // state_abbrev
+		gen Diff = Elig2018 - Elig1998
+		label var Elig1998 "1998"
+		label var Elig2018 "2018"
+		save "${TEMPDATADIR}/DiffElig.dta", replace
+
+		* ----------------------------- MEDICAID ELIGIBILITY BY YEAR
+		use "${TEMPDATADIR}/simulatedElig100.dta", clear
+		eststo clear
+		estpost tabstat simulatedElig100, by(year) nototal
+		eststo
+		esttab . using "${TABLEDIR}/simulatedEligbility_year.tex", replace ///
+		cells( mean(fmt(a3)) ) nonumber noobs nodepvars label  ///
+		title("Medicaid eligibility by year") nomtitles compress collabels(none) ///
+		addnotes("Based on March CPS data" "from 1998-2018.") mlabels("\% eligible \\ Year & children")
+
+
+		* ----------------------------- MEDICAID ELIGIBILITY BY STATE & YEAR
+		use "${TEMPDATADIR}/DiffElig.dta", clear
+		eststo clear
+		estpost tabstat Elig1998 Elig2018 Diff, by(state_abbrev) nototal
+		eststo
+		esttab . using "${TABLEDIR}/simulatedEligbility_state.tex", replace label ///
+		nonumber cells("Elig1998(fmt(a3) label(1998)) Elig2018(fmt(a3) label(2018)) Diff(fmt(a3) label(Diff))") noobs ///
+		title("Medicaid eligibility by state") compress ///
+		addnotes("Based on March CPS data" "from 1998 and 2018.") longtable nomtitle
+
+		* ----------------------------- DELETE FILES
+		cd ${TEMPDATADIR}
+		erase simulatedElig100.dta
+		erase DiffElig.dta
+
+	restore
+
+} // END TABLESSIMULATED
 
 * ---------------------------------------------------------------------------- *
 * -------------------------------- ROBUSTNESS -------------------------------- *
@@ -418,21 +610,13 @@ if ${REGRESSIONS} == 1 {
 
 if ${ROBUSTNESS} == 1 {
 
-	* ----- BALANCE OF OBSERVABLES
-	* reg OBSERVABLE1 instrument FE control variables
-		* cluster() ?
+	* ----------------------------- SELECTION / DROP-OUT
 
 
-	* ----- SELECTION / DROP-OUT
-
-	* ----- IV WITH AND WITHOUT CONTROLS
-
+	* ----------------------------- IV WITH AND WITHOUT CONTROLS
 
 
 } // END ROBUSTNESS
-
-
-
 
 
 
