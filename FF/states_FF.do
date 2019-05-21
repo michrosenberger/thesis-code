@@ -48,7 +48,7 @@ order   idnum wave
 
 * ----------------------------- NOTE
 * If moReport == 0 the father report is used
-* Otherwise (moReport != 0) the mother is reported is used
+* If moReport != 0 the mother report is used
 
 * ----------------------------- REPORT USED DEPENDING ON WHERE CHILD LIVES
 gen state = .
@@ -77,11 +77,16 @@ replace state = f5stfips if moReport == 0 & wave == 9
 replace state = p6state_n if wave == 15
 
 
+* ----------------------------- IMPUTE
+* NOTE: If state in wave before and after the same impute the missing information
+/* bysort idnum (wave) : replace state = state[_n-1] if state == . & state[_n-1] == state[_n+1] */
+
+
 * ----------------------------- LABELS & SAVE
 label var state "State of residence"
 label values state fips
+rename state statefip
 
-keep idnum wave state 
+keep idnum wave statefip 
 save "${TEMPDATADIR}/states.dta", replace 
-
 

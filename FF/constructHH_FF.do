@@ -70,7 +70,6 @@ replace chAge = 0 if chAge < 0
 
 * ----------------------------- MERGE STATE (RESTRICTED USE DATA)
 merge 1:1 idnum wave using "${TEMPDATADIR}/states.dta", nogen
-rename state statefip
 
 * ----------------------------- GENDER, RACE, MOTHER AGE, MOTHER RACE
 foreach var in chGender moAge moCohort moWhite moBlack moHispanic moOther ///

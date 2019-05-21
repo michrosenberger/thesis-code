@@ -59,7 +59,6 @@ do "${CODEDIR}/FF/programs_FF.do"
 * ---------------------------------------------------------------------------- *
 * ------------------------------- VARS BASELINE ------------------------------ *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/00_Baseline/ffmombspv3.dta", clear
 merge 1:1 idnum using "${RAWDATADIR}/00_Baseline/ffdadbspv3.dta", nogen
 
@@ -95,7 +94,6 @@ save "${TEMPDATADIR}/mothers_FF.dta", replace
 * ---------------------------------------------------------------------------- *
 * -------------------------------- VARS YEAR 1 ------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/01_One-Year Core/ffmom1ypv2.dta", clear
 merge 1:1 idnum using "${RAWDATADIR}/01_One-Year Core/ffdad1ypv2.dta", nogen
 
@@ -122,7 +120,6 @@ save "${TEMPDATADIR}/parents_Y1.dta", replace
 * ---------------------------------------------------------------------------- *
 * -------------------------------- VARS YEAR 3 ------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/02_Three-Year Core/ffmom3ypv2.dta", clear
 merge 1:1 idnum using "${RAWDATADIR}/02_Three-Year Core/ffdad3ypv2.dta", nogen
 
@@ -149,7 +146,6 @@ save "${TEMPDATADIR}/parents_Y3.dta", replace
 * ---------------------------------------------------------------------------- *
 * -------------------------------- VARS YEAR 5 ------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/03_Five-Year Core/ffmom5ypv1.dta", clear
 merge 1:1 idnum using "${RAWDATADIR}/03_Five-Year Core/ffdad5ypv1.dta", nogen
 
@@ -175,7 +171,6 @@ save "${TEMPDATADIR}/parents_Y5.dta", replace
 * ---------------------------------------------------------------------------- *
 * -------------------------------- VARS YEAR 9 ------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/04_Nine-Year Core/ff_y9_pub1.dta", clear
 keep idnum c*5age cm5b_age c*5intyr c*5intmon c*5hhinc c*5hhimp c*5povco ///
 c*5povca *5a5b* *5a5c* *5a5d* *5a5e* *5a51 c*5adult c*5kids m5a2 m5a3f
@@ -204,7 +199,6 @@ save "${TEMPDATADIR}/ratio_Y9.dta", replace
 * ---------------------------------------------------------------------------- *
 * -------------------------------- VARS YEAR 15 ------------------------------ *
 * ---------------------------------------------------------------------------- *
-
 use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear
 keep idnum cp6age cp6yagey cp6yagem cp6intyr cp6intmon cp6hhinc cp6hhimp ///
 cp6povco cp6povca cp6hhsize ck6ethrace
