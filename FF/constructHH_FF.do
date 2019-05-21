@@ -136,7 +136,7 @@ label values chBlack moBlack raBlack
 label values chHispanic moHispanic raHispaninc
 label values chOther moOther raOther
 label values chMulti raMutli
-label values moEduc moEduc
+label values moEduc faEduc moEduc
 label values chRace chRace
 
 * ----- LABELS

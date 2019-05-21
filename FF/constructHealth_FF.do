@@ -42,6 +42,7 @@ global CODEDIR          "${USERPATH}/code"
 * ---------------------------------------------------------------------------- *
 * ----------------------------- LOAD DATA
 use "${TEMPDATADIR}/prepareHealth.dta", clear 
+drop moReport
 
 order idnum wave
 sort idnum wave
@@ -49,12 +50,10 @@ sort idnum wave
 * ----------------------------- VALUE LABELS
 label define health 	1 "1 Excellent" 2 "2 Very good" 3 "3 Good" 4 "4 Fair" 5 "5 Poor"
 label define YESNO 		0 "0 No" 		1 "1 Yes"
-label define moReport 	0 "Father" 		1 "1 Mother"
 label define numRegDoc 	0 "0 Never" 	1 "1 1-3 times" 2 "2 4+ times"
 label define regDoc		0 "No" 			1 "Yes"
 
 label values chHealth moHealth faHealth chHealthSelf health
-label values moReport moReport
 label values numRegDoc numRegDoc
 label values regDoc regDoc
 label values everAsthma everADHD foodDigestive eczemaSkin diarrheaColitis ///
@@ -211,7 +210,6 @@ label var diabetes				"Had diabetes (past year)"
 label var numRegDoc				"Num regular check-ups by doctor, nurse (past year)"
 label var numDoc 				"Num times saw doctor/nurse due to illness, accident, injury"
 label var emRoom				"Num times taken to emergency room (past year)"
-label var moReport				"Mother report used"
 label var numDocAccInj			"Num visit doctor due to accident/injury"
 label var emRoomAccInj			"Num visit emRoom due tio accident/injury"
 label var asthmaAttack			"Episode of asthma or asthma attack"
