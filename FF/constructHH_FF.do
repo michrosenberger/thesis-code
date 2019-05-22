@@ -81,6 +81,10 @@ moEduc chBlack chHispanic chOther chMulti chWhite chRace {
 recode chGender (2 = 1) (1 = 0)
 rename chGender chFemale
 
+* ----- HAS SOME COLLEGE EDUCATION
+gen moCollege = moEduc == 3
+gen faCollege = faEduc == 3
+
 * ----------------------------- FAM INCOME IN THOUSANDS
 replace avgInc = avgInc / 1000
 
@@ -116,6 +120,12 @@ label var moWhite       "Mother's race white"
 label var moBlack       "Mother's race black"
 label var moHispanic    "Mother's race hispanic"
 label var moOther       "Mother's race other"
+label var moRace        "Mother's race"
+label var moCollege     "Mother has some college"
+label var faEduc        "Father's education"
+label var faCollege     "Father has some college"
+label var faCohort      "Father's birth year"
+
 
 * ----- VALUE LABELS
 label define chFemale       0 "0 Male"                  1 "1 Female"
@@ -139,9 +149,12 @@ label values chMulti raMutli
 label values moEduc faEduc moEduc
 label values chRace chRace
 
+rename chAge age
+
 * ----- LABELS
 * NOTE: ONE observation per WAVE and ID
-order idnum wave year chAge famSize statefip chFemale
+drop hhSize hhInc 
+order idnum wave year age famSize statefip chFemale
 sort idnum wave
 
 describe
