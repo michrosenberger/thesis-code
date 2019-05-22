@@ -73,7 +73,7 @@ merge 1:1 idnum wave using "${TEMPDATADIR}/states.dta", nogen
 
 * ----------------------------- GENDER, RACE, MOTHER AGE, MOTHER RACE
 foreach var in chGender moAge moCohort moWhite moBlack moHispanic moOther ///
-moEduc chBlack chHispanic chOther chMulti chWhite chRace {
+moEduc faEduc faCohort chBlack chHispanic chOther chMulti chWhite chRace moRace {
     rename  `var' `var'_temp
     egen    `var' = max(`var'_temp), by(idnum) 
 }
