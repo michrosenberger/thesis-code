@@ -12,13 +12,18 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
-/* Input datasets:
-- cps                   : age statefip (year) incRatio
-- cutscombined          : age statefip year medicut schipcut bpost1983
+/* This code ...
 
-Output datasets:
-- simulatedEligbility   : age statefip year simelig */
+* ----- INPUT DATASETS:
+cps.dta (age statefip (year) incRatio);
+cutscombined.dta (age statefip year medicut schipcut bpost1983)
 
+* ----- OUTPUT DATASETS:
+simulatedEligbility.dta (age statefip year simelig) */
+
+* ---------------------------------------------------------------------------- *
+* --------------------------------- PREAMBLE --------------------------------- *
+* ---------------------------------------------------------------------------- *
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
     global MYPATH		"~/Development/MA"
@@ -26,12 +31,17 @@ if "`c(username)'" == "michellerosenberger"  {
 global CLEANDATADIR  	"${MYPATH}/data/clean"
 global TEMPDATADIR  	"${MYPATH}/data/temp"
 
+
+* ---------------------------------------------------------------------------- *
+* -------------------------------- INSTRUMENT -------------------------------- *
+* ---------------------------------------------------------------------------- *
 * ----------------------------- CREATE SIMULATED INSTRUMENT
 * ----- CREATE EMPTY DATASET
 foreach var in statefip year age {
     gen `var' = .
 }
 save "${CLEANDATADIR}/simulatedEligbility.dta", replace
+
 
 * ----- POPULATE DATASET WITH INFORMATION
 use "${CLEANDATADIR}/cutscombined.dta", clear
@@ -41,18 +51,20 @@ foreach age of numlist 0(1)18 {
     foreach state of local states {
         foreach year of numlist 1998(1)2018 {
             di "* ----- Age: `age', Year: `year', State: `state'"
-            qui use "${CLEANDATADIR}/cps.dta" if age == `age' , clear
+            qui use "${CLEANDATADIR}/cps.dta" if age == `age', clear
+            keep age state incRatio
 
-            * Use all states, except for the state in question
+            * ----- USE ALL STATES, EXCEPT FOR THE STATE IN QUESTION
             qui drop if statefip == `state'
             qui drop statefip
 
             qui gen bpost1983   = `year' - `age' > 1983
 
-            * Create obs for state & year in question
+            * ----- CREATE OBS FRO STATE & YEAR IN QUESTION
             qui gen statefip    = `state'
             qui gen year        = `year'
 
+            * ----- COMPARE ELIGIBILITY THRESHOLDS
             qui merge m:1 statefip year age bpost1983 using "${CLEANDATADIR}/cutscombined.dta", norep
             qui keep if _merge == 3
             qui gen simulatedElig = incRatio <= medicut | incRatio <= schipcut
@@ -63,4 +75,5 @@ foreach age of numlist 0(1)18 {
         }
     }
 }
+
 
