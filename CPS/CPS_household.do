@@ -11,13 +11,14 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
-/* Input datasets:
-- cepr_march_`year'.dta		:	CPS March data 	(1998 - 2016)
-- cpsmar`year'_clean.dta	:	CPS March data 	(2017 - 2018)
-- PovertyLevels.dta 		:  	Poverty levels	(1997 - 2018)
+/* This code ...
 
-Output datasets:
-- cps.dta 					:	year age statefip incRatio */
+* ----- INPUT DATASETS:
+cepr_march_`year'.dta (1998 - 2016); cpsmar`year'_clean.dta (2017 - 2018);
+PovertyLevels.dta
+
+* ----- OUTPUT DATASETS:
+cps.dta (year age statefip incRatio) */
 
 * ---------------------------------------------------------------------------- *
 * --------------------------------- PREAMBLE --------------------------------- *
@@ -34,15 +35,12 @@ global TEMPDATADIR  	"${MYPATH}/data/temp"
 
 
 * ----------------------------- SWITCHES
-global MERGEDATA		= 0			// merge data - time consuming
+global MERGEDATA		= 0			// MERGE DATA (TIME CONSUMING!)
 
-* ----------------------------- LOG FILE
-* log using ${CODEDIR}/CPS_household.log, replace 
 
 * ---------------------------------------------------------------------------- *
 * ----------------------------------- DATA ----------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 * ----------------------------- IMPORT DATA
 if ${MERGEDATA} == 1 {
 
@@ -66,12 +64,12 @@ if ${MERGEDATA} == 1 {
 use "${TEMPDATADIR}/cps_1997-2018.dta", clear
 
 * ----------------------------- FAMILY STRUCTURE CPS
-/* Conditions: Primary family member, not other relative and child
-not older than 18 in family unit */
+/* CONDITIONS: PRIMARY FAMILY MEMBER (famno == 1);
+NO OTHER RELATIVE (pfrel == 4);CHILD (pfrel == 3 & age < 18) */
 
-keep if famno == 1				// primary family member
-drop if pfrel == 4				// other relative
-drop if pfrel == 3 & age > 18	// child younger than 18
+keep if famno == 1
+drop if pfrel == 4
+drop if pfrel == 3 & age > 18
 
 bysort hhseq year : gen husband_temp 	= 1 	if pfrel == 1
 bysort hhseq year : egen husband 		= count(husband_temp)
@@ -81,13 +79,15 @@ bysort hhseq year : egen wife 			= count(wife_temp)
 
 bysort hhseq year : gen child_temp 		= 1		if pfrel == 3
 bysort hhseq year : egen numChild 		= count(child_temp)
+
 gen child1 = child_temp
 replace child1 = 0 if child1 == .
 
 bysort hhseq year : gen unmarried_temp 	= 1 	if pfrel == 5
 bysort hhseq year : egen unmarried 		= count(unmarried_temp)
 
-drop if numChild == 0	// drop if no children
+* ----- DROP IF NO CHILDREN
+drop if numChild == 0
 drop *_temp
 
 * ----- FAMILY SIZE
@@ -111,26 +111,34 @@ label values wife wife
 label values child1 child1
 label values unmarried unmarried
 
-
-* ----------------------------- PARENTS COHORT
+* ----------------------------- COHORT
 gen moCohort_temp = .
-replace moCohort_temp = year - age if female == 1 & (pfrel == 2 | pfrel == 5)
-bysort hhseq year : egen moCohort = max(moCohort_temp)
-
 gen faCohort_temp = .
-replace faCohort_temp = year - age if female == 0 & (pfrel == 1 | pfrel == 5)
-bysort hhseq year : egen faCohort = max(faCohort_temp)
+gen chCohort_temp = .
 
-drop *_temp
+replace moCohort_temp = year - age if female == 1 & (pfrel == 2 | pfrel == 5)
+replace faCohort_temp = year - age if female == 0 & (pfrel == 1 | pfrel == 5)
+replace chCohort_temp = year - age if pfrel == 3
+
+bysort hhseq year : egen moCohort = max(moCohort_temp)
+bysort hhseq year : egen faCohort = max(faCohort_temp)
+bysort hhseq year : egen chCohort = max(chCohort_temp)
+
+* ----------------------------- PARENTS EDUCATION
+gen moCollege_temp = educ == 3 & female == 1 & (pfrel == 2 | pfrel == 5) // some college
+gen faCollege_temp = educ == 3 & female == 0 & (pfrel == 1 | pfrel == 5) // some college
+
+bysort hhseq year : egen moCollege = max(moCollege_temp)
+bysort hhseq year : egen faCollege = max(faCollege_temp)
 
 * ----------------------------- INCOME
+* ----- PERSONAL INCOME
 if year < 2014 {
 	/* Previous Medicaid eligibility
-	Wages, salaries (incp_wag),
-	Unemployment compensation (incp_uc), Self-employment (incp_se),
-	Child support (incp_cs), Alimony received (incp_alm), SSI (incp_ssi),
-	Social security / railroads (incp_ss), Veteran payments (incp_vet),
-	Workers compensation (incp_wcp) */
+	Wages, salaries (incp_wag), Unemployment compensation (incp_uc),
+	Self-employment (incp_se), Child support (incp_cs), Alimony
+	received (incp_alm), SSI (incp_ssi), Social security / railroads
+	(incp_ss), Veteran payments (incp_vet), Workers compensation (incp_wcp) */
 
 	gen persInc = incp_wag + incp_uc + incp_se + incp_cs + incp_alm + incp_ssi ///
 	+ incp_ss + incp_vet + incp_wcp
@@ -143,7 +151,8 @@ if year >= 2014 {			// MAGI
 	gen persInc = incp_wag + incp_uc + incp_se + incp_alm
 }
 
-* NOTE: famInc income only includes parents income
+* ----- FAMILY INCOME
+* NOTE: ONLY INCLUDES PARENT INCOME
 gen tempInc = persInc if (pfrel == 1 | pfrel == 2 | pfrel == 5)	
 bysort hhseq year: egen famInc = sum(tempInc)
 drop tempInc
@@ -155,13 +164,13 @@ rename child1 child
 
 * ----------------------------- RACE
 rename wbho race
-gen white 		= race == 1
-gen black 		= race == 2
-gen hispanic 	= race == 3
-gen other 		= race == 4
+gen chWhite 		= race == 1
+gen chBlack 		= race == 2
+gen chHispanic 		= race == 3
+gen chOther 		= race == 4
 
 * ----------------------------- STATES
-decode state, gen(state2) // use labels
+decode state, gen(state2)
 statastates, fips(gestfips) nogen
 replace state2 = state_name   if state2 == ""
 drop state_abbrev state_name
@@ -189,114 +198,89 @@ drop _merge
 gen incRatio = famInc / povLevel
 label var incRatio	"Family poverty level"
 
-save "${TEMPDATADIR}/household_cps_povlevels.dta", replace
-
-
-use "${TEMPDATADIR}/household_cps_povlevels.dta", clear
 drop incp_* incf_all pvlfam persInc
 
-* Unique identifiers
-egen serial = group(hhseq year)				// identifier for each HH
-bysort hhseq year : gen pernum = _n			// person number inside HH
-drop hhseq
-order year serial pernum
 
-label var serial 	"Unique identifier for each hh"
-label var pernum 	"Unique person identifier inside hh"
+* ----------------------------- SAVE
 label data 			"CPS March data 1998-2018"
-
-* ----------------------------- SUBSAMPLE
-* Mirrors FF composition (by mother)
-
-/*
-* Mother cohort between 1955 and 1985 in FF
-gen cohort = year - age
-gen 	typeFF = 0
-replace typeFF = 1 if pfrel == 2 & female == 1  & (cohort>=1955 & cohort<=1985)
-replace typeFF = 1 if pfrel == 5 & (cohort>=1955 & cohort<=1985)
-bysort serial year : egen typeFFhh = max(typeFF)
-
-* What happens with missing
-* Mother race
-gen moWhite1 		= white if (pfrel == 2 | pfrel == 5) & female == 1
-gen moBlack1 		= black if (pfrel == 2 | pfrel == 5) & female == 1
-gen moHispanic1 	= hispanic if (pfrel == 2 | pfrel == 5) & female == 1
-gen moOther1		= other if (pfrel == 2 | pfrel == 5) & female == 1
-bysort serial year : egen moWhite 		= max(moWhite1)
-bysort serial year : egen moBlack 		= max(moBlack1)
-bysort serial year : egen moHispanic	= max(moHispanic1)
-bysort serial year : egen moOther 		= max(moOther1)
-
-* Father race
-gen faWhite1 		= white if (pfrel == 1 | pfrel == 5) & female == 0
-gen faBlack1 		= black if (pfrel == 1 | pfrel == 5) & female == 0
-gen faHispanic1 	= hispanic if (pfrel == 1 | pfrel == 5) & female == 0
-gen faOther1		= other if (pfrel == 1 | pfrel == 5) & female == 0
-bysort serial year : egen faWhite 		= max(faWhite1)
-bysort serial year : egen faBlack 		= max(faBlack1)
-bysort serial year : egen faHispanic	= max(faHispanic1)
-bysort serial year : egen faOther 		= max(faOther1)
-drop white black hispanic other fa*1 mo*1
-
-* Age mother at birth between 15 and 43 years old in FF
-gen momCohort_temp = cohort	if (pfrel == 2 | pfrel == 5) & female == 1
-bysort serial year : egen momCohort = min (momCohort_temp)
-gen momGeb = cohort - momCohort
-drop if momGeb < 15 | momGeb > 43
-drop momCohort_temp
-
-* Keep the flagged households
-keep if typeFFhh == 1
-
-* Not in FF sample
-gen FF = 0
-*/
-
 
 * ----- KEEP ONLY CHILDREN
 keep if pfrel == 3
 
-* NOTE: if no subsample then put race before in code
-rename white 		chWhite
-rename black 		chBlack
-rename hispanic 	chHispanic
-rename other		chOther
-
-
-/* Propsensity score matching on characteristics
-	* MERGE datasets from CPS (FF = 0) and FF baseline wave (FF = 1)
-
-	append using "${TEMPDATADIR}/mothers_FF.dta"		// FF data
-
-	* drop incomes too high and too low?
-	* probit FF momGeb incRatio
-	probit FF momGeb moWhite moBlack moHispanic incRatio
-
-	psmatch2 FF momGeb moWhite moBlack moHispanic incRatio, n(10) common
-
-	sum moWhite momGeb moBlack moHispanic incRatio if FF == 1
-	sum moWhite momGeb moBlack moHispanic incRatio if FF == 0
-	sum moWhite momGeb moBlack moHispanic incRatio if FF == 0 & _weight != .
-
-	tab year if _weight != .		// how year distribution looks
-
-	tab age year if _weight != .
-
-	* keep if _weight != .
-*/
-
-tabstat healthIns healthMedi childMedi childCHIP, by(year)
-
-
 * ----- DATASET FOR SUMMARY STATS
-keep year age statefip incRatio health* child* ch* moCohort faCohort famSize female
-order year statefip age incRatio
-sort year statefip age
+keep year age statefip incRatio health* child* ch* *Cohort famSize female *College
 save "${TEMPDATADIR}/cps_summary.dta", replace
-
 
 * ----- DATASET FOR ANALYSIS
 keep age state incRatio
 save "${CLEANDATADIR}/cps.dta", replace
 
+
+
+
+
+* ---------------------------------------------------------------------------- *
+* --------------------------------- NOT USED --------------------------------- *
+* ---------------------------------------------------------------------------- *
+
+// * ----------------------------- UNIQUE IDENTIFIERS
+// * Unique identifiers
+// egen serial = group(hhseq year)				// identifier for each HH
+// bysort hhseq year : gen pernum = _n			// person number inside HH
+// drop hhseq
+// order year serial pernum
+
+// label var serial 	"Unique identifier for each hh"
+// label var pernum 	"Unique person identifier inside hh"
+
+// * ----------------------------- SUBSAMPLE
+// * Mirrors FF composition (by mother)
+
+// * Mother cohort between 1955 and 1985 in FF
+// gen 	typeFF_temp = 0
+// replace typeFF_temp = 1 if pfrel == 2 & 				(moCohort>=1955 & moCohort<=1985) // wife
+// replace typeFF_temp = 1 if pfrel == 5 & female == 1 & 	(moCohort>=1955 & moCohort<=1985) // unmarried head (female)
+
+// bysort serial year : egen typeFF = max(typeFF_temp)
+// drop typeFF_temp
+
+// * What happens with missing
+// * Mother race
+// gen moRace_temp = race if (pfrel == 2 | pfrel == 5) & female == 1
+
+// bysort serial year : egen moRace = max(moRace_temp)
+// drop moRace_temp
+
+// gen moWhite_temp		= white 	if (pfrel == 2 | pfrel == 5)	& female == 1
+// bysort serial year : egen moWhite = max(moWhite_temp)
+
+// * Age mother at birth between 15 and 43 years old in FF
+// // gen momCohort_temp = moCohort	if (pfrel == 2 | pfrel == 5) & female == 1
+// // bysort serial year : egen momCohort = min(momCohort_temp)
+// // gen momGeb = moCohort - momCohort
+// // tab momGeb
+// // drop if momGeb < 15 | momGeb > 43
+// // drop momCohort_temp
+
+// * ----- KEEP FLAGGED HH
+// * keep if typeFF == 1
+
+
+// * ----------------------------- PROPSENSITY SCORE MATCHING
+// * ----- DUMMY INDICATING CPS DATA
+// gen FF = 0
+
+// * ----- MERGE WITH FF BASELINE VARIABLES
+// append using "${TEMPDATADIR}/parents_Y0.dta", keep(incRatio moRace moCohort famSize)
+// // rename moAge momGeb
+// replace FF = 1 if FF == .
+
+// * ----- PERFORM PSM
+// psmatch2 FF famSize incRatio moCohort, n(10) common 
+
+// sum famSize moCohort incRatio if FF == 1
+// sum famSize moCohort incRatio if FF == 0
+// sum famSize moCohort incRatio if FF == 0 & _weight != .
+
+// keep if _weight != .
 
