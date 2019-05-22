@@ -134,19 +134,17 @@ bysort hhseq year : egen faCollege = max(faCollege_temp)
 * ----------------------------- INCOME
 * ----- PERSONAL INCOME
 if year < 2014 {
-	/* Previous Medicaid eligibility
-	Wages, salaries (incp_wag), Unemployment compensation (incp_uc),
-	Self-employment (incp_se), Child support (incp_cs), Alimony
-	received (incp_alm), SSI (incp_ssi), Social security / railroads
-	(incp_ss), Veteran payments (incp_vet), Workers compensation (incp_wcp) */
+	* BEFORE MAGI: Wages, salaries (incp_wag), Unemployment compensation (incp_uc),
+	* Self-employment (incp_se), Child support (incp_cs), Alimony received (incp_alm),
+	* SSI (incp_ssi), Social security / railroadS(incp_ss), Veteran payments (incp_vet),
+	* Workers compensation (incp_wcp)
 
 	gen persInc = incp_wag + incp_uc + incp_se + incp_cs + incp_alm + incp_ssi ///
 	+ incp_ss + incp_vet + incp_wcp
 }
-if year >= 2014 {			// MAGI
-	/* MAGI
-	Wages, salaries (incp_wag), Unemployment compensation (incp_uc),
-	Self-employment (incp_se), Alimony received (incp_alm) */
+if year >= 2014 {
+	* MAGI: Wages, salaries (incp_wag), Unemployment compensation (incp_uc),
+	* Self-employment (incp_se), Alimony received (incp_alm)
 
 	gen persInc = incp_wag + incp_uc + incp_se + incp_alm
 }
@@ -207,13 +205,11 @@ label data 			"CPS March data 1998-2018"
 * ----- KEEP ONLY CHILDREN
 keep if pfrel == 3
 
-* ----- DATASET FOR SUMMARY STATS
+* ----- SAVE
 keep year age statefip incRatio health* child* ch* *Cohort famSize female *College
-save "${TEMPDATADIR}/cps_summary.dta", replace
+save "${TEMPDATADIR}/cps.dta", replace
 
-* ----- DATASET FOR ANALYSIS
-keep age state incRatio
-save "${CLEANDATADIR}/cps.dta", replace
+
 
 
 
