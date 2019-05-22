@@ -84,13 +84,6 @@ P_famSizeStructure
 save "${TEMPDATADIR}/parents_Y0.dta", replace
 
 
-* ----- FOR SIMULATED INSTRUMENT PROPENSITY SCORE MATCHING
-keep moAge incRatio moWhite moBlack moHispanic moOther
-gen FF = 1
-rename moAge momGeb
-save "${TEMPDATADIR}/mothers_FF.dta", replace
-
-
 * ---------------------------------------------------------------------------- *
 * -------------------------------- VARS YEAR 1 ------------------------------- *
 * ---------------------------------------------------------------------------- *

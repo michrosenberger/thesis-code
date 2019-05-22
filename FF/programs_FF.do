@@ -363,7 +363,7 @@ program define          P_famSizeStructure
 
     * ----- COLLAPSE AND SAVE
     if wave == 0 {
-        keep idnum moYear moMonth ch* incRatio wave moEduc faEduc moWhite moBlack moHispanic moOther moHH_size_c moReport moCohort faCohort moAge
+        keep idnum moYear moMonth ch* incRatio wave moEduc faEduc moWhite moBlack moHispanic moOther moHH_size_c moReport moCohort faCohort moAge moRace
     }
     if wave > 0 {
         keep idnum moYear moMonth ch* incRatio wave moHH_size_c moReport
