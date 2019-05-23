@@ -45,7 +45,7 @@ global POWER			= 0		// MDE + Power Calculations
 global DESCRIPTIVE		= 1		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
 global ASSUMPTIONS		= 1		// Check IV assumptions
-global TABLESSIMULATED	= 1
+global TABLESSIMULATED	= 0
 global ROBUSTNESS		= 0		// Perform robustness checks
 
 * ----------------------------- GLOBAL VARIABLES
@@ -393,7 +393,7 @@ if ${REGRESSIONS} == 1 {
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "F")) ///				stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///				stats
 	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Utilization", ///		mgroups
 	pattern(1 0 1 0 1 0 1 0) span ///														mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
@@ -408,7 +408,7 @@ if ${REGRESSIONS} == 1 {
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 						stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///									stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "F")) ///					stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///					stats
 	mgroups("\rule{0pt}{3ex} Factor Behav" "Child Health" "Absent" "Limit" "Utilization", ///	mgroups
 	pattern(1 0 1 0 1 0 1 0 1 0) span ///														mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///				mgroups
@@ -423,7 +423,7 @@ if ${REGRESSIONS} == 1 {
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///					stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$")) ///					stats
 	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Utilization", ///		mgroups
 	pattern(1 0 1 0 1 0 1 0) span ///														mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
@@ -438,7 +438,7 @@ if ${REGRESSIONS} == 1 {
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 								stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///									stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$")) ///						stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$")) ///						stats
 	mgroups("\rule{0pt}{3ex} Factor Behav" "Child Health" "Absent" "Limit" "Utilization", ///	mgroups
 	pattern(1 0 1 0 1 0 1 0 1 0) span ///														mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///				mgroups
@@ -449,15 +449,15 @@ if ${REGRESSIONS} == 1 {
 	chHealth_neg_IV_SEP_9 chHealth_neg_IV_SEP_15 ///
 	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers ///
-	keep(elig ${CONTROLS} _cons) order(elig ${CONTROLS} _cons) /// 							"\ "
+	keep(eligCur ${CONTROLS} _cons) order(eligCur ${CONTROLS} _cons) /// 					"\ "
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "F")) ///				stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///				stats
 	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
 	pattern(1 1 1 1 1) span ///																mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
-	varlabels(_cons Constant, blist(elig "\hline ")) //										varlabels	
+	varlabels(_cons Constant, blist(eligCur "\hline ")) //									varlabels	
 
 	* ----- CHILD HEALTH BY AGE (OLS & IV) - CUMULATED ELIGIBILITY
 	estout chHealth_neg_IV_SEP2_1 chHealth_neg_IV_SEP2_3 chHealth_neg_IV_SEP2_5 ///
@@ -468,7 +468,7 @@ if ${REGRESSIONS} == 1 {
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" Obs. "\$R^{2}$" "FS")) ///			stats
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///			stats
 	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
 	pattern(1 1 1 1 1) span ///																mgroups
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
@@ -483,28 +483,43 @@ if ${REGRESSIONS} == 1 {
 
 if ${ASSUMPTIONS} == 1 {
 
-	/* TESTS THE IV ASSUMPTIONS. */
-
 	* ----------------------------- BALANCE OF OBSERVABLES
-	* NOTE: which option to go?
-	* NOTE: which covariates
-
-	* ----- PREDICT EACH COVARIATE WITH THE MODEL
-	foreach observable in moEduc {
-		reg `observable' ${SIMELIGVAR} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1,  cluster(statefip)
-		est store `observable'_9 
+	* ONLY USE PRE-DETERMINED CHARACTERISTICS AT BASELINE
+	foreach variable in avgInc famSize {
+		gen `variable'Base_temp = `variable' if wave == 0
+		by idnum : egen `variable'Base = max(`variable'Base_temp)
+		drop `variable'Base_temp
 	}
 
+	replace avgIncBase = avgIncBase*1000
+	label var avgIncBase 	"Family income"
+	label var famSizeBase	"Family size"
+
+	global PRECHAR moCollege faCollege moCohort faCohort avgIncBase famSizeBase
+
 	* ----- PREDICT INSTRUMENT WITH ALL COVARIATES
-	reg ${SIMELIGVAR} moEduc if wave == 9 & chGenetic == 1
+	reg ${ELIGVAR}	${PRECHAR}	${CONTROLS} i.statefip if wave == 9 & chGenetic == 1, cluster(statefip)
+	est store balanceElig
+	estadd local Controls 		"$\checkmark$"
+	test ${PRECHAR}
+	estadd scalar Fstat = r(p) // r(p) r(F)
+
+
+	reg ${SIMELIGVAR} ${PRECHAR} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1, cluster(statefip)
+	est store balanceSimElig
+	estadd local Controls 		"$\checkmark$"
+	test ${PRECHAR}
+	estadd scalar Fstat = r(p)
 
 	* ----- LaTex
-	estout moEduc_9 using "${TABLEDIR}/balance.tex", replace label style(tex) ///
-	collabels("Coefficient" "SD" "P-value") nonumbers keep(${SIMELIGVAR}) ///
-	starlevels(* .1 ** .05 *** .01) cells("b(fmt(%9.3fc) star) se(fmt(%9.3fc)) p") ///
-	mlabels(none) varlabels(, blist(${SIMELIGVAR} "\hline ")) ///
-	mgroups("\rule{0pt}{3ex} Insert text here" , ///
-	pattern(1 0 0 0) span prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) 
+	estout balanceElig balanceSimElig using "${TABLEDIR}/balance.tex", replace label style(tex) ///
+	starlevels(* .1 ** .05 *** .01) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
+	keep(${PRECHAR}) collabels(none) numbers ///
+	mlabels("Eligibility" "Simulated \\ & & Eligibility") varlabels(, blist(moCollege "\hline ")) ///
+	stats(Controls Fstat N, fmt(%9.0f %9.3f %9.0f) /// 									stats
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///				stats
+	label("\hline \rule{0pt}{3ex}Controls" "\textit{p}-value \textit{F}-test" "Observations")) //				stats
+
 
 } // END ASSUMPTIONS
 

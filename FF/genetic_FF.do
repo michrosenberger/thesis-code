@@ -52,7 +52,7 @@ replace wave = 9 if num == 5
 replace wave = 15 if num == 6
 
 * ----- PREPARE DATA FOR MERGE
-rename gk5saliva chGenetic_temp
+rename gk5saliva chGenetic
 label define chGenetic	0 "0 No"	1 "1 Yes"
 label values chGenetic chGenetic
 label var chGenetic "Child has genetic information"
