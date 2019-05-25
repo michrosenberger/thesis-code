@@ -9,7 +9,6 @@
 * ---------------------------------------------------------------------------- *
 * --------------------------------- PREAMBLE --------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 capture log close
 clear all
 set more off
@@ -33,7 +32,6 @@ global CODEDIR          "${MYPATH}/code"
 global PROGRAMS		= 0			// install the packages
 global USMAP		= 0			// download map
 
-
 * ----------------------------- INSTALL PACKAGES
 if ${PROGRAMS} == 1 {
 	ssc install spmap
@@ -41,6 +39,7 @@ if ${PROGRAMS} == 1 {
 	ssc install mif2dta
 	ssc install geo2xy
 	ssc install maptile
+	ssc install grstyle
 }
 
 * ---------------------------------------------------------------------------- *
@@ -172,20 +171,14 @@ erase maxFPL2018.dta
 * ---------------------------------------------------------------------------- *
 * ------------------------ MEDIAN SIMULATED ELIGIBILITY ---------------------- *
 * ---------------------------------------------------------------------------- *
-
 use "${CLEANDATADIR}/simulatedEligbility.dta", clear
 order statefip year age
 sort statefip year age
 label var year "Year"
 
-gen Elig0 = .	// 0
-replace Elig0 = simulatedElig if age == 0
-
-gen Elig1 = .	// 1-5
-replace Elig1 = simulatedElig if ( age == 1 | age == 2 | age == 3 | age == 4 | age == 5 )
-
-gen Elig6 = .	// 6-18
-replace Elig6 = simulatedElig if ( age > 5 )
+gen Elig0 = simulatedElig if ( age == 0 )
+gen Elig1 = simulatedElig if ( age == 1 | age == 2 | age == 3 | age == 4 | age == 5 )
+gen Elig6 = simulatedElig if ( age > 5 )
 
 * ----- MEAN FOR EACH AGE GROUP
 bysort year: egen mean_Elig0 = mean(Elig0)
@@ -195,12 +188,25 @@ label var mean_Elig0 "Age 0"
 label var mean_Elig1 "Ages 1 - 5"
 label var mean_Elig6 "Ages 6 - 8"
 
-scatter mean_Elig0 year, ytitle("Fraction of eligible children") ///
-note("Note: This graph shows the mean fraction of simulated eligible children across all"  "states in a given year. Source: March CPS data 1998-2018") ///
-xlabel(1998 (4) 2018) connect(L) msymbol(o)  scheme(vg_outc) || connected mean_Elig1 year, ///
-msymbol(o) || connected mean_Elig6 year, msymbol(o)
+* ----- DEFINE GRAPH STYLE
+grstyle clear
+grstyle init
+grstyle color background white
+grstyle color major_grid dimgray
+grstyle linewidth major_grid thin
+grstyle yesno draw_major_hgrid yes
+grstyle yesno grid_draw_min yes
+grstyle yesno grid_draw_max yes
+grstyle linestyle legend none
+
+* ----- GRAPH
+two (scatter mean_Elig0 year, connect(L) msymbol(X) mlcolor(emidblue) lcolor(emidblue) ///
+ytitle("% eligible") xlabel(1998 (4) 2018)) ///
+(connected mean_Elig1 year, msymbol(X) mlcolor(ebblue) lcolor(ebblue)) ///
+(connected mean_Elig6 year, msymbol(X) mlcolor(navy) lcolor(navy))
 graph export "${FIGUREDIR}/ChangeEligibility.png", replace
 
 
-*  graph query, schemes
+
+
 
