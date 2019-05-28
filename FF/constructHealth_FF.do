@@ -42,7 +42,6 @@ global CODEDIR          "${USERPATH}/code"
 * ---------------------------------------------------------------------------- *
 * ----------------------------- LOAD DATA
 use "${TEMPDATADIR}/prepareHealth.dta", clear 
-drop moReport
 
 order idnum wave
 sort idnum wave
@@ -64,16 +63,12 @@ seizures diabetes regDoc asthmaAttack asthmaER diagnosedDepression YESNO
 * ---------------------------------------------------------------------------- *
 * ---------------------------- CONSTRUCT VARIABLES --------------------------- *
 * ---------------------------------------------------------------------------- *
-
 * ----------------------------- RECODE VARIABLES
 * RECODE such that a higher score represents better health
 
 * ----- CHILD & MOTHER HEALTH
 recode chHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(chHealth_neg)
-recode moHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(moHealth_neg)
-
-label define healthneg 1 "1 Poor" 2 "2 Fair" 3 "3 Good" 4 "4 Very good" 5 "5 Excellent"
-label values chHealth_neg moHealth_neg healthneg
+* recode moHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(moHealth_neg)
 
 * ----- CHILD HAD ...
 recode feverRespiratory 	(1 = 0) (0 = 1), gen(no_feverRespiratory)
@@ -86,86 +81,98 @@ recode headachesMigraines	(1 = 0) (0 = 1), gen(no_headachesMigraines)
 recode earInfection 		(1 = 0) (0 = 1), gen(no_earInfection)
 recode asthmaAttack 		(1 = 0) (0 = 1), gen(no_asthmaAttack)
 
-label define NOYES 0 "0 Had" 1 "1 Never"
-label values no_* NOYES
-
 * ----- HEALTH BEHAVIOURS
-recode everSmoke 	(1 = 0) (0 = 1), gen(neverSmoke)
-recode everDrink 	(1 = 0) (0 = 1), gen(neverDrink)
+recode everSmoke 			(1 = 0) (0 = 1), gen(neverSmoke)
+recode everDrink 			(1 = 0) (0 = 1), gen(neverDrink)
 
-* ----------------------------- CHILD HEALTH IN EACH WAVE
-foreach wave in 9 15 {
-	gen chHealth_`wave'_temp = chHealth if wave == `wave'
-	egen chHealth_`wave' = max(chHealth_`wave'_temp), by(idnum)
-	drop chHealth_`wave'_temp
-}
+* ----- LABELS
+label define healthneg 	1 "1 Poor" 	2 "2 Fair" 3 "3 Good" 4 "4 Very good" 5 "5 Excellent"
+label define NOYES 		0 "0 Had" 	1 "1 Never"
+label values chHealth_neg healthneg // moHealth_neg
+label values no_* NOYES
+label values neverDrink neverSmoke YESNO
+
 
 * ----------------------------- FACTOR SCORE
 * NOTE: HIGHER SCORE REPRESENTS A BETTER OUTCOME 
 
 * ----------------------------- FACTOR SCORE: GENERAL HEALTH (AGE 9 & 15)
 * ----- SEM
-* child health + had in past 12 months (no_)
+* CHILD HEALTH, CHILD HAD IN PAST ...
 sem (GeneralHealth -> chHealth_neg no*), method(mlmv) var(GeneralHealth@1)
-predict healthFactor_a9 	if (e(sample) == 1 & wave == 9),	latent(GeneralHealth)
-predict healthFactor_a15 	if (e(sample) == 1 & wave == 15),	latent(GeneralHealth)
 
+foreach wave in 9 15 {
+	* ----- PREDICT AND STANDARDIZE HEALTH FACTOR
+	predict healthFactor_`wave'_temp if (e(sample) == 1 & wave == `wave'), latent(GeneralHealth)
+	egen healthFactor_`wave' 	= std(healthFactor_`wave'_temp)
+	drop healthFactor_`wave'_temp
+}
 
-* ----- STANDARDIZE
-egen healthFactor_a9_std 	= std(healthFactor_a9)
-egen healthFactor_a15_std 	= std(healthFactor_a15)
-
-drop healthFactor_a9 healthFactor_a15
-
-* ----- BINARY
 
 * ----------------------------- FACTOR SCORE: MEDICAL UTILIZATION (AGE 9 & 15)
 * ----- SEM
-* medication + doc illness + doc regular + ER
+* MEDICATION, DOC ILLNESS, DOC REGULAR, ER
 sem (UtilFactor -> numDocIll medication numRegDoc emRoom), method(mlmv) var(UtilFactor@1) 
-predict medicalFactor_a9 	if (e(sample) == 1 & wave == 9),	latent(UtilFactor)
-predict medicalFactor_a15 	if (e(sample) == 1 & wave == 15),	latent(UtilFactor)
 
-* ----- STANDARDIZE 
-egen medicalFactor_a9_std 	= std(medicalFactor_a9)
-egen medicalFactor_a15_std 	= std(medicalFactor_a15)
-
-drop medicalFactor_a9 medicalFactor_a15
-
-* ----- BINARY
+foreach wave in 9 15 {
+	* ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
+	predict medicalFactor_`wave'_temp if (e(sample) == 1 & wave == `wave'), latent(UtilFactor)
+	egen medicalFactor_`wave' 	= std(medicalFactor_`wave'_temp)
+	drop medicalFactor_`wave'_temp
+}
 
 
-* ----------------------------- HEALTH BEHAVIOURS (AGE 15)
+* ----------------------------- FACTOR SCORE: HEALTH BEHAVIOURS (AGE 15)
 * ----- SEM
-sem (BehavFactor -> activityVigorous neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1) // bmi
-predict behavFactor_a15 if (e(sample) == 1 & wave == 15),	latent(BehavFactor)
+sem (BehavFactor -> activityVigorous neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1)
 
-* ----- STANDARDIZE 
-egen behavFactor_a15_std = std(behavFactor_a15)
-drop behavFactor_a15
-
-* ----- BINARY
-
-* ----------------------------- BMI
-* BMI + indicator for overweight
+* ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
+predict behavFactor_15_temp if (e(sample) == 1 & wave == 15), latent(BehavFactor)
+egen behavFactor_15 = std(behavFactor_15_temp)
+drop behavFactor_15_temp
 
 
 * ----------------------------- LIMITATIONS (AGE 9 & 15)
-* limit (AGE 15)
-* absent (AGE 9 & 15)
+* ----- ABSENT (AGE 9 & 15)
+label define absent9 	0 "0 Never" 	1 "1 Once or twice this year" ///
+						2 "2 More then twice but less than 10 times" ///
+						3 "3 About once a month" 4 "4 A few times a month or more"
+
+gen absent = .
+replace absent = 0 if absent_15 == 0 						& wave == 15
+replace absent = 1 if (absent_15 == 1 | absent_15 == 2)		& wave == 15
+replace absent = 2 if (absent_15 > 2 & absent_15 < 10) 		& wave == 15
+replace absent = 3 if (absent_15 >= 10 & absent_15 < 13)	& wave == 15
+replace absent = 4 if absent_15 >= 13 						& wave == 15
+replace absent = absent_9 if wave == 9
+
+label values absent absent_9 absent9
+
+* ----- LIMIT (AGE 15)
+tab limit if wave == 15
 
 
 * ----------------------------- MENTAL HEALTH (AGE 15)
-* depressed diagnosedDepression
+* ----- FEEL DEPRESSED (SELF-REPORT)
+tab depressed
+
+* RECODE: HIGHER MORE DEPRESSED
+recode depressed (1 = 4) (2 = 3) (3 = 2) (4 = 1), gen(depressed_neg)
+label define depressed	1 "1 Strongly disagree" 2 "2 Somewhat disagree" ///
+						3 "3 Somewhat agree"	4 "4 Stronlgy agree"
+label values depressed_neg depressed
+
+* ----- EVER DIAGNOSED WITH DEPRESSION/ANXIETY
+tab diagnosedDepression
 
 
 
 * ----------------------------- FORMAT & SAVE
 * ----- LABELS
-* NOTE: make file with all labels
 label var idnum 				"Family ID"
 label var wave 					"Wave"
-label var chHealth 				"Child health (PCG report)"
+label var chHealth 				"Child health (1 highest)"
+label var chHealth_neg			"Child health (5 highest)"
 label var everAsthma			"Ever diagnosed with asthma"
 label var diagnosedDepression	"Ever diagnosed with depression/anxiety"
 label var everADHD				"Ever diagnosed with ADD/ADHD"
@@ -185,7 +192,7 @@ label var medication 			"Takes doctor prescribed medication"
 label var chMediHI				"Covered by Medicaid/public insurance plan"
 label var chPrivHI				"Covered by private insurance plan"
 label var moHealth				"Mother health (self-reported)"
-label var depressed				"Feel depressed (self-reported)"
+label var depressed_neg			"Feel depressed (self-reported)"
 label var chHealthSelf			"Description health (self-reported)"
 label var absentSelf			"Days absent from school due to health past year (self-reported)"
 label var activity60			"Days physically active for 60+ min (past week)"
@@ -219,16 +226,19 @@ label var numDocIll				"Num visits health care professional due to illness"
 label var numDocIllInj			"Num visits health care professional due to illness/injury"
 label var numDocInj				"Num visits health care professional for injury (since birth)"
 
-label var chHealth_9			"Child health at age 9"
-label var chHealth_15			"Child health at age 15"
+label var healthFactor_9		"General health factor (age 9)"
+label var healthFactor_15		"General health factor (age 15)"
+label var medicalFactor_9		"Medical utilization factor (age 9)"
+label var medicalFactor_15		"Medical utilization factor (age 15)"
+label var behavFactor_15		"Behav factor (age 15)"
 
-// no_* never*
-// *_std
 
 
 * ----- SAVE
+drop moReport
 describe
 save "${TEMPDATADIR}/health.dta", replace 
+
 
 
 * ---------------------------------------------------------------------------- *

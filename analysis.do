@@ -42,27 +42,26 @@ global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 * ----------------------------- SET SWITCHES
 global PREPARE 			= 1		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
-global DESCRIPTIVE		= 1		// Perform descriptive statistics
+global DESCRIPTIVE		= 0		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
-global ASSUMPTIONS		= 1		// Check IV assumptions
+global ASSUMPTIONS		= 0		// Check IV assumptions
 global TABLESSIMULATED	= 0
-global ROBUSTNESS		= 0		// Perform robustness checks
+global ROBUSTNESS		= 1		// Perform robustness checks
 
 * ----------------------------- GLOBAL VARIABLES
 global CONTROLS 	age chFemale chRace moAge
 
-global ELIGVAR 		eligCum
-global SIMELIGVAR 	simEligCum
+global ELIGVAR 		eligCum		// endogenous variable
+global SIMELIGVAR 	simEligCum	// instrument
 
-global OUTCOMES9 	chHealth_neg healthFactor_a9_std medicalFactor_a9_std 	absent
-global OUTCOMES15 	chHealth_neg behavFactor_a15_std medFac_a15_std 		absent limit bmi
+global OUTCOMES9 	healthFactor_9 chHealth_neg medicalFactor_9 	absent
+global OUTCOMES15 	behavFactor_15 chHealth_neg medicalFactor_15	absent limit	depressed_neg diagnosedDepression
 
-* General health FACTOR (9)			: child health + had in past 12 months (no_)
+* General health FACTOR (9)			: chHealth_neg + no_*
+* Health behav FACTOR	(15)		: activityVigorous neverSmoke neverDrink bmi
 * Limitations 			(9 & 15)	: limit absent
-* Health behav FACTOR	(15)		: smoke, drink, vigorous activity
-* WEIGHT							: BMI + indicator for overweight
-* Mental health			(15)		: Self report dep + doctor diagnosed
-* Uitlization FACTOR	(9 & 15)	: medication + doc illness + doc regular + ER
+* Mental health			(15)		: depressed_neg diagnosedDepression
+* Uitlization FACTOR	(9 & 15)	: medication numDocIll numRegDoc emRoom
 
 * ----------------------------- LOG FILE
 
@@ -74,9 +73,7 @@ global OUTCOMES15 	chHealth_neg behavFactor_a15_std medFac_a15_std 		absent limi
 if ${PREPARE} == 1 {
 	* ----------------------------- LOAD HEALTH DATA FF
 	use "${TEMPDATADIR}/health.dta", clear
-	rename medicalFactor_a15_std medFac_a15_std
-	* TO-DO: drop not used variables
-
+	
 	* ----------------------------- MERGE DEMOGRAPHICS FF
 	merge 1:1 idnum wave using "${TEMPDATADIR}/household_FF.dta", nogen
 
@@ -382,97 +379,111 @@ if ${REGRESSIONS} == 1 {
 	label var chRace			"Race"
 	label var ${ELIGVAR}		"Eligibility"
 	label var ${SIMELIGVAR}		"Simulated Elig"
-	label var medFac_a15_std	"Utilization"
+	label var medicalFactor_15	"Utilization"
+
+	* ----- UTILIZATION (AGE 9 & 15)
+	estout medicalFactor_9_OLS_9 medicalFactor_9_IV_9 medicalFactor_15_OLS_15 medicalFactor_15_IV_15 ///
+	using "${TABLEDIR}/utilization.tex", replace label collabels(none) style(tex) ///
+	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV") nonumbers ///
+	keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// ${CONTROLS}
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations" )) ///
+	mgroups("\rule{0pt}{3ex} Utilization age 9" "Utilization age 15", ///
+	pattern(1 0 1 0) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 	* ----- OLS & IV (AGE 9)
-	estout healthFactor_a9_std_OLS_9 healthFactor_a9_std_IV_9 chHealth_neg_OLS_9 chHealth_neg_IV_9 ///
-	absent_OLS_9 absent_IV_9 medicalFactor_a9_std_OLS_9 medicalFactor_a9_std_IV_9 ///
+	estout healthFactor_9_OLS_9 healthFactor_9_IV_9 chHealth_neg_OLS_9 chHealth_neg_IV_9 ///
+	absent_OLS_9 absent_IV_9 ///
 	using "${TABLEDIR}/regression9.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
-	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) /// 				"\ "
+	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
+	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///				stats
-	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Utilization", ///		mgroups
-	pattern(1 0 1 0 1 0 1 0) span ///														mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
-	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) //								varlabels
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
+	pattern(1 0 1 0 1 0) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 	* ----- OLS & IV (AGE 15)
-	estout behavFactor_a15_std_OLS_15 behavFactor_a15_std_IV_15 chHealth_neg_OLS_15 chHealth_neg_IV_15 ///
-	absent_OLS_15 absent_IV_15 limit_OLS_15 limit_IV_15 medFac_a15_std_OLS_15 medFac_a15_std_IV_15 ///
+	estout behavFactor_15_OLS_15 behavFactor_15_IV_15 chHealth_neg_OLS_15 chHealth_neg_IV_15 ///
+	absent_OLS_15 absent_IV_15 limit_OLS_15 limit_IV_15 depressed_neg_OLS_15 depressed_neg_IV_15 ///
+	diagnosedDepression_OLS_15 diagnosedDepression_IV_15 ///
 	using "${TABLEDIR}/regression15.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
-	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) /// 					"\ "
+	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
+	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 						stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///									stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///					stats
-	mgroups("\rule{0pt}{3ex} Factor Behav" "Child Health" "Absent" "Limit" "Utilization", ///	mgroups
-	pattern(1 0 1 0 1 0 1 0 1 0) span ///														mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///				mgroups
-	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) //									varlabels
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Health Behav. Factor" "Child Health" "Absent" "Limit" "Feels depressed" "Diagnosed depressed", ///
+	pattern(1 0 1 0 1 0 1 0 1 0 1 0) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
-	* ----- RF & FS (9)
-	estout healthFactor_a9_std_FS_9 healthFactor_a9_std_RF_9 chHealth_neg_FS_9 chHealth_neg_RF_9 ///
-	absent_FS_9 absent_RF_9 medicalFactor_a9_std_FS_9 medicalFactor_a9_std_RF_9 ///
+	* ----- RF (9)
+	estout healthFactor_9_RF_9 chHealth_neg_RF_9 absent_RF_9 ///
 	using "${TABLEDIR}/RF_FS_9.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} FS" "RF" "FS" "RF" "FS" "RF" "FS" "RF") nonumbers ///
-	keep(${SIMELIGVAR} ${CONTROLS} _cons) order(${SIMELIGVAR} ${CONTROLS} _cons) /// 		"\ "
+	mlabels("\rule{0pt}{3ex} RF" "RF" "RF") nonumbers ///
+	keep(${SIMELIGVAR} ${CONTROLS} _cons) order(${SIMELIGVAR} ${CONTROLS} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 							stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$")) ///					stats
-	mgroups("\rule{0pt}{3ex} Factor Health" "Child Health" "Absent" "Utilization", ///		mgroups
-	pattern(1 0 1 0 1 0 1 0) span ///														mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
-	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline ")) //							varlabels
+	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
+	pattern(1 1 1) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline "))
 
-	* ----- RF & FS (15)
-	estout behavFactor_a15_std_FS_15 behavFactor_a15_std_RF_15 chHealth_neg_FS_15 chHealth_neg_RF_15 ///
-	absent_FS_15 absent_RF_15 limit_FS_15 limit_RF_15 medFac_a15_std_FS_15 medFac_a15_std_RF_15 ///
+	* ----- RF (15)
+	estout behavFactor_15_RF_15 chHealth_neg_RF_15 absent_RF_15 limit_RF_15 depressed_neg_RF_15 ///
+	diagnosedDepression_RF_15 ///
 	using "${TABLEDIR}/RF_FS_15.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} FS" "RF" "FS" "RF" "FS" "RF" "FS" "RF" "FS" "RF") nonumbers ///
-	keep(${SIMELIGVAR} ${CONTROLS} _cons) order(${SIMELIGVAR} ${CONTROLS} _cons) /// 			"\ "
+	mlabels("\rule{0pt}{3ex} RF" "RF" "RF" "RF" "RF" "RF") nonumbers ///
+	keep(${SIMELIGVAR} ${CONTROLS} _cons) order(${SIMELIGVAR} ${CONTROLS} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2, fmt(%9.0f %9.0f %9.0f %9.3f) /// 								stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///									stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$")) ///						stats
-	mgroups("\rule{0pt}{3ex} Factor Behav" "Child Health" "Absent" "Limit" "Utilization", ///	mgroups
-	pattern(1 0 1 0 1 0 1 0 1 0) span ///														mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///				mgroups
-	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline ")) //								varlabels
+	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Health Behav. F." "Child Health" "Absent" "Limit" "Feels dep." "Diagnosed dep.", ///	
+	pattern(1 1 1 1 1 1) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline "))
 
 	* ----- CHILD HEALTH BY AGE (OLS & IV) - CURRENT ELIGIBILITY
 	estout chHealth_neg_IV_SEP_1 chHealth_neg_IV_SEP_3 chHealth_neg_IV_SEP_5 ///
 	chHealth_neg_IV_SEP_9 chHealth_neg_IV_SEP_15 ///
 	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers ///
-	keep(eligCur ${CONTROLS} _cons) order(eligCur ${CONTROLS} _cons) /// 					"\ "
+	keep(eligCur ${CONTROLS} _cons) order(eligCur ${CONTROLS} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///				stats
-	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
-	pattern(1 1 1 1 1) span ///																mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
-	varlabels(_cons Constant, blist(eligCur "\hline ")) //									varlabels	
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///
+	pattern(1 1 1 1 1) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(eligCur "\hline "))
 
 	* ----- CHILD HEALTH BY AGE (OLS & IV) - CUMULATED ELIGIBILITY
 	estout chHealth_neg_IV_SEP2_1 chHealth_neg_IV_SEP2_3 chHealth_neg_IV_SEP2_5 ///
 	chHealth_neg_IV_SEP2_9 chHealth_neg_IV_SEP2_15 ///
 	using "${TABLEDIR}/chHealth_all2.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers ///
-	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) /// 				"\ "
+	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE N r2 fs, fmt(%9.0f %9.0f %9.0f %9.3f %9.1f) /// 					stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///								stats
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations" "\$R^{2}$" "F-Statistic")) ///			stats
-	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///					mgroups
-	pattern(1 1 1 1 1) span ///																mgroups
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///			mgroups
-	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) //								varlabels	
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///
+	pattern(1 1 1 1 1) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))	
 
 } // END REGRESSIONS
 
@@ -514,11 +525,11 @@ if ${ASSUMPTIONS} == 1 {
 	* ----- LaTex
 	estout balanceElig balanceSimElig using "${TABLEDIR}/balance.tex", replace label style(tex) ///
 	starlevels(* .1 ** .05 *** .01) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-	keep(${PRECHAR}) collabels(none) numbers ///
+	keep(${PRECHAR}) collabels(none) numbers alignment(l) ///
 	mlabels("Eligibility" "Simulated \\ & & Eligibility") varlabels(, blist(moCollege "\hline ")) ///
-	stats(Controls Fstat N, fmt(%9.0f %9.3f %9.0f) /// 									stats
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///				stats
-	label("\hline \rule{0pt}{3ex}Controls" "\textit{p}-value \textit{F}-test" "Observations")) //				stats
+	stats(Controls Fstat N, fmt(%9.0f %9.3f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "\textit{p}-value \textit{F}-test" "Observations"))
 
 
 } // END ASSUMPTIONS
@@ -581,11 +592,46 @@ if ${TABLESSIMULATED} == 1 {
 * ---------------------------------------------------------------------------- *
 
 if ${ROBUSTNESS} == 1 {
+	* ----------------------------- IV WITH AND WITHOUT CONTROLS
+	* ----- OUTCOMES AGE 9
+	foreach outcome in $OUTCOMES9 {
+		* ----- IV-2SLS
+		* WITH CONTROLS + FE
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1,  cluster(statefip)
+		est store `outcome'_IV_9
+		estadd local Controls 		"$\checkmark$"
+		estadd local StateFE 		"$\checkmark$"
+
+
+		* WITHOUT CONTROLS
+		ivregress 2sls `outcome' i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1,  cluster(statefip)
+		est store `outcome'_IV_9_NOCO
+		estadd local StateFE 		"$\checkmark$"
+
+		* WITHOUT CONTROLS + FE
+		ivregress 2sls `outcome' (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1,  cluster(statefip)
+		est store `outcome'_IV_9_NOCOFE
+	}
+
+
+	* ----- IV 9
+	estout  healthFactor_9_IV_9_NOCOFE	healthFactor_9_IV_9_NOCO  	healthFactor_9_IV_9 ///
+			chHealth_neg_IV_9_NOCOFE 	chHealth_neg_IV_9_NOCO 		chHealth_neg_IV_9 ///
+			absent_IV_9_NOCOFE  		absent_IV_9_NOCO 			absent_IV_9 ///
+	using "${TABLEDIR}/robustnessControls.tex", replace label collabels(none) style(tex) ///
+	mlabels(none) numbers ///
+	keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// 
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
+	pattern(1 0 0 1 0 0 1 0 0) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
+
 
 	* ----------------------------- SELECTION / DROP-OUT
-
-
-	* ----------------------------- IV WITH AND WITHOUT CONTROLS
 
 
 } // END ROBUSTNESS
@@ -594,31 +640,6 @@ if ${ROBUSTNESS} == 1 {
 
 
 * capture log close
-
-
-/* ----------------------------- EXAMPLE OUTPUT
-					TABLE X - OUTCOMES AT AGES 9 AND 15
-----------------------------------------------------------------------------
-----------------------------------------------------------------------------
-						AGE 9								AGE 15
-		--------------------------------	--------------------------------
-			OUT 1			OUT 2				OUT 1			OUT 2	
-		--------------	--------------		--------------	--------------
-		OLS 	IV		OLS		IV			OLS		IV		OLS		IV
-		(1)		(2)		(3)		(4)			(5)		(6)		(7)		(8)
-----------------------------------------------------------------------------
-VAR 1	XX		XX		XX		XX			XX		XX		XX		XX	
-VAR 2	XX		XX		XX		XX			XX		XX		XX		XX
-VAR 3	XX		XX		XX		XX			XX		XX		XX		XX
-
-CONT	Y		Y		Y		Y			Y		Y		Y		Y
-FE		Y		Y		Y		Y			Y		Y		Y		Y
-R2		XX		XX		XX		XX			XX		XX		XX		XX
-N		XX		XX		XX		XX			XX		XX		XX		XX
-----------------------------------------------------------------------------
-NOTES: XXX
-*/
-
 
 
 * ---------------------------------------------------------------------------- *

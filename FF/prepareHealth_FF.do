@@ -461,15 +461,15 @@ rename p5h3a1 medication
 * ----------------------- SCHOOL ABSENT (CORE REPORT) ------------------------ *
 * ----- ABSENT SCHOOL (RANGE)
 * Number of times child was absent from school during school year
-rename p5l11 absent
+rename p5l11 absent_9
 
 // * ----------------------- SALIVA SAMPLE (CORE REPORT) ------------------------ *
 // * ---- CHILD (OPTIONS)
 // rename hv5_13 chSaliva
 
 * ----------------------------- SAVE
-keep idnum *Health wave ch* absent ever* num* em* everADHD medication ///
-absent regDoc feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
+keep idnum *Health wave ch* absent_9 ever* num* em* everADHD medication ///
+regDoc feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
 anemia headachesMigraines earInfection seizures stuttering diabetes mo*
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
@@ -551,7 +551,7 @@ rename p6b20 limit
 
 * ----- ABSENT (PARENT REPORTED) (NUM)
 * Days youth absent from school due to health in past year
-rename p6b21 absent
+rename p6b21 absent_15
 
 * ----- ABSENT (SELF-REPORTED) (NUM)
 * Days absent from school due to health in past year - youth report
