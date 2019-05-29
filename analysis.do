@@ -46,10 +46,10 @@ global DESCRIPTIVE		= 0		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
 global ASSUMPTIONS		= 0		// Check IV assumptions
 global TABLESSIMULATED	= 0
-global ROBUSTNESS		= 1		// Perform robustness checks
+global ROBUSTNESS		= 0		// Perform robustness checks
 
 * ----------------------------- GLOBAL VARIABLES
-global CONTROLS 	age chFemale chRace moAge
+global CONTROLS 	age 	chFemale i.chRace moAge age#chFemale // age2 moAge2
 
 global ELIGVAR 		eligCum		// endogenous variable
 global SIMELIGVAR 	simEligCum	// instrument
@@ -64,7 +64,6 @@ global OUTCOMES15 	behavFactor_15 chHealth_neg medicalFactor_15	absent limit	dep
 * Uitlization FACTOR	(9 & 15)	: medication numDocIll numRegDoc emRoom
 
 * ----------------------------- LOG FILE
-
 
 * ---------------------------------------------------------------------------- *
 * ------------------------- COMBINE & PREPARE DATA --------------------------- *
@@ -116,8 +115,23 @@ if ${PREPARE} == 1 {
 		replace eligCum 	= eligCurAll`wave' 		if wave == `wave'
 	}
 
+	* ----- LIMIT THE SAMPLE TO THE SAME INDIVIDUALS ACROSS ALL OUTCOMES
+	* AGE 9
+	qui ivregress 2sls healthFactor_9 ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+		if (wave == 9 & chGenetic == 1),  cluster(statefip)
+	gen reg9 = e(sample)
+	bysort idnum : egen samp1_temp = max(reg9)
+
+	* AGE 15
+	qui ivregress 2sls depressed_neg ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+		if (wave == 15 & chGenetic == 1),  cluster(statefip)
+	gen reg2 = e(sample)
+	bysort idnum : egen samp2_temp = max(reg2)
+
+	gen finSample = 1 if (samp1_temp == 1 & samp2_temp == 1)
+
 	* ----------------------------- SAVE
-	drop *All* 
+	drop *All* *_temp reg*
 	order idnum wave age 
 	sort idnum wave 
 	save "${CLEANDATADIR}/analysis.dta", replace
@@ -125,6 +139,20 @@ if ${PREPARE} == 1 {
 } // END PREPARE
 
 use "${CLEANDATADIR}/analysis.dta", clear
+
+
+
+// ds idnum wave chFemale moAge *Cohort *White *Black *Hispanic *Other *Educ *Multi *Race *College gm* gk* chGenetic bpost1983, not 
+// global RESHAPEVARS = r(varlist)
+// reshape wide $RESHAPEVARS, i(idnum) j(wave)
+
+// missings dropvars _all, force
+
+// rename diagnosedDepression15 diagDepression15
+
+* ----- ALLOW NON-LINEARITIES IN AGE
+// gen age2 	= age*age
+// gen moAge2 	= moAge*moAge
 
 * ---------------------------------------------------------------------------- *
 * ------------------------------- POWER & MDE -------------------------------- *
@@ -180,7 +208,7 @@ if ${DESCRIPTIVE} == 1 {
 		rename chFemale female
 		rename year chCohort
 
-		keep idnum wave $STATSVAR
+		keep idnum wave $STATSVAR finSample
 
 		* ----------------------------- SUMMARY STATS FRAGILE FAMILIES
 		* ----- PREPARE VARIABLES
@@ -204,7 +232,7 @@ if ${DESCRIPTIVE} == 1 {
 
 		* ----- FF SUMMARY STATISTICS
 		* NOTE: LIMIT TO REGRESSION SAMPLE
-		eststo statsFF: estpost tabstat $STATSVAR if wave == 0, columns(statistics) statistics(mean sd min max n) 
+		eststo statsFF: estpost tabstat $STATSVAR if (wave == 0 & finSample == 1), columns(statistics) statistics(mean sd min max n) 
 
 		* ----- LaTex TABLE
 		esttab statsFF using "${TABLEDIR}/SumStat_FF.tex", style(tex) replace ///
@@ -224,13 +252,13 @@ if ${DESCRIPTIVE} == 1 {
 		replace FF = 0 if FF == .
 
 		* ----- FULL FFCWS SUM STAT
-		eststo compFF1: estpost tabstat $COMPARVAR if wave == 0 & FF == 1, ///
+		eststo compFF1: estpost tabstat $COMPARVAR if (wave == 0 & FF == 1), ///
 		columns(statistics) statistics(mean sd n) 
 		estadd local FullSamp		"$\checkmark$"
 
 		* ----- WOKRING SAMPLE FFCWS SUM STAT
 		* NOTE: LIMIT TO REGRESSION SAMPLE
-		eststo compFF2: estpost tabstat $COMPARVAR if wave == 0 & FF == 1, ///
+		eststo compFF2: estpost tabstat $COMPARVAR if (wave == 0 & FF == 1 & finSample == 1), ///
 		columns(statistics) statistics(mean sd n)
 		estadd local WorkingSamp	"$\checkmark$"
 
@@ -239,17 +267,11 @@ if ${DESCRIPTIVE} == 1 {
 		columns(statistics) statistics(mean sd n)
 		estadd local FullSamp		"$\checkmark$"
 
-		* ----- WORKING SAMPLE CPS SUM STAT
-		* NOTE: LIMIT MIRROR SAMPLE
-		// eststo compCPS2: estpost tabstat $COMPARVAR if FF == 0, ///
-		// columns(statistics) statistics(mean sd n)
-		// estadd local WorkingSamp	"$\checkmark$"
-
 		* ----- LaTex TABLE
 		esttab compFF1 compFF2 compCPS1 using "${TABLEDIR}/SumStat_both.tex", replace ///
 		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc))") ///
 		order(chCohort female chWhite chBlack chHispanic famSize moCollege faCollege moCohort faCohort) ///
-		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS") style(tex) alignment(r) ///
+		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS") style(tex) /// alignment(r)
 		refcat(chCohort "Child" famSize "Family", nolabel) ///
 		stats(FullSamp WorkingSamp N, fmt(%9.0f) ///
 		layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -268,30 +290,35 @@ if ${REGRESSIONS} == 1 {
 	* ----------------------------- OUTCOMES AGE 9
 	foreach outcome in $OUTCOMES9 {
 		* ----- OLS
-		reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1, cluster(statefip)
+		reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip ///
+			if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
 
 		est store `outcome'_OLS_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- RF
-		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1,  cluster(statefip)
+		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
 		est store `outcome'_RF_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- FS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1, first cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+			if (wave == 9 & chGenetic == 1 & finSample == 1), first cluster(statefip)
 		gen samp_`outcome'9 = e(sample)
 
-		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip if (wave == 9 & samp_`outcome'9 == 1 & chGenetic == 1), cluster(statefip)
+		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+			if (wave == 9 & samp_`outcome'9 == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
 		est store `outcome'_FS_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- IV-2SLS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1,  cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
 		est store `outcome'_IV_9
 		estadd local Controls 		"$\checkmark$"
@@ -305,29 +332,34 @@ if ${REGRESSIONS} == 1 {
 	* ----------------------------- OUTCOMES AGE 15
 	foreach outcome in $OUTCOMES15 {
 		* ----- OLS
-		reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip if wave == 15 & chGenetic == 1, cluster(statefip)
+		reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip ///
+			if (wave == 15 & chGenetic == 1 & finSample == 1), cluster(statefip)
 		est store `outcome'_OLS_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- RF
-		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip if wave == 15 & chGenetic == 1,  cluster(statefip)
+		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+			if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
 		est store `outcome'_RF_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- FS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 15 & chGenetic == 1, first cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+			if (wave == 15 & chGenetic == 1 & finSample == 1), first cluster(statefip)
 		gen samp_`outcome'15 = e(sample)
 
-		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip if (wave == 15 & samp_`outcome'15 == 1 & chGenetic == 1), cluster(statefip)
+		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+			if (wave == 15 & samp_`outcome'15 == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
 		est store `outcome'_FS_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
 		* ----- IV-2SLS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 15 & chGenetic == 1,  cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+			if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
 		est store `outcome'_IV_15
 		estadd local Controls 		"$\checkmark$"
@@ -338,13 +370,29 @@ if ${REGRESSIONS} == 1 {
 		estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
 	}
 
+	* ----------------------------- COEFPLOT AGE 9 & 15
+	coefplot 	(chHealth_neg_IV_9, aseq(Child Health)) ///
+				(absent_IV_9, aseq(Absent)) ///
+				(healthFactor_9_IV_9, aseq(Health Factor)) ///
+				(medicalFactor_9_IV_9, aseq(Utilization)), bylabel(Age 9) 	keep(eligCum) ///
+				|| 	(chHealth_neg_IV_15, aseq(Child Health)) ///
+					(absent_IV_15, aseq(Absent)) ///
+					(medicalFactor_15_IV_15, aseq(Utilization)) ///
+					(behavFactor_15_IV_15, aseq(Behaviors Factor)) ///
+					(depressed_neg_IV_15, aseq(Feels dep.)) ///
+					(diagnosedDepression_IV_15, aseq(Diagnosed dep.)), bylabel(Age 15) keep(eligCum) ///
+	xline(0) msymbol(D) levels(95 90) ciopts(recast(. rcap)) legend(order(1 "95% CI" 2 "90% CI" )) ///
+	graphregion(color(white)) bgcolor(white) aseq swapnames /// norecycle byopts(compact cols(1))
+	subtitle(, size(medium) margin(medium) justification(left) color(white) bcolor(black) bmargin(top_bottom)) at()
+
 
 	* ----------------------------- CHILD HEALTH BY AGE (IV)
 	* ----- CURRENT HEALTH
 	foreach outcome in chHealth_neg {
 		foreach wave in 1 3 5 9 15 {
 			di "****** "
-			ivregress 2sls `outcome' ${CONTROLS} i.statefip (eligCur = simEligCur) if wave == `wave' & chGenetic == 1,  cluster(statefip)
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (eligCur = simEligCur) ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
 			est store `outcome'_IV_SEP_`wave'
 			estadd local Controls 		"$\checkmark$"
 			estadd local StateFE 		"$\checkmark$"
@@ -360,7 +408,7 @@ if ${REGRESSIONS} == 1 {
 		foreach wave in 1 3 5 9 15 {
 			di "****** "
 			ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-			if wave == `wave' & chGenetic == 1,  cluster(statefip)
+				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
 			est store `outcome'_IV_SEP2_`wave'
 			estadd local Controls 		"$\checkmark$"
@@ -400,7 +448,7 @@ if ${REGRESSIONS} == 1 {
 	absent_OLS_9 absent_IV_9 ///
 	using "${TABLEDIR}/regression9.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
-	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) ///
+	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) /// refcat(2.chRace, label(Ref. White)) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -416,7 +464,7 @@ if ${REGRESSIONS} == 1 {
 	diagnosedDepression_OLS_15 diagnosedDepression_IV_15 ///
 	using "${TABLEDIR}/regression15.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
-	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) ///
+	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -430,7 +478,7 @@ if ${REGRESSIONS} == 1 {
 	estout healthFactor_9_RF_9 chHealth_neg_RF_9 absent_RF_9 ///
 	using "${TABLEDIR}/RF_FS_9.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} RF" "RF" "RF") nonumbers ///
-	keep(${SIMELIGVAR} ${CONTROLS} _cons) order(${SIMELIGVAR} ${CONTROLS} _cons) ///
+	keep(${SIMELIGVAR} 2.chRace _cons) order(${SIMELIGVAR} 2.chRace _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -445,7 +493,7 @@ if ${REGRESSIONS} == 1 {
 	diagnosedDepression_RF_15 ///
 	using "${TABLEDIR}/RF_FS_15.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} RF" "RF" "RF" "RF" "RF" "RF") nonumbers ///
-	keep(${SIMELIGVAR} ${CONTROLS} _cons) order(${SIMELIGVAR} ${CONTROLS} _cons) ///
+	keep(${SIMELIGVAR} 2.chRace _cons) order(${SIMELIGVAR} 2.chRace _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -460,7 +508,7 @@ if ${REGRESSIONS} == 1 {
 	chHealth_neg_IV_SEP_9 chHealth_neg_IV_SEP_15 ///
 	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers ///
-	keep(eligCur ${CONTROLS} _cons) order(eligCur ${CONTROLS} _cons) ///
+	keep(eligCur 2.chRace _cons) order(eligCur 2.chRace _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -475,7 +523,7 @@ if ${REGRESSIONS} == 1 {
 	chHealth_neg_IV_SEP2_9 chHealth_neg_IV_SEP2_15 ///
 	using "${TABLEDIR}/chHealth_all2.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers ///
-	keep(${ELIGVAR} ${CONTROLS} _cons) order(${ELIGVAR} ${CONTROLS} _cons) ///
+	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -509,14 +557,16 @@ if ${ASSUMPTIONS} == 1 {
 	global PRECHAR moCollege faCollege moCohort faCohort avgIncBase famSizeBase
 
 	* ----- PREDICT INSTRUMENT WITH ALL COVARIATES
-	reg ${ELIGVAR}	${PRECHAR}	${CONTROLS} i.statefip if wave == 9 & chGenetic == 1, cluster(statefip)
+	reg ${ELIGVAR}	${PRECHAR}	${CONTROLS} i.statefip ///
+		if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
 	est store balanceElig
 	estadd local Controls 		"$\checkmark$"
 	test ${PRECHAR}
 	estadd scalar Fstat = r(p) // r(p) r(F)
 
 
-	reg ${SIMELIGVAR} ${PRECHAR} ${CONTROLS} i.statefip if wave == 9 & chGenetic == 1, cluster(statefip)
+	reg ${SIMELIGVAR} ${PRECHAR} ${CONTROLS} i.statefip ///
+		if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
 	est store balanceSimElig
 	estadd local Controls 		"$\checkmark$"
 	test ${PRECHAR}
@@ -525,12 +575,11 @@ if ${ASSUMPTIONS} == 1 {
 	* ----- LaTex
 	estout balanceElig balanceSimElig using "${TABLEDIR}/balance.tex", replace label style(tex) ///
 	starlevels(* .1 ** .05 *** .01) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
-	keep(${PRECHAR}) collabels(none) numbers alignment(l) ///
+	keep(${PRECHAR}) collabels(none) numbers ///
 	mlabels("Eligibility" "Simulated \\ & & Eligibility") varlabels(, blist(moCollege "\hline ")) ///
 	stats(Controls Fstat N, fmt(%9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "\textit{p}-value \textit{F}-test" "Observations"))
-
 
 } // END ASSUMPTIONS
 
@@ -565,7 +614,7 @@ if ${TABLESSIMULATED} == 1 {
 		use "${TEMPDATADIR}/simulatedElig100.dta", clear
 		eststo sim100: estpost tabstat simulatedElig100, by(year) nototal
 		esttab sim100 using "${TABLEDIR}/simulatedEligbility_year.tex", replace ///
-		cells( mean(fmt(a3)) ) nonumber noobs nodepvars label  ///
+		cells(mean(fmt(a3))) nonumber noobs nodepvars label  ///
 		title("Medicaid eligibility by year") nomtitles compress collabels(none) ///
 		addnotes("Based on March CPS data" "from 1998-2018.") mlabels("\% eligible \\ Year & children")
 
@@ -597,19 +646,22 @@ if ${ROBUSTNESS} == 1 {
 	foreach outcome in $OUTCOMES9 {
 		* ----- IV-2SLS
 		* WITH CONTROLS + FE
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1,  cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 		est store `outcome'_IV_9
 		estadd local Controls 		"$\checkmark$"
 		estadd local StateFE 		"$\checkmark$"
 
 
 		* WITHOUT CONTROLS
-		ivregress 2sls `outcome' i.statefip (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1,  cluster(statefip)
+		ivregress 2sls `outcome' ${CONTROLS} (${ELIGVAR} = ${SIMELIGVAR}) ///
+			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 		est store `outcome'_IV_9_NOCO
-		estadd local StateFE 		"$\checkmark$"
+		estadd local Controls 		"$\checkmark$"
 
 		* WITHOUT CONTROLS + FE
-		ivregress 2sls `outcome' (${ELIGVAR} = ${SIMELIGVAR}) if wave == 9 & chGenetic == 1,  cluster(statefip)
+		ivregress 2sls `outcome' (${ELIGVAR} = ${SIMELIGVAR}) ///
+			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 		est store `outcome'_IV_9_NOCOFE
 	}
 
@@ -619,8 +671,7 @@ if ${ROBUSTNESS} == 1 {
 			chHealth_neg_IV_9_NOCOFE 	chHealth_neg_IV_9_NOCO 		chHealth_neg_IV_9 ///
 			absent_IV_9_NOCOFE  		absent_IV_9_NOCO 			absent_IV_9 ///
 	using "${TABLEDIR}/robustnessControls.tex", replace label collabels(none) style(tex) ///
-	mlabels(none) numbers ///
-	keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// 
+	mlabels(none) numbers keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// 
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
@@ -629,10 +680,6 @@ if ${ROBUSTNESS} == 1 {
 	pattern(1 0 0 1 0 0 1 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
-
-
-	* ----------------------------- SELECTION / DROP-OUT
-
 
 } // END ROBUSTNESS
 

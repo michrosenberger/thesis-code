@@ -147,6 +147,7 @@ replace absent = 4 if absent_15 >= 13 						& wave == 15
 replace absent = absent_9 if wave == 9
 
 label values absent absent_9 absent9
+drop absent_9 absent_15
 
 * ----- LIMIT (AGE 15)
 tab limit if wave == 15
