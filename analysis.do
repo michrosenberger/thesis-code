@@ -371,6 +371,18 @@ if ${REGRESSIONS} == 1 {
 	}
 
 	* ----------------------------- COEFPLOT AGE 9 & 15
+	* ----- DEFINE GRAPH STYLE
+	grstyle clear
+	grstyle init
+	grstyle color background white
+	grstyle color major_grid dimgray
+	grstyle linewidth major_grid thin
+	*grstyle yesno draw_major_hgrid yes
+	grstyle yesno grid_draw_min yes
+	grstyle yesno grid_draw_max yes
+	grstyle linestyle legend none
+
+	* ----- COEFPLOT
 	coefplot 	(chHealth_neg_IV_9, aseq(Child Health)) ///
 				(absent_IV_9, aseq(Absent)) ///
 				(healthFactor_9_IV_9, aseq(Health Factor)) ///
@@ -381,9 +393,13 @@ if ${REGRESSIONS} == 1 {
 					(behavFactor_15_IV_15, aseq(Behaviors Factor)) ///
 					(depressed_neg_IV_15, aseq(Feels dep.)) ///
 					(diagnosedDepression_IV_15, aseq(Diagnosed dep.)), bylabel(Age 15) keep(eligCum) ///
-	xline(0) msymbol(D) levels(95 90) ciopts(recast(. rcap)) legend(order(1 "95% CI" 2 "90% CI" )) ///
-	graphregion(color(white)) bgcolor(white) aseq swapnames /// norecycle byopts(compact cols(1))
-	subtitle(, size(medium) margin(medium) justification(left) color(white) bcolor(black) bmargin(top_bottom)) at()
+	xline(0) msymbol(D) msize(small)  mcolor(emidblue) levels(95 90) ///
+	ciopts(recast(. rcap) color(. emidblue) color(emidblue)) legend(order(1 "95% CI" 2 "90% CI" )) /// 
+	aseq swapnames /// norecycle byopts(compact cols(1))
+	subtitle(, size(medium) margin(small) justification(left) ///
+	color(white) bcolor(emidblue) bmargin(top_bottom))
+
+	graph export "${FIGUREDIR}/coefplot.png", replace
 
 
 	* ----------------------------- CHILD HEALTH BY AGE (IV)
