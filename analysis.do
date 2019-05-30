@@ -40,7 +40,7 @@ global FIGUREDIR		"${USERPATH}/output/figures"
 global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 
 * ----------------------------- SET SWITCHES
-global PREPARE 			= 1		// Prepare data
+global PREPARE 			= 0		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
 global DESCRIPTIVE		= 0		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
@@ -54,13 +54,13 @@ global CONTROLS 	age 	chFemale i.chRace moAge age#chFemale // age2 moAge2
 global ELIGVAR 		eligCum		// endogenous variable
 global SIMELIGVAR 	simEligCum	// instrument
 
-global OUTCOMES9 	healthFactor_9 chHealth_neg medicalFactor_9 	absent
-global OUTCOMES15 	behavFactor_15 chHealth_neg medicalFactor_15	absent limit	depressed_neg diagnosedDepression
+global OUTCOMES9 	healthFactor_9 chHealthRECODE medicalFactor_9 	absent
+global OUTCOMES15 	behavFactor_15 chHealthRECODE medicalFactor_15	absent limit	depressedRECODE diagnosedDepression
 
-* General health FACTOR (9)			: chHealth_neg + no_*
+* General health FACTOR (9)			: chHealthRECODE + *RECODE
 * Health behav FACTOR	(15)		: activityVigorous neverSmoke neverDrink bmi
 * Limitations 			(9 & 15)	: limit absent
-* Mental health			(15)		: depressed_neg diagnosedDepression
+* Mental health			(15)		: depressedRECODE diagnosedDepression
 * Uitlization FACTOR	(9 & 15)	: medication numDocIll numRegDoc emRoom
 
 * ----------------------------- LOG FILE
@@ -123,7 +123,7 @@ if ${PREPARE} == 1 {
 	bysort idnum : egen samp1_temp = max(reg9)
 
 	* AGE 15
-	qui ivregress 2sls depressed_neg ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+	qui ivregress 2sls depressedRECODE ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
 		if (wave == 15 & chGenetic == 1),  cluster(statefip)
 	gen reg2 = e(sample)
 	bysort idnum : egen samp2_temp = max(reg2)
@@ -282,6 +282,12 @@ if ${DESCRIPTIVE} == 1 {
 } // END DESCRIPTIVE
 
 
+* LOOK AT BINARY VARS
+/* qui sum healthFactor_9, detail
+gen binHealthFactor_9 = 0
+replace binHealthFactor_9 = 1 if healthFactor_9 >= r(p50)
+replace binHealthFactor_9 = . if healthFactor_9 == . */
+
 * ---------------------------------------------------------------------------- *
 * ------------------------------- REGRESSIONS -------------------------------- *
 * ---------------------------------------------------------------------------- *
@@ -383,28 +389,34 @@ if ${REGRESSIONS} == 1 {
 	grstyle linestyle legend none
 
 	* ----- COEFPLOT
-	coefplot 	(chHealth_neg_IV_9, aseq(Child Health)) ///
-				(absent_IV_9, aseq(Absent)) ///
-				(healthFactor_9_IV_9, aseq(Health Factor)) ///
-				(medicalFactor_9_IV_9, aseq(Utilization)), bylabel(Age 9) 	keep(eligCum) ///
-				|| 	(chHealth_neg_IV_15, aseq(Child Health)) ///
-					(absent_IV_15, aseq(Absent)) ///
-					(medicalFactor_15_IV_15, aseq(Utilization)) ///
-					(behavFactor_15_IV_15, aseq(Behaviors Factor)) ///
-					(depressed_neg_IV_15, aseq(Feels dep.)) ///
-					(diagnosedDepression_IV_15, aseq(Diagnosed dep.)), bylabel(Age 15) keep(eligCum) ///
-	xline(0) msymbol(D) msize(small)  mcolor(emidblue) levels(95 90) ///
-	ciopts(recast(. rcap) color(. emidblue) color(emidblue)) legend(order(1 "95% CI" 2 "90% CI" )) /// 
+	global COL1 	offset(0.2)  mcolor(emidblue) ciopts(recast(. rcap) color(. emidblue) color(emidblue))
+	global COL2 	offset(-0.2) mcolor(navy) ciopts(recast(. rcap) color(. navy) color(navy))
+
+	coefplot 	(chHealthRECODE_IV_9, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_9, aseq(Child Health) $COL2) ///
+				(absent_IV_9, aseq(Absent) $COL1) 					(absent_OLS_9, aseq(Absent) $COL2) ///
+				(healthFactor_9_IV_9, aseq(Health Factor) $COL1) 	(healthFactor_9_OLS_9, aseq(Health Factor) $COL2) ///
+				(medicalFactor_9_IV_9, aseq(Utilization) $COL1) 	(medicalFactor_9_OLS_9, aseq(Utilization) $COL2), ///
+					bylabel(Age 9) keep(eligCum) || ///
+				(chHealthRECODE_IV_15, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_15, aseq(Child Health) $COL2) ///
+				(absent_IV_15, aseq(Absent) $COL1) 					(absent_OLS_15, aseq(Absent) $COL2) ///
+				(limit_IV_15, aseq(Limitation) $COL1) 				(limit_OLS_15, aseq(Limitation) $COL2) ///
+				(medicalFactor_15_IV_15, aseq(Utilization) $COL1) 	(medicalFactor_15_OLS_15, aseq(Utilization) $COL2) ///
+				(behavFactor_15_IV_15, aseq(Behaviors Factor) $COL1) (behavFactor_15_OLS_15, aseq(Behaviors Factor) $COL2) ///
+				(depressedRECODE_IV_15, aseq(Feels dep.) $COL1) 	(depressedRECODE_OLS_15, aseq(Feels dep.) $COL2) ///
+				(diagnosedDepression_IV_15, aseq(Diagnosed dep.) $COL1) (diagnosedDepression_OLS_15, aseq(Diagnosed dep.) $COL2), ///
+					bylabel(Age 15) keep(eligCum) ///
+	xline(0) msymbol(D) msize(small)  levels(95 90) /// mcolor(emidblue)
+	ciopts(recast(. rcap)) legend(rows(2) order(1 "95% CI" 2 "90% CI" 3 "IV" 4 "95% CI" 5 "90% CI" 6 "OLS")) ///
 	aseq swapnames /// norecycle byopts(compact cols(1))
 	subtitle(, size(medium) margin(small) justification(left) ///
 	color(white) bcolor(emidblue) bmargin(top_bottom))
 
-	graph export "${FIGUREDIR}/coefplot.png", replace
+	graph export "${FIGUREDIR}/coefplot.pdf", replace
 
 
 	* ----------------------------- CHILD HEALTH BY AGE (IV)
 	* ----- CURRENT HEALTH
-	foreach outcome in chHealth_neg {
+	foreach outcome in chHealthRECODE {
 		foreach wave in 1 3 5 9 15 {
 			di "****** "
 			ivregress 2sls `outcome' ${CONTROLS} i.statefip (eligCur = simEligCur) ///
@@ -420,7 +432,7 @@ if ${REGRESSIONS} == 1 {
 	}	
 
 	* ----- CUMULATED HEALTH
-	foreach outcome in chHealth_neg {
+	foreach outcome in chHealthRECODE {
 		foreach wave in 1 3 5 9 15 {
 			di "****** "
 			ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
@@ -460,7 +472,7 @@ if ${REGRESSIONS} == 1 {
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 	* ----- OLS & IV (AGE 9)
-	estout healthFactor_9_OLS_9 healthFactor_9_IV_9 chHealth_neg_OLS_9 chHealth_neg_IV_9 ///
+	estout healthFactor_9_OLS_9 healthFactor_9_IV_9 chHealthRECODE_OLS_9 chHealthRECODE_IV_9 ///
 	absent_OLS_9 absent_IV_9 ///
 	using "${TABLEDIR}/regression9.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
@@ -475,8 +487,8 @@ if ${REGRESSIONS} == 1 {
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 	* ----- OLS & IV (AGE 15)
-	estout behavFactor_15_OLS_15 behavFactor_15_IV_15 chHealth_neg_OLS_15 chHealth_neg_IV_15 ///
-	absent_OLS_15 absent_IV_15 limit_OLS_15 limit_IV_15 depressed_neg_OLS_15 depressed_neg_IV_15 ///
+	estout behavFactor_15_OLS_15 behavFactor_15_IV_15 chHealthRECODE_OLS_15 chHealthRECODE_IV_15 ///
+	absent_OLS_15 absent_IV_15 limit_OLS_15 limit_IV_15 depressedRECODE_OLS_15 depressedRECODE_IV_15 ///
 	diagnosedDepression_OLS_15 diagnosedDepression_IV_15 ///
 	using "${TABLEDIR}/regression15.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
@@ -491,7 +503,7 @@ if ${REGRESSIONS} == 1 {
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 	* ----- RF (9)
-	estout healthFactor_9_RF_9 chHealth_neg_RF_9 absent_RF_9 ///
+	estout healthFactor_9_RF_9 chHealthRECODE_RF_9 absent_RF_9 ///
 	using "${TABLEDIR}/RF_FS_9.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} RF" "RF" "RF") nonumbers ///
 	keep(${SIMELIGVAR} 2.chRace _cons) order(${SIMELIGVAR} 2.chRace _cons) ///
@@ -505,7 +517,7 @@ if ${REGRESSIONS} == 1 {
 	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline "))
 
 	* ----- RF (15)
-	estout behavFactor_15_RF_15 chHealth_neg_RF_15 absent_RF_15 limit_RF_15 depressed_neg_RF_15 ///
+	estout behavFactor_15_RF_15 chHealthRECODE_RF_15 absent_RF_15 limit_RF_15 depressedRECODE_RF_15 ///
 	diagnosedDepression_RF_15 ///
 	using "${TABLEDIR}/RF_FS_15.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} RF" "RF" "RF" "RF" "RF" "RF") nonumbers ///
@@ -520,8 +532,8 @@ if ${REGRESSIONS} == 1 {
 	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline "))
 
 	* ----- CHILD HEALTH BY AGE (OLS & IV) - CURRENT ELIGIBILITY
-	estout chHealth_neg_IV_SEP_1 chHealth_neg_IV_SEP_3 chHealth_neg_IV_SEP_5 ///
-	chHealth_neg_IV_SEP_9 chHealth_neg_IV_SEP_15 ///
+	estout chHealthRECODE_IV_SEP_1 chHealthRECODE_IV_SEP_3 chHealthRECODE_IV_SEP_5 ///
+	chHealthRECODE_IV_SEP_9 chHealthRECODE_IV_SEP_15 ///
 	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers ///
 	keep(eligCur 2.chRace _cons) order(eligCur 2.chRace _cons) ///
@@ -535,8 +547,8 @@ if ${REGRESSIONS} == 1 {
 	varlabels(_cons Constant, blist(eligCur "\hline "))
 
 	* ----- CHILD HEALTH BY AGE (OLS & IV) - CUMULATED ELIGIBILITY
-	estout chHealth_neg_IV_SEP2_1 chHealth_neg_IV_SEP2_3 chHealth_neg_IV_SEP2_5 ///
-	chHealth_neg_IV_SEP2_9 chHealth_neg_IV_SEP2_15 ///
+	estout chHealthRECODE_IV_SEP2_1 chHealthRECODE_IV_SEP2_3 chHealthRECODE_IV_SEP2_5 ///
+	chHealthRECODE_IV_SEP2_9 chHealthRECODE_IV_SEP2_15 ///
 	using "${TABLEDIR}/chHealth_all2.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers ///
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) ///
@@ -668,7 +680,6 @@ if ${ROBUSTNESS} == 1 {
 		estadd local Controls 		"$\checkmark$"
 		estadd local StateFE 		"$\checkmark$"
 
-
 		* WITHOUT CONTROLS
 		ivregress 2sls `outcome' ${CONTROLS} (${ELIGVAR} = ${SIMELIGVAR}) ///
 			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
@@ -684,7 +695,7 @@ if ${ROBUSTNESS} == 1 {
 
 	* ----- IV 9
 	estout  healthFactor_9_IV_9_NOCOFE	healthFactor_9_IV_9_NOCO  	healthFactor_9_IV_9 ///
-			chHealth_neg_IV_9_NOCOFE 	chHealth_neg_IV_9_NOCO 		chHealth_neg_IV_9 ///
+			chHealthRECODE_IV_9_NOCOFE 	chHealthRECODE_IV_9_NOCO 		chHealthRECODE_IV_9 ///
 			absent_IV_9_NOCOFE  		absent_IV_9_NOCO 			absent_IV_9 ///
 	using "${TABLEDIR}/robustnessControls.tex", replace label collabels(none) style(tex) ///
 	mlabels(none) numbers keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// 
