@@ -217,13 +217,13 @@ recode m4b2a f4b2a m4b2b f4b2b m4b2c f4b2c (2 = 0)	// EQUALIZE
 merge 1:1 idnum using "${TEMPDATADIR}/parents_Y5.dta", nogen keepus(moReport wave)
 
 * ----------------------------- HEALTH & MEDICAID (CORE REPORT)
-rename m4j1 moHealth				// HEALTH MOTHER
-rename f4j1 faHealth				// HEALTH FATHER
+rename m4j1 moHealth					// HEALTH MOTHER
+rename f4j1 faHealth					// HEALTH FATHER
 
-P_childHealth	m4b2 f4b2			// HEALTH YOUTH (chHealth)
-P_medicaid 		4j3 4j3a 4j4 4j4a	// MEDICAID YOUTH (chMediHI chPrivHI)
+P_childHealth	m4b2 f4b2				// HEALTH YOUTH (chHealth)
+P_medicaid 		4j3 4j3a 4j4 4j4a		// MEDICAID YOUTH (chMediHI chPrivHI)
 
-gen asthmaAttack = .				// EPISODE ASTHMA
+gen asthmaAttack = .					// EPISODE ASTHMA
 	replace asthmaAttack = m4b2b if moReport != 0
 	replace asthmaAttack = f4b2b if moReport == 0
 

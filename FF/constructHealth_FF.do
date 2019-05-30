@@ -55,10 +55,9 @@ label define regDoc		0 "No" 			1 "Yes"
 label values chHealth moHealth faHealth chHealthSelf health
 label values numRegDoc numRegDoc
 label values regDoc regDoc
-label values everAsthma everADHD foodDigestive eczemaSkin diarrheaColitis ///
-headachesMigraines earInfection stuttering breathing limit docAccInj docIll ///
-medication chMediHI chPrivHI everSmoke everDrink feverRespiratory anemia ///
-seizures diabetes regDoc asthmaAttack asthmaER diagnosedDepression YESNO
+label values foodDigestive eczemaSkin diarrheaColitis headachesMigraines earInfection ///
+limit docAccInj docIll medication chMediHI chPrivHI everSmoke everDrink ///
+feverRespiratory anemia seizures regDoc asthmaAttack diagnosedDepression YESNO
 
 * ---------------------------------------------------------------------------- *
 * ---------------------------- CONSTRUCT VARIABLES --------------------------- *
@@ -67,19 +66,18 @@ seizures diabetes regDoc asthmaAttack asthmaER diagnosedDepression YESNO
 * RECODE such that a higher score represents better health
 
 * ----- CHILD & MOTHER HEALTH
-recode chHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(chHealth_neg)
-* recode moHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(moHealth_neg)
+recode chHealth (1 = 5) (2 = 4) (3 = 3) (4 = 2) (5 = 1), gen(chHealthRECODE)
 
 * ----- CHILD HAD ...
-recode feverRespiratory 	(1 = 0) (0 = 1), gen(no_feverRespiratory)
-recode anemia				(1 = 0) (0 = 1), gen(no_anemia)
-recode seizures 			(1 = 0) (0 = 1), gen(no_seizures)
-recode foodDigestive 		(1 = 0) (0 = 1), gen(no_foodDigestive)
-recode eczemaSkin 			(1 = 0) (0 = 1), gen(no_eczemaSkin)
-recode diarrheaColitis 		(1 = 0) (0 = 1), gen(no_diarrheaColitis)
-recode headachesMigraines	(1 = 0) (0 = 1), gen(no_headachesMigraines)
-recode earInfection 		(1 = 0) (0 = 1), gen(no_earInfection)
-recode asthmaAttack 		(1 = 0) (0 = 1), gen(no_asthmaAttack)
+recode feverRespiratory 	(1 = 0) (0 = 1), gen(feverRespiratoryRECODE)
+recode anemia				(1 = 0) (0 = 1), gen(anemiaRECODE)
+recode seizures 			(1 = 0) (0 = 1), gen(seizuresRECODE)
+recode foodDigestive 		(1 = 0) (0 = 1), gen(foodDigestiveRECODE)
+recode eczemaSkin 			(1 = 0) (0 = 1), gen(eczemaSkinRECODE)
+recode diarrheaColitis 		(1 = 0) (0 = 1), gen(diarrheaColitisRECODE)
+recode headachesMigraines	(1 = 0) (0 = 1), gen(headachesMigrainesRECODE)
+recode earInfection 		(1 = 0) (0 = 1), gen(earInfectionRECODE)
+recode asthmaAttack 		(1 = 0) (0 = 1), gen(asthmaAttackRECODE)
 
 * ----- HEALTH BEHAVIOURS
 recode everSmoke 			(1 = 0) (0 = 1), gen(neverSmoke)
@@ -88,8 +86,10 @@ recode everDrink 			(1 = 0) (0 = 1), gen(neverDrink)
 * ----- LABELS
 label define healthneg 	1 "1 Poor" 	2 "2 Fair" 3 "3 Good" 4 "4 Very good" 5 "5 Excellent"
 label define NOYES 		0 "0 Had" 	1 "1 Never"
-label values chHealth_neg healthneg // moHealth_neg
-label values no_* NOYES
+label values chHealthRECODE healthneg
+label values feverRespiratoryRECODE anemiaRECODE seizuresRECODE foodDigestiveRECODE ///
+eczemaSkinRECODE diarrheaColitisRECODE headachesMigrainesRECODE earInfectionRECODE ///
+asthmaAttackRECODE NOYES
 label values neverDrink neverSmoke YESNO
 
 
@@ -99,7 +99,9 @@ label values neverDrink neverSmoke YESNO
 * ----------------------------- FACTOR SCORE: GENERAL HEALTH (AGE 9 & 15)
 * ----- SEM
 * CHILD HEALTH, CHILD HAD IN PAST ...
-sem (GeneralHealth -> chHealth_neg no*), method(mlmv) var(GeneralHealth@1)
+sem (GeneralHealth -> chHealthRECODE feverRespiratoryRECODE anemiaRECODE seizuresRECODE ///
+foodDigestiveRECODE eczemaSkinRECODE diarrheaColitisRECODE headachesMigrainesRECODE ///
+earInfectionRECODE asthmaAttackRECODE), method(mlmv) var(GeneralHealth@1)
 
 foreach wave in 9 15 {
 	* ----- PREDICT AND STANDARDIZE HEALTH FACTOR
@@ -112,7 +114,7 @@ foreach wave in 9 15 {
 * ----------------------------- FACTOR SCORE: MEDICAL UTILIZATION (AGE 9 & 15)
 * ----- SEM
 * MEDICATION, DOC ILLNESS, DOC REGULAR, ER
-sem (UtilFactor -> numDocIll medication numRegDoc emRoom), method(mlmv) var(UtilFactor@1) 
+sem (UtilFactor ->  emRoom docIll medication regDoc), method(mlmv) var(UtilFactor@1) 
 
 foreach wave in 9 15 {
 	* ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
@@ -124,6 +126,7 @@ foreach wave in 9 15 {
 
 * ----------------------------- FACTOR SCORE: HEALTH BEHAVIOURS (AGE 15)
 * ----- SEM
+* recode activityVigorous (0=7) (1=6) (2=5) (3=4) (4=3) (5=2) (6=1) (7=0), gen(activityVigorousRECODE)
 sem (BehavFactor -> activityVigorous neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1)
 
 * ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
@@ -158,10 +161,10 @@ tab limit if wave == 15
 tab depressed
 
 * RECODE: HIGHER MORE DEPRESSED
-recode depressed (1 = 4) (2 = 3) (3 = 2) (4 = 1), gen(depressed_neg)
+recode depressed (1 = 4) (2 = 3) (3 = 2) (4 = 1), gen(depressedRECODE)
 label define depressed	1 "1 Strongly disagree" 2 "2 Somewhat disagree" ///
 						3 "3 Somewhat agree"	4 "4 Stronlgy agree"
-label values depressed_neg depressed
+label values depressedRECODE depressed
 
 * ----- EVER DIAGNOSED WITH DEPRESSION/ANXIETY
 tab diagnosedDepression
@@ -173,17 +176,13 @@ tab diagnosedDepression
 label var idnum 				"Family ID"
 label var wave 					"Wave"
 label var chHealth 				"Child health (1 highest)"
-label var chHealth_neg			"Child health (5 highest)"
-label var everAsthma			"Ever diagnosed with asthma"
+label var chHealthRECODE		"Child health (5 highest)"
 label var diagnosedDepression	"Ever diagnosed with depression/anxiety"
-label var everADHD				"Ever diagnosed with ADD/ADHD"
 label var foodDigestive			"Had food/digestive allergy past year"
 label var eczemaSkin			"Had eczema/skin allergy past year"
 label var diarrheaColitis		"Had frequent diarrhea/colitis past year"
 label var headachesMigraines	"Had frequent headaches/migraines past year"
 label var earInfection			"Had ear infection past year"
-label var stuttering			"Had stuttering or stammering problem past year"
-label var breathing				"Had trouble breathing/chest problem past year"
 label var limit 				"Limitations in usual activities due to health problems"
 label var absent 				"Days absent from school due to health past year"
 label var docAccInj				"Saw doctor for accident or injury past year"
@@ -193,7 +192,7 @@ label var medication 			"Takes doctor prescribed medication"
 label var chMediHI				"Covered by Medicaid/public insurance plan"
 label var chPrivHI				"Covered by private insurance plan"
 label var moHealth				"Mother health (self-reported)"
-label var depressed_neg			"Feel depressed (self-reported)"
+label var depressedRECODE		"Feel depressed (self-reported)"
 label var chHealthSelf			"Description health (self-reported)"
 label var absentSelf			"Days absent from school due to health past year (self-reported)"
 label var activity60			"Days physically active for 60+ min (past week)"
@@ -214,15 +213,12 @@ label var faHealth 				"Father health (self-reported)"
 label var feverRespiratory		"Had hay fever or respiratory allergy past year"
 label var anemia				"Had anemia (past year)"
 label var seizures				"Had seizures (past year)"
-label var diabetes				"Had diabetes (past year)"
 label var numRegDoc				"Num regular check-ups by doctor, nurse (past year)"
 label var numDoc 				"Num times saw doctor/nurse due to illness, accident, injury"
 label var emRoom				"Num times taken to emergency room (past year)"
 label var numDocAccInj			"Num visit doctor due to accident/injury"
 label var emRoomAccInj			"Num visit emRoom due tio accident/injury"
 label var asthmaAttack			"Episode of asthma or asthma attack"
-label var asthmaER				"Emergency/urgent care treatment for asthma"
-label var asthmaERnum			"Num visits urget care center/ER due to asthma (past year)"
 label var numDocIll				"Num visits health care professional due to illness"
 label var numDocIllInj			"Num visits health care professional due to illness/injury"
 label var numDocInj				"Num visits health care professional for injury (since birth)"
@@ -245,6 +241,16 @@ save "${TEMPDATADIR}/health.dta", replace
 * ---------------------------------------------------------------------------- *
 * ---------------------------------- NOT USED -------------------------------- *
 * ---------------------------------------------------------------------------- *
+
+// label var everAsthma			"Ever diagnosed with asthma"
+// label var everADHD				"Ever diagnosed with ADD/ADHD"
+// label var stuttering			"Had stuttering or stammering problem past year"
+// label var breathing				"Had trouble breathing/chest problem past year"
+// label var diabetes				"Had diabetes (past year)"
+// label var asthmaER				"Emergency/urgent care treatment for asthma"
+// label var asthmaERnum			"Num visits urget care center/ER due to asthma (past year)"
+
+
 // * ----------------------------- MEDICAID COVERAGE
 // * ----- COVERAGE EACH WAVE
 // foreach num of numlist 0 1 3 5 9 15 {
