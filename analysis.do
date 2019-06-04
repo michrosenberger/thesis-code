@@ -274,125 +274,70 @@ if ${DESCRIPTIVE} == 1 {
 } // END DESCRIPTIVE
 
 
-* LOOK AT BINARY VARS
-/* qui sum healthFactor_9, detail
-gen binHealthFactor_9 = 0
-replace binHealthFactor_9 = 1 if healthFactor_9 >= r(p50)
-replace binHealthFactor_9 = . if healthFactor_9 == . */
-
 * ---------------------------------------------------------------------------- *
 * ------------------------------- REGRESSIONS -------------------------------- *
 * ---------------------------------------------------------------------------- *
 if ${REGRESSIONS} == 1 {
 
-	* ----------------------------- OUTCOMES AGE 9
-	foreach outcome in $OUTCOMES9 {
-		* ----- OLS
-		reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip ///
-			if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
+	* ----------------------------- REGRESSIONS AGE 9 & 15
+	foreach wave in 9 15 {
+		foreach outcome in ${OUTCOMES`wave'} {
+			* ----- OLS
+			reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1), cluster(statefip)
 
-		est store `outcome'_OLS_9
-		estadd local Controls		"$\checkmark$"
-		estadd local StateFE		"$\checkmark$"
+			est store `outcome'_OLS_`wave'
+			estadd local Controls		"$\checkmark$"
+			estadd local StateFE		"$\checkmark$"
 
-		* - MEAN
-		sum `outcome' if e(sample) == 1
-		estadd scalar meanElig =  r(mean)
+			* - MEAN
+			sum `outcome' if e(sample) == 1
+			estadd scalar meanElig =  r(mean)
 
-		* ----- RF
-		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
-			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
+			* ----- RF
+			reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
-		est store `outcome'_RF_9
-		estadd local Controls		"$\checkmark$"
-		estadd local StateFE		"$\checkmark$"
+			est store `outcome'_RF_`wave'
+			estadd local Controls		"$\checkmark$"
+			estadd local StateFE		"$\checkmark$"
 
 
-		* ----- FS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-			if (wave == 9 & chGenetic == 1 & finSample == 1), first cluster(statefip)
-		gen samp_`outcome'9 = e(sample)
-		estat firststage
-		mat fstat`outcome' = r(singleresults)
+			* ----- FS
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1), first cluster(statefip)
+			gen samp_`outcome'`wave' = e(sample)
+			estat firststage
+			mat fstat`outcome' = r(singleresults)
 
-		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
-			if (wave == 9 & samp_`outcome'9 == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
-		est store `outcome'_FS_9
-		estadd local Controls		"$\checkmark$"
-		estadd local StateFE		"$\checkmark$"
+			reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+				if (wave == `wave' & samp_`outcome'`wave' == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
+			est store `outcome'_FS_`wave'
+			estadd local Controls		"$\checkmark$"
+			estadd local StateFE		"$\checkmark$"
 
-		* - FS STATISTICS
-		estadd scalar fs 			= fstat`outcome'[1,4] // can add in stats(fs) in the regression
+			* - FS STATISTICS
+			estadd scalar fs 			= fstat`outcome'[1,4] // can add in stats(fs) in the regression
 
-		* ----- IV-2SLS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
-		est store `outcome'_IV_9
-		estadd local Controls 		"$\checkmark$"
-		estadd local StateFE 		"$\checkmark$"
+			* ----- IV-2SLS
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
 
-		* - MEAN
-		sum `outcome' if e(sample) == 1
-		estadd scalar meanElig =  r(mean)
+			est store `outcome'_IV_`wave'
+			estadd local Controls 		"$\checkmark$"
+			estadd local StateFE 		"$\checkmark$"
 
-		* - FS STATISTICS
-		estat firststage
-		mat fstat = r(singleresults)
-		estadd scalar fs 			= fstat[1,4] // can add in stats(fs) in the regression
+			* - MEAN
+			sum `outcome' if e(sample) == 1
+			estadd scalar meanElig =  r(mean)
 
-	}
+			* - FS STATISTICS
+			estat firststage
+			mat fstat = r(singleresults)
+			estadd scalar fs 			= fstat[1,4] // can add in stats(fs) in the regression
 
-	* ----------------------------- OUTCOMES AGE 15
-	foreach outcome in $OUTCOMES15 {
-		* ----- OLS
-		reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip ///
-			if (wave == 15 & chGenetic == 1 & finSample == 1), cluster(statefip)
-		est store `outcome'_OLS_15
-		estadd local Controls		"$\checkmark$"
-		estadd local StateFE		"$\checkmark$"
-
-		* - MEAN
-		sum `outcome' if e(sample) == 1
-		estadd scalar meanElig =  r(mean)
-
-		* ----- RF
-		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
-			if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
-
-		est store `outcome'_RF_15
-		estadd local Controls		"$\checkmark$"
-		estadd local StateFE		"$\checkmark$"
-
-		* ----- FS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-			if (wave == 15 & chGenetic == 1 & finSample == 1), first cluster(statefip)
-		gen samp_`outcome'15 = e(sample)
-		estat firststage
-		mat fstat`outcome' = r(singleresults)
-
-		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
-			if (wave == 15 & samp_`outcome'15 == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
-		est store `outcome'_FS_15
-		estadd local Controls		"$\checkmark$"
-		estadd local StateFE		"$\checkmark$"
-		estadd scalar fs 			= fstat`outcome'[1,4] // can add in stats(fs) in the regression
-
-		* ----- IV-2SLS
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-			if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
-
-		est store `outcome'_IV_15
-		estadd local Controls 		"$\checkmark$"
-		estadd local StateFE 		"$\checkmark$"
-
-		* - MEAN
-		sum `outcome' if e(sample) == 1
-		estadd scalar meanElig =  r(mean)
-
-		estat firststage
-		mat fstat = r(singleresults)
-		estadd scalar fs 			= fstat[1,4] // can add in stats(fs) in the regression
+		}
 	}
 
 	* ----------------------------- COEFPLOT AGE 9 & 15
@@ -433,40 +378,6 @@ if ${REGRESSIONS} == 1 {
 
 		graph export "${FIGUREDIR}/coefplot.pdf", replace
 	}
-
-	* ----------------------------- CHILD HEALTH BY AGE (IV)
-	* ----- CURRENT HEALTH
-	foreach outcome in chHealthRECODE {
-		foreach wave in 1 3 5 9 15 {
-			di "****** "
-			ivregress 2sls `outcome' ${CONTROLS} i.statefip (eligCur = simEligCur) ///
-				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
-			est store `outcome'_IV_SEP_`wave'
-			estadd local Controls 		"$\checkmark$"
-			estadd local StateFE 		"$\checkmark$"
-
-			estat firststage
-			mat fstat = r(singleresults)
-			estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
-		}
-	}	
-
-	* ----- CUMULATED HEALTH
-	foreach outcome in chHealthRECODE {
-		foreach wave in 1 3 5 9 15 {
-			di "****** "
-			ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
-
-			est store `outcome'_IV_SEP2_`wave'
-			estadd local Controls 		"$\checkmark$"
-			estadd local StateFE 		"$\checkmark$"
-
-			estat firststage
-			mat fstat = r(singleresults)
-			estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
-		}
-	}	
 
 	* ----------------------------- ROMANO-WOLF ADJUSTED PVALUES
 	* ----- PROGRAM
@@ -634,35 +545,6 @@ if ${REGRESSIONS} == 1 {
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations" )) ///
 	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline ")) posthead("`titles'" "`subtitles'" "`subsubtiles'")
 
-	* ----- CHILD HEALTH BY AGE (OLS & IV) - CURRENT ELIGIBILITY
-	estout chHealthRECODE_IV_SEP_1 chHealthRECODE_IV_SEP_3 chHealthRECODE_IV_SEP_5 ///
-	chHealthRECODE_IV_SEP_9 chHealthRECODE_IV_SEP_15 ///
-	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
-	mlabels(none) numbers ///
-	keep(eligCur 2.chRace _cons) order(eligCur 2.chRace _cons) ///
-	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///
-	pattern(1 1 1 1 1) span ///
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
-	varlabels(_cons Constant, blist(eligCur "\hline "))
-
-	* ----- CHILD HEALTH BY AGE (OLS & IV) - CUMULATED ELIGIBILITY
-	estout chHealthRECODE_IV_SEP2_1 chHealthRECODE_IV_SEP2_3 chHealthRECODE_IV_SEP2_5 ///
-	chHealthRECODE_IV_SEP2_9 chHealthRECODE_IV_SEP2_15 ///
-	using "${TABLEDIR}/chHealth_all2.tex", replace label collabels(none) style(tex) ///
-	mlabels(none) numbers ///
-	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) ///
-	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
-	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///
-	pattern(1 1 1 1 1) span ///
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
-	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 } // END REGRESSIONS
 
@@ -859,6 +741,80 @@ if ${ROBUSTNESS} == 1 {
 * ---------------------------------------------------------------------------- *
 * -------------------------------- NOTE USED --------------------------------- *
 * ---------------------------------------------------------------------------- *
+
+	* LOOK AT BINARY VARS
+	/* qui sum healthFactor_9, detail
+	gen binHealthFactor_9 = 0
+	replace binHealthFactor_9 = 1 if healthFactor_9 >= r(p50)
+	replace binHealthFactor_9 = . if healthFactor_9 == . */
+
+	/* * ----------------------------- CHILD HEALTH BY AGE (IV)
+	* ----- CURRENT HEALTH
+	foreach outcome in chHealthRECODE {
+		foreach wave in 1 3 5 9 15 {
+			di "****** "
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (eligCur = simEligCur) ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
+			est store `outcome'_IV_SEP_`wave'
+			estadd local Controls 		"$\checkmark$"
+			estadd local StateFE 		"$\checkmark$"
+
+			estat firststage
+			mat fstat = r(singleresults)
+			estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
+		}
+	}	
+
+	* ----- CUMULATED HEALTH
+	foreach outcome in chHealthRECODE {
+		foreach wave in 1 3 5 9 15 {
+			di "****** "
+			ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
+
+			est store `outcome'_IV_SEP2_`wave'
+			estadd local Controls 		"$\checkmark$"
+			estadd local StateFE 		"$\checkmark$"
+
+			estat firststage
+			mat fstat = r(singleresults)
+			estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
+		}
+	}	 */
+
+
+	/* * ----- CHILD HEALTH BY AGE (OLS & IV) - CURRENT ELIGIBILITY
+	estout chHealthRECODE_IV_SEP_1 chHealthRECODE_IV_SEP_3 chHealthRECODE_IV_SEP_5 ///
+	chHealthRECODE_IV_SEP_9 chHealthRECODE_IV_SEP_15 ///
+	using "${TABLEDIR}/chHealth_all.tex", replace label collabels(none) style(tex) ///
+	mlabels(none) numbers ///
+	keep(eligCur 2.chRace _cons) order(eligCur 2.chRace _cons) ///
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///
+	pattern(1 1 1 1 1) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(eligCur "\hline "))
+
+	* ----- CHILD HEALTH BY AGE (OLS & IV) - CUMULATED ELIGIBILITY
+	estout chHealthRECODE_IV_SEP2_1 chHealthRECODE_IV_SEP2_3 chHealthRECODE_IV_SEP2_5 ///
+	chHealthRECODE_IV_SEP2_9 chHealthRECODE_IV_SEP2_15 ///
+	using "${TABLEDIR}/chHealth_all2.tex", replace label collabels(none) style(tex) ///
+	mlabels(none) numbers ///
+	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) ///
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///
+	pattern(1 1 1 1 1) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) */
+
+	* --------------------------------------------------------------------------------
+
 	* ----- ELIGIBILITY AT EACH AGE
 	// foreach elig in elig simulatedElig {
 	// 	foreach wave in 0 1 3 5 9 15 {
