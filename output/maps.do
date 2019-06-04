@@ -109,13 +109,6 @@ erase Elig1998.dta
 erase Elig2018.dta
 
 
-* ----------------------------- AVERAGE YEARS ELIGIBLE
-
-
-
-
-
-
 * ----------------------------- % OF FPL THRESHOLD PER STATE
 * ----- PREPARE FPL DATA
 foreach year in 1998 2018 {
@@ -124,10 +117,10 @@ foreach year in 1998 2018 {
 	gen cut = .
 	replace cut = medicut 	if medicut >= schipcut
 	replace cut = schipcut 	if schipcut >= medicut
-	replace cut = cut * 100 		// in percentage of FPL
+	replace cut = cut * 100 				// in percentage of FPL
 
 	keep if year == `year'
-	collapse (max) cut, by(statefip)		// max % covered
+	collapse (min) cut, by(statefip)		// min % covered
 	rename statefip statefips
 	rename cut cut`year'
 
