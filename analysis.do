@@ -47,6 +47,7 @@ global REGRESSIONS 		= 1 	// Perform regressions
 global COEFPLOT			= 0	
 global ASSUMPTIONS		= 0		// Check IV assumptions
 global TABLESSIMULATED	= 0
+global ADDITIONAL		= 0
 global ROBUSTNESS		= 0		// Perform robustness checks
 
 * ----------------------------- GLOBAL VARIABLES
@@ -740,6 +741,43 @@ if ${TABLESSIMULATED} == 1 {
 	restore
 
 } // END TABLESSIMULATED
+
+
+* ---------------------------------------------------------------------------- *
+* ------------------------- TABLES ADDITIONAL TABLES ------------------------- *
+* ---------------------------------------------------------------------------- *
+
+if ${ADDITIONAL} == 1 {
+
+	preserve
+		* ----------------------------- INCOME THRESHOLDS ACROSS YEARS
+		use "${CLEANDATADIR}/cutscombined.dta", clear
+
+		gen cut = .
+		replace cut = medicut 	if medicut >= schipcut
+		replace cut = schipcut 	if schipcut >= medicut
+		replace cut = cut * 100  // in percentage of FPL
+
+		collapse cut, by(age year)
+		reshape wide cut, i(year) j(age)
+		gen avg0 = cut0
+		egen avg1_5 	= rowmean(cut1 cut2 cut3 cut4 cut5)
+		egen avg6_18 	= rowmean(cut6 cut7 cut8 cut9 cut10 cut11 cut12 cut13 cut14 cut15 cut16 cut17 cut18)
+		keep year avg*
+
+		* Only keep every two years
+		keep if (year == 1998 | year == 2000 | year == 2002 | year == 2004 | year == 2006 | year == 2008 | year == 2010 | year == 2012 | year == 2014 | year == 2016 | year == 2018)
+
+		eststo incomeThresholds: estpost tabstat avg0 avg1_5 avg6_18, by(year) nototal
+
+		esttab incomeThresholds using "${TABLEDIR}/incomeThresholds.tex", replace label ///
+		nonumber compress nomtitle noobs ///
+		cells("avg0(fmt(%12.0f) label(Ages 0-1)) avg1_5(fmt(%12.0f) label(Ages 1-5)) avg6_18(fmt(%12.0f) label(Ages 6-18))") 
+
+
+	restore
+
+} // END ADDITIONAL
 
 * ---------------------------------------------------------------------------- *
 * -------------------------------- ROBUSTNESS -------------------------------- *
