@@ -44,6 +44,7 @@ global PREPARE 			= 0		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
 global DESCRIPTIVE		= 0		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
+global COEFPLOT			= 0	
 global ASSUMPTIONS		= 0		// Check IV assumptions
 global TABLESSIMULATED	= 0
 global ROBUSTNESS		= 0		// Perform robustness checks
@@ -54,14 +55,14 @@ global CONTROLS 	age 	chFemale i.chRace moAge age#chFemale // age2 moAge2
 global ELIGVAR 		eligCum		// endogenous variable
 global SIMELIGVAR 	simEligCum	// instrument
 
-global OUTCOMES9 	healthFactor_9 chHealthRECODE medicalFactor_9 	absent
-global OUTCOMES15 	behavFactor_15 chHealthRECODE medicalFactor_15	absent limit	depressedRECODE diagnosedDepression
+global OUTCOMES9 	healthFactor_9 chHealthRECODE medicalFactor_9 	regDoc 	absent
+global OUTCOMES15 	behavFactor_15 chHealthRECODE medicalFactor_15	regDoc 	absent limit	depressedRECODE diagnosedDepression
 
 * General health FACTOR (9)			: chHealthRECODE + *RECODE
 * Health behav FACTOR	(15)		: activityVigorous neverSmoke neverDrink bmi
 * Limitations 			(9 & 15)	: limit absent
 * Mental health			(15)		: depressedRECODE diagnosedDepression
-* Uitlization FACTOR	(9 & 15)	: medication numDocIll numRegDoc emRoom
+* Uitlization FACTOR	(9 & 15)	: emRoom docIll medication regDoc
 
 * ----------------------------- LOG FILE
 
@@ -125,13 +126,13 @@ if ${PREPARE} == 1 {
 	* AGE 15
 	qui ivregress 2sls depressedRECODE ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
 		if (wave == 15 & chGenetic == 1),  cluster(statefip)
-	gen reg2 = e(sample)
-	bysort idnum : egen samp2_temp = max(reg2)
+	gen reg15 = e(sample)
+	bysort idnum : egen samp2_temp = max(reg15)
 
 	gen finSample = 1 if (samp1_temp == 1 & samp2_temp == 1)
 
 	* ----------------------------- SAVE
-	drop *All* *_temp reg*
+	drop *All* *_temp reg9 reg15
 	order idnum wave age 
 	sort idnum wave 
 	save "${CLEANDATADIR}/analysis.dta", replace
@@ -139,16 +140,6 @@ if ${PREPARE} == 1 {
 } // END PREPARE
 
 use "${CLEANDATADIR}/analysis.dta", clear
-
-
-
-// ds idnum wave chFemale moAge *Cohort *White *Black *Hispanic *Other *Educ *Multi *Race *College gm* gk* chGenetic bpost1983, not 
-// global RESHAPEVARS = r(varlist)
-// reshape wide $RESHAPEVARS, i(idnum) j(wave)
-
-// missings dropvars _all, force
-
-// rename diagnosedDepression15 diagDepression15
 
 * ----- ALLOW NON-LINEARITIES IN AGE
 // gen age2 	= age*age
@@ -333,6 +324,7 @@ if ${REGRESSIONS} == 1 {
 		estat firststage
 		mat fstat = r(singleresults)
 		estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
+
 	}
 
 	* ----------------------------- OUTCOMES AGE 15
@@ -377,42 +369,43 @@ if ${REGRESSIONS} == 1 {
 	}
 
 	* ----------------------------- COEFPLOT AGE 9 & 15
-	* ----- DEFINE GRAPH STYLE
-	grstyle clear
-	grstyle init
-	grstyle color background white
-	grstyle color major_grid dimgray
-	grstyle linewidth major_grid thin
-	*grstyle yesno draw_major_hgrid yes
-	grstyle yesno grid_draw_min yes
-	grstyle yesno grid_draw_max yes
-	grstyle linestyle legend none
+	if ${COEFPLOT} == 1 {
+		* ----- DEFINE GRAPH STYLE
+		grstyle clear
+		grstyle init
+		grstyle color background white
+		grstyle color major_grid dimgray
+		grstyle linewidth major_grid thin
+		*grstyle yesno draw_major_hgrid yes
+		grstyle yesno grid_draw_min yes
+		grstyle yesno grid_draw_max yes
+		grstyle linestyle legend none
 
-	* ----- COEFPLOT
-	global COL1 	offset(0.2)  mcolor(emidblue) ciopts(recast(. rcap) color(. emidblue) color(emidblue))
-	global COL2 	offset(-0.2) mcolor(navy) ciopts(recast(. rcap) color(. navy) color(navy))
+		* ----- COEFPLOT
+		global COL1 	offset(0.2)  mcolor(emidblue) ciopts(recast(. rcap) color(. emidblue) color(emidblue))
+		global COL2 	offset(-0.2) mcolor(navy) ciopts(recast(. rcap) color(. navy) color(navy))
 
-	coefplot 	(chHealthRECODE_IV_9, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_9, aseq(Child Health) $COL2) ///
-				(absent_IV_9, aseq(Absent) $COL1) 					(absent_OLS_9, aseq(Absent) $COL2) ///
-				(healthFactor_9_IV_9, aseq(Health Factor) $COL1) 	(healthFactor_9_OLS_9, aseq(Health Factor) $COL2) ///
-				(medicalFactor_9_IV_9, aseq(Utilization) $COL1) 	(medicalFactor_9_OLS_9, aseq(Utilization) $COL2), ///
-					bylabel(Age 9) keep(eligCum) || ///
-				(chHealthRECODE_IV_15, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_15, aseq(Child Health) $COL2) ///
-				(absent_IV_15, aseq(Absent) $COL1) 					(absent_OLS_15, aseq(Absent) $COL2) ///
-				(limit_IV_15, aseq(Limitation) $COL1) 				(limit_OLS_15, aseq(Limitation) $COL2) ///
-				(medicalFactor_15_IV_15, aseq(Utilization) $COL1) 	(medicalFactor_15_OLS_15, aseq(Utilization) $COL2) ///
-				(behavFactor_15_IV_15, aseq(Behaviors Factor) $COL1) (behavFactor_15_OLS_15, aseq(Behaviors Factor) $COL2) ///
-				(depressedRECODE_IV_15, aseq(Feels dep.) $COL1) 	(depressedRECODE_OLS_15, aseq(Feels dep.) $COL2) ///
-				(diagnosedDepression_IV_15, aseq(Diagnosed dep.) $COL1) (diagnosedDepression_OLS_15, aseq(Diagnosed dep.) $COL2), ///
-					bylabel(Age 15) keep(eligCum) ///
-	xline(0) msymbol(D) msize(small)  levels(95 90) /// mcolor(emidblue)
-	ciopts(recast(. rcap)) legend(rows(2) order(1 "95% CI" 2 "90% CI" 3 "IV" 4 "95% CI" 5 "90% CI" 6 "OLS")) ///
-	aseq swapnames /// norecycle byopts(compact cols(1))
-	subtitle(, size(medium) margin(small) justification(left) ///
-	color(white) bcolor(emidblue) bmargin(top_bottom))
+		coefplot 	(chHealthRECODE_IV_9, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_9, aseq(Child Health) $COL2) ///
+					(absent_IV_9, aseq(Absent) $COL1) 					(absent_OLS_9, aseq(Absent) $COL2) ///
+					(healthFactor_9_IV_9, aseq(Health Factor) $COL1) 	(healthFactor_9_OLS_9, aseq(Health Factor) $COL2) ///
+					(medicalFactor_9_IV_9, aseq(Utilization) $COL1) 	(medicalFactor_9_OLS_9, aseq(Utilization) $COL2), ///
+						bylabel(Age 9) keep(eligCum) || ///
+					(chHealthRECODE_IV_15, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_15, aseq(Child Health) $COL2) ///
+					(absent_IV_15, aseq(Absent) $COL1) 					(absent_OLS_15, aseq(Absent) $COL2) ///
+					(limit_IV_15, aseq(Limitation) $COL1) 				(limit_OLS_15, aseq(Limitation) $COL2) ///
+					(medicalFactor_15_IV_15, aseq(Utilization) $COL1) 	(medicalFactor_15_OLS_15, aseq(Utilization) $COL2) ///
+					(behavFactor_15_IV_15, aseq(Behaviors Factor) $COL1) (behavFactor_15_OLS_15, aseq(Behaviors Factor) $COL2) ///
+					(depressedRECODE_IV_15, aseq(Feels dep.) $COL1) 	(depressedRECODE_OLS_15, aseq(Feels dep.) $COL2) ///
+					(diagnosedDepression_IV_15, aseq(Diagnosed dep.) $COL1) (diagnosedDepression_OLS_15, aseq(Diagnosed dep.) $COL2), ///
+						bylabel(Age 15) keep(eligCum) ///
+		xline(0) msymbol(D) msize(small)  levels(95 90) /// mcolor(emidblue)
+		ciopts(recast(. rcap)) legend(rows(2) order(1 "95% CI" 2 "90% CI" 3 "IV" 4 "95% CI" 5 "90% CI" 6 "OLS")) ///
+		aseq swapnames /// norecycle byopts(compact cols(1))
+		subtitle(, size(medium) margin(small) justification(left) ///
+		color(white) bcolor(emidblue) bmargin(top_bottom))
 
-	graph export "${FIGUREDIR}/coefplot.pdf", replace
-
+		graph export "${FIGUREDIR}/coefplot.pdf", replace
+	}
 
 	* ----------------------------- CHILD HEALTH BY AGE (IV)
 	* ----- CURRENT HEALTH
@@ -448,6 +441,79 @@ if ${REGRESSIONS} == 1 {
 		}
 	}	
 
+	* ----------------------------- ROMANO-WOLF ADJUSTED PVALUES
+	* ----- PROGRAM
+	capture program drop formatTABLES
+	program define formatTABLES
+		args arg1 letter arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9 arg10 arg11 arg12
+
+		foreach outcome in `arg2' `arg3' `arg4' `arg5' `arg6' `arg7' `arg8' `arg9' `arg10' `arg11' `arg12' {
+			local `outcome'_`arg1' = e(rw_`outcome')
+			local `outcome'_`arg1' : di %9.3f ``outcome'_`arg1''
+
+			if (``outcome'_`arg1'' >= 0 & ``outcome'_`arg1'' <= 0.01) { 	// ***
+				global `outcome'_`arg1'_`letter' = "[``outcome'_`arg1'']***"
+			}
+			if (``outcome'_`arg1'' > 0.01 & ``outcome'_`arg1'' <= 0.05) {	// **
+				global `outcome'_`arg1'_`letter' = "[``outcome'_`arg1'']**"
+			}
+			if (``outcome'_`arg1'' > 0.05 & ``outcome'_`arg1'' <= 0.1) {	// *
+				global `outcome'_`arg1'_`letter' = "[``outcome'_`arg1'']*"
+			}
+			if (``outcome'_`arg1'' > 0.1) {
+				global `outcome'_`arg1'_`letter' = "[``outcome'_`arg1'']"
+			}
+			di "`outcome'_`arg1'_`letter' ${`outcome'_`arg1'_`letter''}"
+		}
+
+	end
+
+	foreach wave in 9 15 {
+		* ----- Adjusted pvalues UTILIZATION OLS
+		rwolf medicalFactor_`wave' regDoc if (wave == `wave' & chGenetic == 1 & finSample == 1), ///
+		method(regress) indepvar(${ELIGVAR}) controls(${CONTROLS}  i.statefip) cluster(statefip) ///
+		vce(cluster statefip) reps(150) seed(1456)
+
+		formatTABLES `wave' OLS medicalFactor_`wave' regDoc
+
+		* ----- Adjusted pvalues UTILIZATION IV
+		rwolf medicalFactor_`wave' regDoc if (wave == `wave' & chGenetic == 1 & finSample == 1), ///
+		method(ivregress)  indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
+		vce(cluster statefip) reps(150) seed(1456)
+
+		formatTABLES `wave' IV medicalFactor_`wave' regDoc
+	}
+
+	* ----- Adjusted pvalues OUTCOMES OLS 9
+	rwolf healthFactor_9 chHealthRECODE absent if (wave == 9 & chGenetic == 1 & finSample == 1), ///
+	method(regress) indepvar(${ELIGVAR}) controls(${CONTROLS}  i.statefip) cluster(statefip) ///
+	vce(cluster statefip) reps(150) seed(1456)
+
+	formatTABLES 9 OLS healthFactor_9 chHealthRECODE absent
+
+	* ----- Adjusted pvalues OUTCOMES IV 9
+	rwolf healthFactor_9 chHealthRECODE absent if (wave == 9 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress)  indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
+	vce(cluster statefip) reps(150) seed(1456)
+
+	formatTABLES 9 IV healthFactor_9 chHealthRECODE absent
+
+	* ----- Adjusted pvalues OUTCOMES OLS 15
+	rwolf behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression ///
+	if (wave == 15 & chGenetic == 1 & finSample == 1), ///
+	method(regress) indepvar(${ELIGVAR}) controls(${CONTROLS}  i.statefip) cluster(statefip) ///
+	vce(cluster statefip) reps(150) seed(1456)
+
+	formatTABLES 15 OLS behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression
+
+	* ----- Adjusted pvalues OUTCOMES IV 15
+	rwolf behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression ///
+	if (wave == 15 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress)  indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
+	vce(cluster statefip) reps(150) seed(1456)
+
+	formatTABLES 15 IV behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression
+
 
 	* ----------------------------- OUTPUT Latex
 	* ----- LABELS
@@ -458,18 +524,22 @@ if ${REGRESSIONS} == 1 {
 	label var medicalFactor_15	"Utilization"
 
 	* ----- UTILIZATION (AGE 9 & 15)
-	estout medicalFactor_9_OLS_9 medicalFactor_9_IV_9 medicalFactor_15_OLS_15 medicalFactor_15_IV_15 ///
+	local titles "& \multicolumn{2}{c}{Utilization Factor} & \multicolumn{2}{c}{Reg. check-up}  & \multicolumn{2}{c}{Utilization Factor} & \multicolumn{2}{c}{Reg. check-up}  \\ \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}"
+	local numbers "& OLS & IV & OLS & IV & OLS & IV & OLS & IV \\"
+
+	estout medicalFactor_9_OLS_9 medicalFactor_9_IV_9 regDoc_OLS_9 regDoc_IV_9 /// access_OLS_9 access_IV_9 
+	medicalFactor_15_OLS_15 medicalFactor_15_IV_15 regDoc_OLS_15 regDoc_IV_15 /// access_OLS_15 access_IV_15
 	using "${TABLEDIR}/utilization.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV") nonumbers ///
-	keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// ${CONTROLS}
-	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	mlabels(none) nonumbers keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// ${CONTROLS}
+	refcat(${ELIGVAR} "& ${medicalFactor_9_9_OLS} & ${medicalFactor_9_9_IV} & ${regDoc_9_OLS} & ${regDoc_9_IV} & ${medicalFactor_15_15_OLS} & ${medicalFactor_15_15_IV} & ${regDoc_15_OLS} & ${regDoc_15_IV}  \\ %", nolabel below) ///
+	cells(b(fmt(%9.3fc)) p(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations" )) ///
-	mgroups("\rule{0pt}{3ex} Utilization age 9" "Utilization age 15", ///
-	pattern(1 0 1 0) span ///
+	mgroups("\rule{0pt}{3ex} Age 9" "Age 15", ///
+	pattern(1 0 0 0 1 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
-	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) posthead("`titles'" "`numbers'")
 
 	* ----- OLS & IV (AGE 9)
 	estout healthFactor_9_OLS_9 healthFactor_9_IV_9 chHealthRECODE_OLS_9 chHealthRECODE_IV_9 ///
@@ -477,7 +547,8 @@ if ${REGRESSIONS} == 1 {
 	using "${TABLEDIR}/regression9.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) /// refcat(2.chRace, label(Ref. White)) ///
-	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	refcat(2.chRace "& ${healthFactor_9_9_OLS} & ${healthFactor_9_9_IV} & ${chHealthRECODE_9_OLS} & ${chHealthRECODE_9_IV} & ${absent_9_OLS} & ${absent_9_IV}  \\ %", nolabel) ///
+	cells(b(fmt(%9.3fc)) p(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
@@ -493,7 +564,8 @@ if ${REGRESSIONS} == 1 {
 	using "${TABLEDIR}/regression15.tex", replace label collabels(none) style(tex) ///
 	mlabels("\rule{0pt}{3ex} OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV" "OLS" "IV") nonumbers ///
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) ///
-	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	refcat(2.chRace "& ${behavFactor_15_15_OLS} & ${behavFactor_15_15_IV} & ${chHealthRECODE_15_OLS} & ${chHealthRECODE_15_IV} &  ${absent_15_OLS} & ${absent_15_IV} & ${limit_15_OLS} & ${limit_15_IV} & ${depressedRECODE_15_OLS} & ${depressedRECODE_15_IV} & ${diagnosedDepression_15_OLS} & ${diagnosedDepression_15_IV} \\ %", nolabel) ///
+	cells(b(fmt(%9.3fc)) p(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
@@ -502,34 +574,39 @@ if ${REGRESSIONS} == 1 {
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
-	* ----- RF (9)
-	estout healthFactor_9_RF_9 chHealthRECODE_RF_9 absent_RF_9 ///
-	using "${TABLEDIR}/RF_FS_9.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} RF" "RF" "RF") nonumbers ///
-	keep(${SIMELIGVAR} 2.chRace _cons) order(${SIMELIGVAR} 2.chRace _cons) ///
+	* ----- RF (AGE 9 & 15)
+	estout healthFactor_9_RF_9 chHealthRECODE_RF_9 absent_RF_9 medicalFactor_9_RF_9 regDoc_RF_9 ///
+	behavFactor_15_RF_15 chHealthRECODE_RF_15 absent_RF_15 limit_RF_15 depressedRECODE_RF_15 ///
+	diagnosedDepression_RF_15 medicalFactor_15_RF_15 regDoc_RF_15 ///
+	using "${TABLEDIR}/reducedForm.tex", replace label collabels(none) style(tex) ///
+	mlabels("\shortstack{Health \\ factor}" "\shortstack{Child \\ health}" "Absent" "\shortstack{Utilization \\ factor}" "\shortstack{Regular \\ check-up}" "\shortstack{Behaviors \\ factor}" "\shortstack{Child \\ health}" "Absent" "\shortstack{Limi- \\ tations}" "\shortstack{Feels \\ depressed}" "\shortstack{Diagnosed \\ depression}" "\shortstack{Utilization \\ factor}" "\shortstack{Regular \\ check-up}") ///
+	nonumbers keep(${SIMELIGVAR} _cons) order(${SIMELIGVAR} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
-	pattern(1 1 1) span ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "Observations" )) ///
+	mgroups("\rule{0pt}{3ex} Age 9" "Age 15", ///
+	pattern(1 0 0 0 0 1 0 0 0 0 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline "))
 
-	* ----- RF (15)
-	estout behavFactor_15_RF_15 chHealthRECODE_RF_15 absent_RF_15 limit_RF_15 depressedRECODE_RF_15 ///
-	diagnosedDepression_RF_15 ///
-	using "${TABLEDIR}/RF_FS_15.tex", replace label collabels(none) style(tex) ///
-	mlabels("\rule{0pt}{3ex} RF" "RF" "RF" "RF" "RF" "RF") nonumbers ///
-	keep(${SIMELIGVAR} 2.chRace _cons) order(${SIMELIGVAR} 2.chRace _cons) ///
+	* ----- FS (AGE 9 & 15)
+	* NOTE: fs missing - check how to extract
+	local titles 	"& \multicolumn{13}{c}{Eligibility} \\ \cmidrule(lr){2-14}"
+	local subtitles "& \multicolumn{5}{c}{Age 9} & \multicolumn{8}{c}{Age 15} \\ \cmidrule(lr){2-6}\cmidrule(lr){7-14}"
+	local subsubtiles "& \shortstack{Health \\ factor} & \shortstack{Child \\ health} & Absent & \shortstack{Utilization \\ factor} & \shortstack{Regular \\ check-up} & \shortstack{Behaviors \\ factor} & \shortstack{Child \\ health} & Absent & \shortstack{Limi- \\ tations} & \shortstack{Feels \\ depressed} & \shortstack{Diagnosed \\ depression} & \shortstack{Utilization \\ factor} & \shortstack{Regular \\ check-up} \\"
+
+	estout healthFactor_9_FS_9 chHealthRECODE_FS_9 absent_FS_9 medicalFactor_9_FS_9 regDoc_FS_9 ///
+	behavFactor_15_FS_15 chHealthRECODE_FS_15 absent_FS_15 limit_FS_15 depressedRECODE_FS_15 ///
+	diagnosedDepression_FS_15 medicalFactor_15_FS_15 regDoc_FS_15 ///
+	using "${TABLEDIR}/firstStage.tex", replace label collabels(none) style(tex) ///
+	mlabels(none) ///
+	nonumbers keep(${SIMELIGVAR} _cons) order(${SIMELIGVAR} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE r2 N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
+	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Health Behav. F." "Child Health" "Absent" "Limit" "Feels dep." "Diagnosed dep.", ///	
-	pattern(1 1 1 1 1 1) span ///
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
-	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline "))
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations" )) ///
+	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline ")) posthead("`titles'" "`subtitles'" "`subsubtiles'")
 
 	* ----- CHILD HEALTH BY AGE (OLS & IV) - CURRENT ELIGIBILITY
 	estout chHealthRECODE_IV_SEP_1 chHealthRECODE_IV_SEP_3 chHealthRECODE_IV_SEP_5 ///
@@ -559,7 +636,7 @@ if ${REGRESSIONS} == 1 {
 	mgroups("\rule{0pt}{3ex} Age 1" "Age 3" "Age 5" "Age 9" "Age 15", ///
 	pattern(1 1 1 1 1) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
-	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))	
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 } // END REGRESSIONS
 
