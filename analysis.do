@@ -389,13 +389,13 @@ if ${REGRESSIONS} == 1 {
 			local `outcome'_`arg1' = e(rw_`outcome')
 			local `outcome'_`arg1' : di %9.3f ``outcome'_`arg1''
 
-			if (``outcome'_`arg1'' >= 0 & ``outcome'_`arg1'' <= 0.01) { 	// ***
+			if (``outcome'_`arg1'' >= 0 & ``outcome'_`arg1'' < 0.01) { 	// ***
 				global `outcome'_`arg1'_`letter' = "[``outcome'_`arg1'']***"
 			}
-			if (``outcome'_`arg1'' > 0.01 & ``outcome'_`arg1'' <= 0.05) {	// **
+			if (``outcome'_`arg1'' >= 0.01 & ``outcome'_`arg1'' < 0.05) {	// **
 				global `outcome'_`arg1'_`letter' = "[``outcome'_`arg1'']**"
 			}
-			if (``outcome'_`arg1'' > 0.05 & ``outcome'_`arg1'' <= 0.1) {	// *
+			if (``outcome'_`arg1'' >= 0.05 & ``outcome'_`arg1'' < 0.1) {	// *
 				global `outcome'_`arg1'_`letter' = "[``outcome'_`arg1'']*"
 			}
 			if (``outcome'_`arg1'' > 0.1) {
