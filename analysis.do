@@ -295,6 +295,10 @@ if ${REGRESSIONS} == 1 {
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
+		* - MEAN
+		sum `outcome' if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
+
 		* ----- RF
 		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
 			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
@@ -303,16 +307,22 @@ if ${REGRESSIONS} == 1 {
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
 
+
 		* ----- FS
 		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
 			if (wave == 9 & chGenetic == 1 & finSample == 1), first cluster(statefip)
 		gen samp_`outcome'9 = e(sample)
+		estat firststage
+		mat fstat`outcome' = r(singleresults)
 
 		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
 			if (wave == 9 & samp_`outcome'9 == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
 		est store `outcome'_FS_9
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
+
+		* - FS STATISTICS
+		estadd scalar fs 			= fstat`outcome'[1,4] // can add in stats(fs) in the regression
 
 		* ----- IV-2SLS
 		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
@@ -322,9 +332,14 @@ if ${REGRESSIONS} == 1 {
 		estadd local Controls 		"$\checkmark$"
 		estadd local StateFE 		"$\checkmark$"
 
+		* - MEAN
+		sum `outcome' if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
+
+		* - FS STATISTICS
 		estat firststage
 		mat fstat = r(singleresults)
-		estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
+		estadd scalar fs 			= fstat[1,4] // can add in stats(fs) in the regression
 
 	}
 
@@ -336,6 +351,10 @@ if ${REGRESSIONS} == 1 {
 		est store `outcome'_OLS_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
+
+		* - MEAN
+		sum `outcome' if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
 
 		* ----- RF
 		reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
@@ -349,12 +368,15 @@ if ${REGRESSIONS} == 1 {
 		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
 			if (wave == 15 & chGenetic == 1 & finSample == 1), first cluster(statefip)
 		gen samp_`outcome'15 = e(sample)
+		estat firststage
+		mat fstat`outcome' = r(singleresults)
 
 		reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
 			if (wave == 15 & samp_`outcome'15 == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
 		est store `outcome'_FS_15
 		estadd local Controls		"$\checkmark$"
 		estadd local StateFE		"$\checkmark$"
+		estadd scalar fs 			= fstat`outcome'[1,4] // can add in stats(fs) in the regression
 
 		* ----- IV-2SLS
 		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
@@ -364,9 +386,13 @@ if ${REGRESSIONS} == 1 {
 		estadd local Controls 		"$\checkmark$"
 		estadd local StateFE 		"$\checkmark$"
 
+		* - MEAN
+		sum `outcome' if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
+
 		estat firststage
 		mat fstat = r(singleresults)
-		estadd scalar fs = fstat[1,4] // can add in stats(fs) in the regression
+		estadd scalar fs 			= fstat[1,4] // can add in stats(fs) in the regression
 	}
 
 	* ----------------------------- COEFPLOT AGE 9 & 15
@@ -473,14 +499,14 @@ if ${REGRESSIONS} == 1 {
 		* ----- Adjusted pvalues UTILIZATION OLS
 		rwolf medicalFactor_`wave' regDoc if (wave == `wave' & chGenetic == 1 & finSample == 1), ///
 		method(regress) indepvar(${ELIGVAR}) controls(${CONTROLS}  i.statefip) cluster(statefip) ///
-		vce(cluster statefip) reps(150) seed(1456)
+		vce(cluster statefip) reps(100) seed(1456)
 
 		formatTABLES `wave' OLS medicalFactor_`wave' regDoc
 
 		* ----- Adjusted pvalues UTILIZATION IV
 		rwolf medicalFactor_`wave' regDoc if (wave == `wave' & chGenetic == 1 & finSample == 1), ///
 		method(ivregress)  indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
-		vce(cluster statefip) reps(150) seed(1456)
+		vce(cluster statefip) reps(100) seed(1456)
 
 		formatTABLES `wave' IV medicalFactor_`wave' regDoc
 	}
@@ -488,14 +514,14 @@ if ${REGRESSIONS} == 1 {
 	* ----- Adjusted pvalues OUTCOMES OLS 9
 	rwolf healthFactor_9 chHealthRECODE absent if (wave == 9 & chGenetic == 1 & finSample == 1), ///
 	method(regress) indepvar(${ELIGVAR}) controls(${CONTROLS}  i.statefip) cluster(statefip) ///
-	vce(cluster statefip) reps(150) seed(1456)
+	vce(cluster statefip) reps(100) seed(1456)
 
 	formatTABLES 9 OLS healthFactor_9 chHealthRECODE absent
 
 	* ----- Adjusted pvalues OUTCOMES IV 9
 	rwolf healthFactor_9 chHealthRECODE absent if (wave == 9 & chGenetic == 1 & finSample == 1), ///
 	method(ivregress)  indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
-	vce(cluster statefip) reps(150) seed(1456)
+	vce(cluster statefip) reps(100) seed(1456)
 
 	formatTABLES 9 IV healthFactor_9 chHealthRECODE absent
 
@@ -503,7 +529,7 @@ if ${REGRESSIONS} == 1 {
 	rwolf behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression ///
 	if (wave == 15 & chGenetic == 1 & finSample == 1), ///
 	method(regress) indepvar(${ELIGVAR}) controls(${CONTROLS}  i.statefip) cluster(statefip) ///
-	vce(cluster statefip) reps(150) seed(1456)
+	vce(cluster statefip) reps(100) seed(1456)
 
 	formatTABLES 15 OLS behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression
 
@@ -511,7 +537,7 @@ if ${REGRESSIONS} == 1 {
 	rwolf behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression ///
 	if (wave == 15 & chGenetic == 1 & finSample == 1), ///
 	method(ivregress)  indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
-	vce(cluster statefip) reps(150) seed(1456)
+	vce(cluster statefip) reps(100) seed(1456)
 
 	formatTABLES 15 IV behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression
 
@@ -534,9 +560,9 @@ if ${REGRESSIONS} == 1 {
 	mlabels(none) nonumbers keep(${ELIGVAR} _cons) order(${ELIGVAR} _cons) /// ${CONTROLS}
 	refcat(${ELIGVAR} "& ${medicalFactor_9_9_OLS} & ${medicalFactor_9_9_IV} & ${regDoc_9_OLS} & ${regDoc_9_IV} & ${medicalFactor_15_15_OLS} & ${medicalFactor_15_15_IV} & ${regDoc_15_OLS} & ${regDoc_15_IV}  \\ %", nolabel below) ///
 	cells(b(fmt(%9.3fc)) p(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	stats(Controls StateFE meanElig r2 fs N, fmt(%9.0f %9.0f %9.3f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations" )) ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "\$R^{2}$" "F-Statistic" "Observations" )) ///
 	mgroups("\rule{0pt}{3ex} Age 9" "Age 15", ///
 	pattern(1 0 0 0 1 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
@@ -550,9 +576,9 @@ if ${REGRESSIONS} == 1 {
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) /// refcat(2.chRace, label(Ref. White)) ///
 	refcat(2.chRace "& ${healthFactor_9_9_OLS} & ${healthFactor_9_9_IV} & ${chHealthRECODE_9_OLS} & ${chHealthRECODE_9_IV} & ${absent_9_OLS} & ${absent_9_IV}  \\ %", nolabel) ///
 	cells(b(fmt(%9.3fc)) p(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	stats(Controls StateFE meanElig r2 fs N, fmt(%9.0f %9.0f %9.3f %9.3f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "\$R^{2}$" "F-Statistic" "Observations")) ///
 	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
 	pattern(1 0 1 0 1 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
@@ -567,9 +593,9 @@ if ${REGRESSIONS} == 1 {
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) ///
 	refcat(2.chRace "& ${behavFactor_15_15_OLS} & ${behavFactor_15_15_IV} & ${chHealthRECODE_15_OLS} & ${chHealthRECODE_15_IV} &  ${absent_15_OLS} & ${absent_15_IV} & ${limit_15_OLS} & ${limit_15_IV} & ${depressedRECODE_15_OLS} & ${depressedRECODE_15_IV} & ${diagnosedDepression_15_OLS} & ${diagnosedDepression_15_IV} \\ %", nolabel) ///
 	cells(b(fmt(%9.3fc)) p(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE r2 fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	stats(Controls StateFE meanElig r2 fs N, fmt(%9.0f %9.0f %9.3f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\$R^{2}$" "F-Statistic" "Observations")) ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "\$R^{2}$" "F-Statistic" "Observations")) ///
 	mgroups("\rule{0pt}{3ex} Health Behav. Factor" "Child Health" "Absent" "Limit" "Feels depressed" "Diagnosed depressed", ///
 	pattern(1 0 1 0 1 0 1 0 1 0 1 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
@@ -592,7 +618,6 @@ if ${REGRESSIONS} == 1 {
 	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline "))
 
 	* ----- FS (AGE 9 & 15)
-	* NOTE: fs missing - check how to extract
 	local titles 	"& \multicolumn{13}{c}{Eligibility} \\ \cmidrule(lr){2-14}"
 	local subtitles "& \multicolumn{5}{c}{Age 9} & \multicolumn{8}{c}{Age 15} \\ \cmidrule(lr){2-6}\cmidrule(lr){7-14}"
 	local subsubtiles "& \shortstack{Health \\ factor} & \shortstack{Child \\ health} & Absent & \shortstack{Utilization \\ factor} & \shortstack{Regular \\ check-up} & \shortstack{Behaviors \\ factor} & \shortstack{Child \\ health} & Absent & \shortstack{Limi- \\ tations} & \shortstack{Feels \\ depressed} & \shortstack{Diagnosed \\ depression} & \shortstack{Utilization \\ factor} & \shortstack{Regular \\ check-up} \\"
