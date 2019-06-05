@@ -43,9 +43,9 @@ global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 global PREPARE 			= 0		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
 global DESCRIPTIVE		= 0		// Perform descriptive statistics
-global REGRESSIONS 		= 1 	// Perform regressions
+global REGRESSIONS 		= 0 	// Perform regressions
 global COEFPLOT			= 0	
-global ASSUMPTIONS		= 0		// Check IV assumptions
+global ASSUMPTIONS		= 1		// Check IV assumptions
 global TABLESSIMULATED	= 0
 global ADDITIONAL		= 0
 global ROBUSTNESS		= 0		// Perform robustness checks
@@ -574,6 +574,7 @@ if ${ASSUMPTIONS} == 1 {
 		if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
 	est store balanceElig
 	estadd local Controls 		"$\checkmark$"
+	estadd local StateFE		"$\checkmark$"
 	test ${PRECHAR}
 	estadd scalar Fstat = r(p) // r(p) r(F)
 
@@ -582,6 +583,7 @@ if ${ASSUMPTIONS} == 1 {
 		if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
 	est store balanceSimElig
 	estadd local Controls 		"$\checkmark$"
+	estadd local StateFE		"$\checkmark$"
 	test ${PRECHAR}
 	estadd scalar Fstat = r(p)
 
@@ -590,7 +592,7 @@ if ${ASSUMPTIONS} == 1 {
 	starlevels(* .1 ** .05 *** .01) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
 	keep(${PRECHAR}) collabels(none) numbers ///
 	mlabels("Eligibility" "Simulated \\ & & Eligibility") varlabels(, blist(moCollege "\hline ")) ///
-	stats(Controls Fstat N, fmt(%9.0f %9.3f %9.0f) ///
+	stats(Controls StateFE Fstat N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "\textit{p}-value \textit{F}-test" "Observations"))
 
