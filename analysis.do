@@ -185,6 +185,7 @@ if ${POWER} == 1 {
 * ---------------------------------------------------------------------------- *
 if ${DESCRIPTIVE} == 1 {
 
+	* ----------------------------- SAMPLE CHARACTERISTICS
 	preserve 
 		* ----------------------------- PREPARE DATA
 		eststo clear
@@ -192,7 +193,6 @@ if ${DESCRIPTIVE} == 1 {
 		global STATSVAR 	famSize female chWhite chBlack chHispanic chOther ///
 							chMulti moCohort faCohort moAge avgInc incRatio_FF ////
 							chCohort moCollege faCollege moReport
-		* ADD health variables from analysis
 		
 		global COMPARVAR 	famSize female chWhite chBlack chHispanic moCohort ///
 							faCohort chCohort moCollege faCollege
@@ -223,7 +223,6 @@ if ${DESCRIPTIVE} == 1 {
 		}
 
 		* ----- FF SUMMARY STATISTICS
-		* NOTE: LIMIT TO REGRESSION SAMPLE
 		eststo statsFF: estpost tabstat $STATSVAR if (wave == 0 & finSample == 1), columns(statistics) statistics(mean sd min max n) 
 
 		* ----- LaTex TABLE
@@ -249,7 +248,6 @@ if ${DESCRIPTIVE} == 1 {
 		estadd local FullSamp		"$\checkmark$"
 
 		* ----- WOKRING SAMPLE FFCWS SUM STAT
-		* NOTE: LIMIT TO REGRESSION SAMPLE
 		eststo compFF2: estpost tabstat $COMPARVAR if (wave == 0 & FF == 1 & finSample == 1), ///
 		columns(statistics) statistics(mean sd n)
 		estadd local WorkingSamp	"$\checkmark$"
@@ -268,6 +266,84 @@ if ${DESCRIPTIVE} == 1 {
 		stats(FullSamp WorkingSamp N, fmt(%9.0f) ///
 		layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 		label("Full Sample" "Working Sample" "Observations"))
+
+	restore
+
+
+	* ----------------------------- HEALTH OUTCOMES
+	preserve
+		* ----------------------------- PREPARE DATA
+		eststo clear
+
+		global INDEX9		healthFactor_9 			medicalFactor_9
+		global INDEXVARS9 	chHealthRECODE feverRespiratoryRECODE anemiaRECODE seizuresRECODE ///
+							foodDigestiveRECODE eczemaSkinRECODE diarrheaColitisRECODE ///
+							headachesMigrainesRECODE earInfectionRECODE asthmaAttackRECODE ///
+							emRoom docIll medication regDoc
+		global OTHERS9		absent
+
+		global INDEX15		behavFactor_15 								medicalFactor_15
+		global INDEXVARS15	activityVigorous neverSmoke neverDrink bmi 	emRoom docIll medication regDoc	
+		global OTHERS15		chHealthRECODE  absent limit depressedRECODE diagnosedDepression
+
+		keep idnum wave $INDEX9 $INDEXVARS9 $OTHERS9 $INDEX15 $INDEXVARS15 $OTHERS15 finSample
+
+		* ----------------------------- SUMMARY STATS FRAGILE FAMILIES
+		* ----- PREPARE VARIABLES
+		label var healthFactor_9			"Health Factor ^{1}"
+		label var medicalFactor_9			"Utilization Factor ^{1}"
+		label var chHealthRECODE			"Child health"
+		label var feverRespiratoryRECODE 	"No fever or respiratory allergy ^{2}"
+		label var anemiaRECODE 				"No anemia ^{2}"
+		label var seizuresRECODE			"No seizures ^{2}"
+		label var foodDigestiveRECODE		"No food/digestiv allergy ^{2}"
+		label var eczemaSkinRECODE			"No eczema/skin allergy ^{2}"
+		label var diarrheaColitisRECODE		"No freq. diarrhea/colitis ^{2}"
+		label var headachesMigrainesRECODE	"No freq. headaches/migraines ^{2}"
+		label var earInfectionRECODE		"No ear infection ^{2}"	
+		label var asthmaAttackRECODE		"No asthma attack ^{2}"
+		label var emRoom					"Num times taken to emergency room ^{2}"
+		label var docIll					"Saw doctor for illnes ^{2}"
+		label var medication				"Takes doctor prescribed medication"
+		label var regDoc					"Saw doctor for regular check-up ^{2}"
+		label var absent					"Days absent from school due to health ^{2,3}"
+
+		label var behavFactor_15			"Health behaviors Factor ^{1}"
+		label var medicalFactor_15			"Utilization Factor ^{1}"
+		label var activityVigorous			"Days vigorous activity ^{2,3}" // typical week
+		label var neverSmoke				"Ever smoked ^{2}"
+		label var neverDrink				"Ever drink ^{2}"
+		label var bmi						"BMI"
+		label var limit						"Limitations in usual activities \\ \:\:\:\: due to health"
+		label var depressedRECODE			"Feel depressed ^{2}" // self-reported
+		label var diagnosedDepression		"Ever diagnosed depression/anxiety"
+
+		foreach var of varlist $INDEXVARS9 activityVigorous neverSmoke neverDrink bmi {
+			label variable `var' `"\:\:\:\: `: variable label `var''"'
+		}
+
+		* ----- SUMMARY STATISTICS HEALTH VARIABLES
+		eststo healthVars: estpost tabstat $INDEX9 $INDEXVARS9 $OTHERS9 ///
+		if (wave == 9 & finSample == 1), columns(statistics) statistics(mean sd median min max n) 
+
+		eststo healthVars2: estpost tabstat $INDEX15 $INDEXVARS15 $OTHERS15 ///
+		if (wave == 15 & finSample == 1), columns(statistics) statistics(mean sd median min max n) 
+
+		* ----- LaTex TABLE
+		esttab healthVars using "${TABLEDIR}/descriptiveHealth.tex", replace ///
+		cells("mean(fmt(%9.3f)) sd p50 min max count(fmt(%9.0f))") ///
+		order(healthFactor_9 chHealthRECODE feverRespiratoryRECODE anemiaRECODE seizuresRECODE ///
+		foodDigestiveRECODE eczemaSkinRECODE diarrheaColitisRECODE headachesMigrainesRECODE ///
+		earInfectionRECODE asthmaAttackRECODE medicalFactor_9 emRoom docIll medication regDoc absent) ///
+		style(tex) noobs nonumbers mlabels("Mean & SD & Median & Min & Max & N \\ %") ///
+		collabels(none) label
+
+		esttab healthVars2 using "${TABLEDIR}/descriptiveHealth2.tex", replace ///
+		cells("mean(fmt(%9.3f)) sd p50 min max count(fmt(%9.0f))") ///
+		order(behavFactor_15 activityVigorous neverSmoke neverDrink bmi ///
+		medicalFactor_15 emRoom docIll medication regDoc chHealthRECODE absent limit depressedRECODE diagnosedDepression) ///
+		style(tex) noobs nonumbers mlabels("Mean & SD & Median & Min & Max & N \\ %") ///
+		collabels(none) label
 
 	restore
 
