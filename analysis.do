@@ -42,13 +42,14 @@ global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 * ----------------------------- SET SWITCHES
 global PREPARE 			= 1		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
-global DESCRIPTIVE		= 0		// Perform descriptive statistics
+global DESCRIPTIVE		= 1		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
-global COEFPLOT			= 0	
-global ASSUMPTIONS		= 0		// Check IV assumptions
-global TABLESSIMULATED	= 0
-global ADDITIONAL		= 0
-global ROBUSTNESS		= 0		// Perform robustness checks
+global COEFPLOT			= 1	
+global ASSUMPTIONS		= 1		// Check IV assumptions
+global TABLESSIMULATED	= 1
+global ADDITIONAL		= 1
+global ROBUSTNESS		= 1		// Perform robustness checks
+global HETEROGENOUS		= 1		// Heterogenous effects by race
 
 * ----------------------------- GLOBAL VARIABLES
 global CONTROLS 	age 	chFemale i.chRace moAge age#chFemale // age2 moAge2
@@ -66,6 +67,7 @@ global OUTCOMES15 	behavFactor_15 chHealthRECODE medicalFactor_15	regDoc 	absent
 * Uitlization FACTOR	(9 & 15)	: emRoom docIll medication regDoc
 
 * ----------------------------- LOG FILE
+log using "${CODEDIR}/analysis.log", replace
 
 * ---------------------------------------------------------------------------- *
 * ------------------------- COMBINE & PREPARE DATA --------------------------- *
@@ -168,8 +170,17 @@ if ${POWER} == 1 {
 	power onemean 0, power(0.8 0.9) n(2000 2500 2800 3000 3200 3500) sd(1)
 
 	* ----- GRAPH
+	grstyle clear
+	grstyle init
+	grstyle color background white
+	grstyle color major_grid dimgray
+	grstyle linewidth major_grid thin
+	grstyle yesno draw_major_hgrid yes
+	grstyle yesno grid_draw_min yes
+	grstyle yesno grid_draw_max yes
+
 	power onemean 0, power(0.8 0.9) n(2000 2500 2800 3000 3200 3500) sd(1) ///
-	graph(y(delta) title("") subtitle("") scheme(s1color))  
+	graph(y(delta) title("") subtitle(""))   // scheme(s1color)
 	graph export "${FIGUREDIR}/MDE.png", replace
 		
 
@@ -210,7 +221,7 @@ if ${DESCRIPTIVE} == 1 {
 		label var chHispanic	"Hispanic"
 		label var chOther		"Other race"
 		label var chMulti		"Multi-racial"
-		label var incRatio	"Poverty ratio"
+		label var incRatio		"Poverty ratio"
 		label var chCohort		"Birth year"
 		label var avgInc		"Family income \\ \:\:\:\:\:\:\:\: (in 1'000 USD)"
 		label var moCollege		"Mother has some college"
@@ -263,7 +274,7 @@ if ${DESCRIPTIVE} == 1 {
 		order(chCohort female chWhite chBlack chHispanic famSize moCollege faCollege moCohort faCohort) ///
 		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS") style(tex) /// alignment(r)
 		refcat(chCohort "Child" famSize "Family", nolabel) ///
-		stats(FullSamp WorkingSamp N, fmt(%9.0f) ///
+		stats(FullSamp WorkingSamp N, fmt(%9.0fc) ///
 		layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 		label("Full Sample" "Working Sample" "Observations"))
 
@@ -311,8 +322,8 @@ if ${DESCRIPTIVE} == 1 {
 		label var behavFactor_15			"Health behaviors Factor ^{1}"
 		label var medicalFactor_15			"Utilization Factor ^{1}"
 		label var activityVigorous			"Days vigorous activity ^{2,3}" // typical week
-		label var neverSmoke				"Ever smoked ^{2}"
-		label var neverDrink				"Ever drink ^{2}"
+		label var neverSmoke				"Never smoked ^{2}"
+		label var neverDrink				"Never drink ^{2}"
 		label var bmi						"BMI"
 		label var limit						"Limitations in usual activities \\ \:\:\:\: due to health"
 		label var depressedRECODE			"Feel depressed ^{2}" // self-reported
@@ -563,7 +574,7 @@ if ${REGRESSIONS} == 1 {
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) /// refcat(2.chRace, label(Ref. White)) ///
 	refcat(2.chRace "& ${healthFactor_9_9_OLS} & ${healthFactor_9_9_IV} & ${chHealthRECODE_9_OLS} & ${chHealthRECODE_9_IV} & ${absent_9_OLS} & ${absent_9_IV}  \\ %", nolabel) ///
 	cells(b(fmt(%9.3fc)) p(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE meanElig r2 fs N, fmt(%9.0f %9.0f %9.3f %9.3f %9.3f %9.1f %9.0f) ///
+	stats(Controls StateFE meanElig r2 fs N, fmt(%9.0f %9.0f %9.3f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "\$R^{2}$" "F-Statistic" "Observations")) ///
 	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
@@ -628,7 +639,6 @@ if ${REGRESSIONS} == 1 {
 * ---------------------------------------------------------------------------- *
 * -------------------------------- ASSUMPTIONS ------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 if ${ASSUMPTIONS} == 1 {
 
 	* ----------------------------- BALANCE OF OBSERVABLES
@@ -670,14 +680,13 @@ if ${ASSUMPTIONS} == 1 {
 	mlabels("Eligibility" "Simulated \\ & & Eligibility") varlabels(, blist(moCollege "\hline ")) ///
 	stats(Controls StateFE Fstat N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "\textit{p}-value \textit{F}-test" "Observations"))
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\textit{p}-value \textit{F}-test" "Observations"))
 
 } // END ASSUMPTIONS
 
 * ---------------------------------------------------------------------------- *
 * ----------------------- TABLES SIMULATED ELIGIBILITY ----------------------- *
 * ---------------------------------------------------------------------------- *
-
 if ${TABLESSIMULATED} == 1 {
 
 	/* CREATES ...  */
@@ -731,7 +740,6 @@ if ${TABLESSIMULATED} == 1 {
 * ---------------------------------------------------------------------------- *
 * ------------------------- TABLES ADDITIONAL TABLES ------------------------- *
 * ---------------------------------------------------------------------------- *
-
 if ${ADDITIONAL} == 1 {
 
 	preserve
@@ -767,7 +775,6 @@ if ${ADDITIONAL} == 1 {
 * ---------------------------------------------------------------------------- *
 * -------------------------------- ROBUSTNESS -------------------------------- *
 * ---------------------------------------------------------------------------- *
-
 if ${ROBUSTNESS} == 1 {
 	* ----------------------------- IV WITH AND WITHOUT CONTROLS
 	* ----- OUTCOMES AGE 9
@@ -811,9 +818,118 @@ if ${ROBUSTNESS} == 1 {
 } // END ROBUSTNESS
 
 
+* ---------------------------------------------------------------------------- *
+* -------------------------- HETEROGENOUS EFFECTS ---------------------------- *
+* ---------------------------------------------------------------------------- *
+if ${HETEROGENOUS} == 1 {
+	eststo clear
+
+	* ----------------------------- REGRESSIONS BY RACE
+	gen chRace_new = chRace
+	replace chRace_new = 4 if chRace_new == 5
+
+	* ----- RACE AS CONTROL VARIABLE
+	foreach wave in 9 15 {
+		foreach outcome in ${OUTCOMES`wave'} {
+			eststo rA`wave'_`outcome': ivregress 2sls `outcome'  ${CONTROLS} i.statefip ///
+			(${ELIGVAR} = ${SIMELIGVAR}) if (wave == `wave' & chGenetic == 1 & finSample == 1), cluster(statefip)
+		}
+	}
+
+	* ----- RUN SEPARATE REGRESSIONS FOR EACH RACE
+	foreach wave in 9 15 {
+		foreach outcome in ${OUTCOMES`wave'} {
+			foreach race in 1 2 3 4 {
+				eststo r`wave'_`race'_`outcome': ivregress 2sls `outcome' age chFemale ///
+				moAge age#chFemale i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+				if (wave == `wave' & chGenetic == 1 & finSample == 1 & chRace_new == `race'),  cluster(statefip)
+			}
+		}
+	}
+
+	* ----------------------------- COEFPLOT BY RACE
+	* ----- DEFINE GRAPH STYLE
+	grstyle clear
+	grstyle init
+	grstyle color background white
+	grstyle color major_grid dimgray
+	grstyle linewidth major_grid thin
+	grstyle yesno grid_draw_min yes
+	grstyle yesno grid_draw_max yes
+	grstyle linestyle legend none
+
+	* ----- COEFPLOT // IV 
+	global COL1 	mcolor(emidblue) 	ciopts(recast(. rcap) color(. emidblue) color(emidblue)) 	offset(0.4) // chHealthRECODE
+	global COL2 	mcolor(navy) 		ciopts(recast(. rcap) color(. navy) color(navy)) 			offset(0.2) // healthFactor_9
+	global COL3 	mcolor(ltblue) 		ciopts(recast(. rcap) color(. ltblue) color(ltblue)) 		offset(0.2) // behavFactor_15
+	global COL4 	mcolor(sienna) 		ciopts(recast(. rcap) color(. sienna) color(sienna)) 		offset(0.0) // absent
+	global COL5 	mcolor(orange) 		ciopts(recast(. rcap) color(. orange) color(orange)) 		offset(-0.1) // limit
+	global COL6 	mcolor(teal) 		ciopts(recast(. rcap) color(. teal) color(teal)) 			offset(-0.2) // feels depressed
+	global COL7 	mcolor(dkgreen) 	ciopts(recast(. rcap) color(. dkgreen) color(dkgreen)) 		offset(-0.4) // diagnosedDepression
+
+	coefplot	(rA9_chHealthRECODE, aseq(All) $COL1) 			(rA9_healthFactor_9, aseq(All) $COL2) ///
+				(r9_1_chHealthRECODE, aseq(White) $COL1) 		(r9_1_healthFactor_9, aseq(White) $COL2) ///
+				(r9_2_chHealthRECODE, aseq(Black) $COL1) 		(r9_2_healthFactor_9, aseq(Black) $COL2) ///
+				(r9_3_chHealthRECODE, aseq(Hispanic) $COL1) 	(r9_3_healthFactor_9, aseq(Hispanic) $COL2) ///
+				(r9_4_chHealthRECODE, aseq(Other/Multi) $COL1) 	(r9_4_healthFactor_9, aseq(Other/Multi) $COL2) ///
+				(rA9_absent, aseq(All) $COL4) 		(r9_1_absent, aseq(White) $COL4) 			(r9_2_absent, aseq(Black) $COL4) ///
+				(r9_3_absent, aseq(Hispanic) $COL4) (r9_4_absent, aseq(Other/Multi) $COL4), ///
+				bylabel(Age 9) keep(eligCum) || ///
+				(rA15_chHealthRECODE, aseq(All) $COL1)			(rA15_behavFactor_15, aseq(All) $COL3) ///
+				(r15_1_chHealthRECODE, aseq(White) $COL1) 		(r15_1_behavFactor_15, aseq(White) $COL3) ///
+				(r15_2_chHealthRECODE, aseq(Black) $COL1) 		(r15_2_behavFactor_15, aseq(Black) $COL3) ///
+				(r15_3_chHealthRECODE, aseq(Hispanic) $COL1) 	(r15_3_behavFactor_15, aseq(Hispanic) $COL3) ///
+				(r15_4_chHealthRECODE, aseq(Other/Multi) $COL1) (r15_4_behavFactor_15, aseq(Other/Multi) $COL3) ///
+				(rA15_absent, aseq(All) $COL4) 			(r15_1_absent, aseq(White) $COL4) 		(r15_2_absent, aseq(Black) $COL4) ///
+				(r15_3_absent, aseq(Hispanic) $COL4) 	(r15_4_absent, aseq(Other/Multi) $COL4) ///
+				(rA15_limit, aseq(All) $COL5) 			(r15_1_limit, aseq(White) $COL5) 		(r15_2_limit, aseq(Black) $COL5) ///
+				(r15_3_limit, aseq(Hispanic) $COL5) 	(r15_4_limit, aseq(Other/Multi) $COL5) ///
+				(rA15_depressedRECODE, aseq(All) $COL6) (r15_1_depressedRECODE, aseq(White) $COL6) (r15_2_depressedRECODE, aseq(Black) $COL6) ///
+				(r15_3_depressedRECODE, aseq(Hispanic) $COL6) 	(r15_4_depressedRECODE, aseq(Other/Multi) $COL6) ///
+				(rA15_diagnosedDepression, aseq(All) $COL7) 	(r15_1_diagnosedDepression, aseq(White) $COL7) (r15_2_diagnosedDepression, aseq(Black) $COL7) ///
+				(r15_3_diagnosedDepression, aseq(Hispanic) $COL7) (r15_4_diagnosedDepression, aseq(Other/Multi) $COL7), ///
+				bylabel(Age 15) keep(eligCum) ///
+				xline(0) msymbol(D) msize(small)  levels(95 90) ciopts(recast(. rcap)) aseq swapnames norecycle /// norecycle byopts(compact cols(1))
+				legend(rows(2) order(3 "Child Health" 6 "Health Factor" 63 "Behav. Factor" 33 "Absent" 93 "Limit" 108 "Feels depressed" 123 "Diag. depressed")) /// 1 "95% CI" 2 "90% CI"
+				subtitle(, size(medium) margin(small) justification(left) ///
+				color(white) bcolor(emidblue) bmargin(top_bottom)) // vertical xlabel(, angle(45))
+
+	graph export "${FIGUREDIR}/coefplotRace.pdf", replace
 
 
-* capture log close
+	tab chRace_new if wave == 9
+	tab chRace_new if wave == 15
+
+	/* . tab chRace_new if wave == 9
+
+	chRace_new |      Freq.     Percent        Cum.
+	------------+-----------------------------------
+			1 |        521       17.79       17.79
+			2 |      1,450       49.52       67.32
+			3 |        726       24.80       92.11
+			4 |        231        7.89      100.00
+	------------+-----------------------------------
+		Total |      2,928      100.00
+
+	. tab chRace_new if wave == 15
+
+	chRace_new |      Freq.     Percent        Cum.
+	------------+-----------------------------------
+			1 |        521       17.77       17.77
+			2 |      1,452       49.52       67.29
+			3 |        728       24.83       92.12
+			4 |        231        7.88      100.00
+	------------+-----------------------------------
+		Total |      2,932      100.00 */
+
+}
+
+
+
+capture log close
+
+
+
 
 
 * ---------------------------------------------------------------------------- *
