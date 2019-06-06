@@ -69,7 +69,18 @@ gen chAge = int(chAge_temp / 12)
 replace chAge = 0 if chAge < 0
 
 * ----------------------------- MERGE STATE (RESTRICTED USE DATA)
-merge 1:1 idnum wave using "${TEMPDATADIR}/states.dta", nogen
+merge m:1 idnum wave using "${TEMPDATADIR}/states.dta", nogen
+
+* ----------------------------- MERGE POVERTY LEVELS
+merge m:1 year famSize statefip using "${CLEANDATADIR}/PovertyLevels.dta"
+keep if _merge == 3
+drop _merge
+
+* ----- INCOME RATIO
+* Divide FF family income by poverty line based on fam size and composition
+gen incRatio = avgInc / povLevel
+label var incRatio	"Family poverty level"
+
 
 * ----------------------------- GENDER, RACE, MOTHER AGE, MOTHER RACE
 foreach var in chGender moAge moCohort moWhite moBlack moHispanic moOther ///

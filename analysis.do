@@ -40,12 +40,12 @@ global FIGUREDIR		"${USERPATH}/output/figures"
 global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 
 * ----------------------------- SET SWITCHES
-global PREPARE 			= 0		// Prepare data
+global PREPARE 			= 1		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
 global DESCRIPTIVE		= 0		// Perform descriptive statistics
-global REGRESSIONS 		= 0 	// Perform regressions
+global REGRESSIONS 		= 1 	// Perform regressions
 global COEFPLOT			= 0	
-global ASSUMPTIONS		= 1		// Check IV assumptions
+global ASSUMPTIONS		= 0		// Check IV assumptions
 global TABLESSIMULATED	= 0
 global ADDITIONAL		= 0
 global ROBUSTNESS		= 0		// Perform robustness checks
@@ -102,8 +102,8 @@ if ${PREPARE} == 1 {
 	rename simulatedElig simEligCur
 
 	* ----- INDIVIDUAL ELIGIBILITY
-	replace eligCur = incRatio_FF <= medicut | incRatio_FF <= schipcut
-	replace eligCur = . if medicut == . | schipcut == . | incRatio_FF == .
+	replace eligCur = incRatio <= medicut | incRatio <= schipcut
+	replace eligCur = . if medicut == . | schipcut == . | incRatio == .
 
 	* ----- CREATE CUMULATED ELIGIBILITY
 	foreach eligvar in eligCur simEligCur {
@@ -191,7 +191,7 @@ if ${DESCRIPTIVE} == 1 {
 		eststo clear
 
 		global STATSVAR 	famSize female chWhite chBlack chHispanic chOther ///
-							chMulti moCohort faCohort moAge avgInc incRatio_FF ////
+							chMulti moCohort faCohort moAge avgInc incRatio ////
 							chCohort moCollege faCollege moReport
 		
 		global COMPARVAR 	famSize female chWhite chBlack chHispanic moCohort ///
@@ -210,7 +210,7 @@ if ${DESCRIPTIVE} == 1 {
 		label var chHispanic	"Hispanic"
 		label var chOther		"Other race"
 		label var chMulti		"Multi-racial"
-		label var incRatio_FF	"Poverty ratio"
+		label var incRatio	"Poverty ratio"
 		label var chCohort		"Birth year"
 		label var avgInc		"Family income \\ \:\:\:\:\:\:\:\: (in 1'000 USD)"
 		label var moCollege		"Mother has some college"
@@ -229,7 +229,7 @@ if ${DESCRIPTIVE} == 1 {
 		esttab statsFF using "${TABLEDIR}/SumStat_FF.tex", style(tex) replace ///
 		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc %9.0fc %9.2fc)) sd(fmt(%9.2fc))") ///
 		label nonumber mlabels(none) /// 
-		order(chCohort female chWhite chBlack chHispanic chMulti chOther moAge moCohort faCohort moCollege faCollege moReport famSize avgInc incRatio_FF) ///
+		order(chCohort female chWhite chBlack chHispanic chMulti chOther moAge moCohort faCohort moCollege faCollege moReport famSize avgInc incRatio) ///
 		stats(N, fmt(%9.0f) label(Observations)) collabels("Mean" "Standard \\ & & Deviation") ///
 		refcat(chCohort "Child" moAge "Family", nolabel)
 
