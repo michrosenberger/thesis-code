@@ -42,7 +42,7 @@ global TABLEDIR         "${USERPATH}/output/tables"
 cd ${CODEDIR}
 
 * ----------------------------- LOG FILE
-log using "${CODEDIR}/constructHH_FF.log", replace
+log using "${CODEDIR}/FF/constructHH_FF.log", replace
 
 * ---------------------------------------------------------------------------- *
 * ------------------------------ VARIABLES MERGE ----------------------------- *

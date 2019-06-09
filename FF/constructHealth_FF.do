@@ -38,7 +38,7 @@ global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
 
 * ----------------------------- LOG FILE
-log using "${CODEDIR}/constructHealth_FF.log", replace
+log using "${CODEDIR}/FF/constructHealth_FF.log", replace
 
 * ---------------------------------------------------------------------------- *
 * ---------------------------------- GENERAL --------------------------------- *
