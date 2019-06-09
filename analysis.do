@@ -40,9 +40,9 @@ global FIGUREDIR		"${USERPATH}/output/figures"
 global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 
 * ----------------------------- SET SWITCHES
-global PREPARE 			= 1		// Prepare data
+global PREPARE 			= 0		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
-global DESCRIPTIVE		= 1		// Perform descriptive statistics
+global DESCRIPTIVE		= 0		// Perform descriptive statistics
 global REGRESSIONS 		= 1 	// Perform regressions
 global COEFPLOT			= 0	
 global ASSUMPTIONS		= 0		// Check IV assumptions
@@ -50,6 +50,7 @@ global TABLESSIMULATED	= 0
 global ADDITIONAL		= 0
 global ROBUSTNESS		= 0		// Perform robustness checks
 global HETEROGENOUS		= 0		// Heterogenous effects by race
+global GXE				= 0
 
 * ----------------------------- GLOBAL VARIABLES
 global CONTROLS 	age 	chFemale i.chRace moAge age#chFemale
@@ -347,8 +348,8 @@ if ${DESCRIPTIVE} == 1 {
 
 		* ----------------------------- SUMMARY STATS FRAGILE FAMILIES
 		* ----- PREPARE VARIABLES
-		label var healthFactor_9			"Health Factor ^{1}"
-		label var medicalFactor_9			"Utilization Factor ^{1}"
+		label var healthFactor_9			"Health factor ^{1}"
+		label var medicalFactor_9			"Utilization factor ^{1}"
 		label var chHealthRECODE			"Child health"
 		label var feverRespiratoryRECODE 	"No fever or respiratory allergy ^{2}"
 		label var anemiaRECODE 				"No anemia ^{2}"
@@ -365,8 +366,8 @@ if ${DESCRIPTIVE} == 1 {
 		label var regDoc					"Saw doctor for regular check-up ^{2}"
 		label var absent					"Days absent from school due to health ^{2,3}"
 
-		label var behavFactor_15			"Health behaviors Factor ^{1}"
-		label var medicalFactor_15			"Utilization Factor ^{1}"
+		label var behavFactor_15			"Health behav. factor ^{1}"
+		label var medicalFactor_15			"Utilization factor ^{1}"
 		label var activityVigorous			"Days vigorous activity ^{2,3}" // typical week
 		label var neverSmoke				"Never smoked ^{2}"
 		label var neverDrink				"Never drink ^{2}"
@@ -490,16 +491,16 @@ if ${REGRESSIONS} == 1 {
 		global COL1 	offset(0.2)  mcolor(emidblue) ciopts(recast(. rcap) color(. emidblue) color(emidblue))
 		global COL2 	offset(-0.2) mcolor(navy) ciopts(recast(. rcap) color(. navy) color(navy))
 
-		coefplot 	(chHealthRECODE_IV_9, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_9, aseq(Child Health) $COL2) ///
+		coefplot 	(chHealthRECODE_IV_9, aseq(Child health) $COL1) 	(chHealthRECODE_OLS_9, aseq(Child health) $COL2) ///
 					(absent_IV_9, aseq(Absent) $COL1) 					(absent_OLS_9, aseq(Absent) $COL2) ///
-					(healthFactor_9_IV_9, aseq(Health Factor) $COL1) 	(healthFactor_9_OLS_9, aseq(Health Factor) $COL2) ///
-					(medicalFactor_9_IV_9, aseq(Utilization) $COL1) 	(medicalFactor_9_OLS_9, aseq(Utilization) $COL2), ///
+					(healthFactor_9_IV_9, aseq(Health factor) $COL1) 	(healthFactor_9_OLS_9, aseq(Health factor) $COL2) ///
+					(medicalFactor_9_IV_9, aseq(Utilization factor) $COL1) 	(medicalFactor_9_OLS_9, aseq(Utilization factor) $COL2), ///
 						bylabel(Age 9) keep(eligCum) || ///
-					(chHealthRECODE_IV_15, aseq(Child Health) $COL1) 	(chHealthRECODE_OLS_15, aseq(Child Health) $COL2) ///
+					(chHealthRECODE_IV_15, aseq(Child health) $COL1) 	(chHealthRECODE_OLS_15, aseq(Child health) $COL2) ///
 					(absent_IV_15, aseq(Absent) $COL1) 					(absent_OLS_15, aseq(Absent) $COL2) ///
 					(limit_IV_15, aseq(Limitation) $COL1) 				(limit_OLS_15, aseq(Limitation) $COL2) ///
-					(medicalFactor_15_IV_15, aseq(Utilization) $COL1) 	(medicalFactor_15_OLS_15, aseq(Utilization) $COL2) ///
-					(behavFactor_15_IV_15, aseq(Behaviors Factor) $COL1) (behavFactor_15_OLS_15, aseq(Behaviors Factor) $COL2) ///
+					(medicalFactor_15_IV_15, aseq(Utilization factor) $COL1) 	(medicalFactor_15_OLS_15, aseq(Utilization factor) $COL2) ///
+					(behavFactor_15_IV_15, aseq(Health behav. factor) $COL1) (behavFactor_15_OLS_15, aseq(Health behav. factor) $COL2) ///
 					(depressedRECODE_IV_15, aseq(Feels dep.) $COL1) 	(depressedRECODE_OLS_15, aseq(Feels dep.) $COL2) ///
 					(diagnosedDepression_IV_15, aseq(Diagnosed dep.) $COL1) (diagnosedDepression_OLS_15, aseq(Diagnosed dep.) $COL2), ///
 						bylabel(Age 15) keep(eligCum) ///
@@ -569,7 +570,7 @@ if ${REGRESSIONS} == 1 {
 	label var medicalFactor_15	"Utilization"
 
 	* ----- UTILIZATION (AGE 9 & 15)
-	local titles "& \multicolumn{2}{c}{Utilization Factor} & \multicolumn{2}{c}{Reg. check-up}  & \multicolumn{2}{c}{Utilization Factor} & \multicolumn{2}{c}{Reg. check-up}  \\ \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}"
+	local titles "& \multicolumn{2}{c}{Utilization factor} & \multicolumn{2}{c}{Reg. check-up}  & \multicolumn{2}{c}{Utilization factor} & \multicolumn{2}{c}{Reg. check-up}  \\ \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}"
 	local numbers "& OLS & IV & OLS & IV & OLS & IV & OLS & IV \\"
 
 	estout medicalFactor_9_OLS_9 medicalFactor_9_IV_9 regDoc_OLS_9 regDoc_IV_9 /// access_OLS_9 access_IV_9 
@@ -597,7 +598,7 @@ if ${REGRESSIONS} == 1 {
 	stats(Controls StateFE meanElig fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
+	mgroups("\rule{0pt}{3ex} Health factor" "Child health" "Absent", ///
 	pattern(1 0 1 0 1 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
@@ -614,7 +615,7 @@ if ${REGRESSIONS} == 1 {
 	stats(Controls StateFE meanElig fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Health Behav. Factor" "Child Health" "Absent" "Limit" "Feels depressed" "Diagnosed depressed", ///
+	mgroups("\rule{0pt}{3ex} Health behav. factor" "Child health" "Absent" "Limit" "Feels depressed" "Diagnosed depressed", ///
 	pattern(1 0 1 0 1 0 1 0 1 0 1 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
@@ -624,7 +625,7 @@ if ${REGRESSIONS} == 1 {
 	behavFactor_15_RF_15 chHealthRECODE_RF_15 absent_RF_15 limit_RF_15 depressedRECODE_RF_15 ///
 	diagnosedDepression_RF_15 medicalFactor_15_RF_15 regDoc_RF_15 ///
 	using "${TABLEDIR}/reducedForm.tex", replace label collabels(none) style(tex) ///
-	mlabels("\shortstack{Health \\ factor}" "\shortstack{Child \\ health}" "Absent" "\shortstack{Utilization \\ factor}" "\shortstack{Regular \\ check-up}" "\shortstack{Behaviors \\ factor}" "\shortstack{Child \\ health}" "Absent" "\shortstack{Limi- \\ tations}" "\shortstack{Feels \\ depressed}" "\shortstack{Diagnosed \\ depression}" "\shortstack{Utilization \\ factor}" "\shortstack{Regular \\ check-up}") ///
+	mlabels("\shortstack[l]{Health \\ factor}" "\shortstack[l]{Child \\ health}" "Absent" "\shortstack[l]{Utilization \\ factor}" "\shortstack[l]{Regular \\ check-up}" "\shortstack[l]{Health behav. \\ factor}" "\shortstack[l]{Child \\ health}" "Absent" "\shortstack[l]{Limi- \\ tations}" "\shortstack[l]{Feels \\ depressed}" "\shortstack[l]{Diagnosed \\ depression}" "\shortstack[l]{Utilization \\ factor}" "\shortstack[l]{Regular \\ check-up}") ///
 	nonumbers keep(${SIMELIGVAR} _cons) order(${SIMELIGVAR} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N, fmt(%9.0f %9.0f %9.0f) ///
@@ -638,7 +639,7 @@ if ${REGRESSIONS} == 1 {
 	* ----- FS (AGE 9 & 15)
 	local titles 	"& \multicolumn{13}{c}{Eligibility} \\ \cmidrule(lr){2-14}"
 	local subtitles "& \multicolumn{5}{c}{Age 9} & \multicolumn{8}{c}{Age 15} \\ \cmidrule(lr){2-6}\cmidrule(lr){7-14}"
-	local subsubtiles "& \shortstack{Health \\ factor} & \shortstack{Child \\ health} & Absent & \shortstack{Utilization \\ factor} & \shortstack{Regular \\ check-up} & \shortstack{Behaviors \\ factor} & \shortstack{Child \\ health} & Absent & \shortstack{Limi- \\ tations} & \shortstack{Feels \\ depressed} & \shortstack{Diagnosed \\ depression} & \shortstack{Utilization \\ factor} & \shortstack{Regular \\ check-up} \\"
+	local subsubtiles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Regular \\ check-up} & \shortstack[l]{Health behav. \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Limi- \\ tations} & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagnosed \\ depression} & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Regular \\ check-up} \\"
 
 	estout healthFactor_9_FS_9 chHealthRECODE_FS_9 absent_FS_9 medicalFactor_9_FS_9 regDoc_FS_9 ///
 	behavFactor_15_FS_15 chHealthRECODE_FS_15 absent_FS_15 limit_FS_15 depressedRECODE_FS_15 ///
@@ -694,7 +695,7 @@ if ${REGRESSIONS} == 1 {
 	stats(Controls StateFE meanElig fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
-	mlabels("\shortstack{Health Behav. \\ factor}" "\shortstack{Vigorous \\ Activity}" "\shortstack{Never \\ Smoke}" "\shortstack{Never \\ Drink}" "BMI" "BMI24" "BMI28" "BMI30") ///
+	mlabels("\shortstack[l]{Health behav. \\ factor}" "\shortstack[l]{Vigorous \\ activity}" "\shortstack[l]{Never \\ smoke}" "\shortstack[l]{Never \\ Drink}" "BMI" "BMI24" "BMI28" "BMI30") ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 
@@ -874,7 +875,7 @@ if ${ROBUSTNESS} == 1 {
 	stats(Controls StateFE N, fmt(%9.0f %9.0f %9.0f) ///
 	layout("\multicolumn{1}{c}{@}" "\multicolumn{1}{c}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Health Factor" "Child Health" "Absent", ///
+	mgroups("\rule{0pt}{3ex} Health factor" "Child health" "Absent", ///
 	pattern(1 0 0 1 0 0 1 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
@@ -887,6 +888,9 @@ if ${ROBUSTNESS} == 1 {
 * ---------------------------------------------------------------------------- *
 if ${HETEROGENOUS} == 1 {
 	eststo clear
+
+	label var ${ELIGVAR}		"Eligibility"
+	label var ${SIMELIGVAR}		"Simulated Elig"
 
 	* ----------------------------- REGRESSIONS BY RACE
 	gen chRace_new = chRace
@@ -963,7 +967,7 @@ if ${HETEROGENOUS} == 1 {
 		}
 	}
 
-	local titles "Eligibility & \shortstack{Health \\ Factor} & \shortstack{Child \\ Health} & Absent & \shortstack{Utilization \\ Factor} & \shortstack{Behav \\ Factor} & \shortstack{Child \\ Health} & Absent & Limit & \shortstack{Feels \\ Depressed} & \shortstack{Diagn. \\ Depressed} & \shortstack{Utilization \\ Factor} & \\"
+	local titles "Eligibility & \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Health behav. \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
 
 	estout healthFactor_9_9 chHealthRECODE_9 absent_9 medicalFactor_9_9 behavFactor_15_15 chHealthRECODE_15 ///
 	absent_15 limit_15 depressedRECODE_15 diagnosedDepression_15 medicalFactor_15_15 ///
@@ -979,7 +983,7 @@ if ${HETEROGENOUS} == 1 {
 
 
 	* ----- LATEX W/ RACE INTERACTION
-	local titles "& \shortstack{Health \\ Factor} & \shortstack{Child \\ Health} & Absent & \shortstack{Utilization \\ Factor} & \shortstack{Behav \\ Factor} & \shortstack{Child \\ Health} & Absent & Limit & \shortstack{Feels \\ Depressed} & \shortstack{Diagn. \\ Depressed} & \shortstack{Utilization \\ Factor} & \\"
+	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Health behav. \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
 
 	estout rac_9_healthFactor_9 rac_9_chHealthRECODE rac_9_absent rac_9_medicalFactor_9 ///
 	rac_15_behavFactor_15 rac_15_chHealthRECODE rac_15_absent rac_15_limit rac_15_depressedRECODE ///
@@ -998,7 +1002,6 @@ if ${HETEROGENOUS} == 1 {
 
 
 	* ----------------------------- REGRESSIONS BY GENDER
-	eststo clear
 	* ----- REGRESSION WITH GENDER INTERACTION
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} {
@@ -1011,7 +1014,7 @@ if ${HETEROGENOUS} == 1 {
 	}
 
 	* ----- LATEX
-	local titles "& \shortstack{Health \\ Factor} & \shortstack{Child \\ Health} & Absent & \shortstack{Utilization \\ Factor} & \shortstack{Behav \\ Factor} & \shortstack{Child \\ Health} & Absent & Limit & \shortstack{Feels \\ Depressed} & \shortstack{Diagn. \\ Depressed} & \shortstack{Utilization \\ Factor} & \\"
+	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Health behav. \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
 
 	estout gen_9_healthFactor_9 gen_9_chHealthRECODE gen_9_absent gen_9_medicalFactor_9 ///
 	gen_15_behavFactor_15 gen_15_chHealthRECODE gen_15_absent gen_15_limit gen_15_depressedRECODE ///
@@ -1030,7 +1033,6 @@ if ${HETEROGENOUS} == 1 {
 
 
 	* ----------------------------- COEFPLOT BY RACE
-	if ${COEFPLOT} == 1 {
 		* ----- DEFINE GRAPH STYLE
 		grstyle clear
 		grstyle init
@@ -1073,7 +1075,7 @@ if ${HETEROGENOUS} == 1 {
 					(r15_3_diagnosedDepression, aseq(Hispanic) $COL7) (r15_4_diagnosedDepression, aseq(Other/Multi) $COL7), ///
 					bylabel(Age 15) keep(eligCum) ///
 					xline(0) msymbol(D) msize(small)  levels(95 90) ciopts(recast(. rcap)) aseq swapnames norecycle /// norecycle byopts(compact cols(1))
-					legend(rows(2) order(3 "Child Health" 6 "Health Factor" 63 "Behav. Factor" 33 "Absent" 93 "Limit" 108 "Feels depressed" 123 "Diag. depressed")) /// 1 "95% CI" 2 "90% CI"
+					legend(rows(2) order(3 "Child health" 6 "Health factor" 63 "Health behav. factor" 33 "Absent" 93 "Limit" 108 "Feels depressed" 123 "Diag. depressed")) /// 1 "95% CI" 2 "90% CI"
 					subtitle(, size(medium) margin(small) justification(left) ///
 					color(white) bcolor(emidblue) bmargin(top_bottom)) // vertical xlabel(, angle(45))
 
@@ -1104,7 +1106,6 @@ if ${HETEROGENOUS} == 1 {
 				4 |        231        7.88      100.00
 		------------+-----------------------------------
 			Total |      2,932      100.00 */
-	}
 
 }
 
