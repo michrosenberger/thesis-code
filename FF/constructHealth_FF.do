@@ -36,6 +36,7 @@ global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
 global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
+global TABLEDIR			"${USERPATH}/output/tables"
 
 * ----------------------------- LOG FILE
 log using "${CODEDIR}/FF/constructHealth_FF.log", replace
@@ -103,7 +104,8 @@ label values neverDrink neverSmoke YESNO
 * CHILD HEALTH, CHILD HAD IN PAST ...
 sem (GeneralHealth -> chHealthRECODE feverRespiratoryRECODE anemiaRECODE seizuresRECODE ///
 foodDigestiveRECODE eczemaSkinRECODE diarrheaColitisRECODE headachesMigrainesRECODE ///
-earInfectionRECODE asthmaAttackRECODE), method(mlmv) var(GeneralHealth@1)
+earInfectionRECODE), method(mlmv) var(GeneralHealth@1) // asthmaAttackRECODE
+eststo genSEM
 
 foreach wave in 9 15 {
 	* ----- PREDICT AND STANDARDIZE HEALTH FACTOR
@@ -115,6 +117,7 @@ foreach wave in 9 15 {
 * ----- SEM
 * MEDICATION, DOC ILLNESS, DOC REGULAR, ER
 sem (UtilFactor ->  emRoom docIll medication regDoc), method(mlmv) var(UtilFactor@1) 
+eststo medSEM
 
 foreach wave in 9 15 {
 	* ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
@@ -125,10 +128,28 @@ foreach wave in 9 15 {
 * ----- SEM
 * recode activityVigorous (0=7) (1=6) (2=5) (3=4) (4=3) (5=2) (6=1) (7=0), gen(activityVigorousRECODE)
 sem (BehavFactor -> activityVigorous neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1)
-* estout . , cells("b se") drop(_cons) style(tex) label
+eststo behavSEM
 
-* ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
+* ----- PREDICT AND STANDARDIZE BEHAV FACTOR
 predict behavFactor_15_temp if (e(sample) == 1 & wave == 15), latent(BehavFactor)
+
+
+* ----- LaTex FACTOR LOADINGS
+label var activityVigorous			"Days vigorous activity"
+label var neverSmoke				"Never smoked"
+label var neverDrink				"Never drink"
+label var bmi						"BMI"
+
+estout genSEM using "${TABLEDIR}/semGen.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par))  drop(var(*): _cons) ///  label unstack
+collabels(none) mlabels(none) style(tex) varlabels(GeneralHealth "\; Factor")
+
+estout behavSEM using "${TABLEDIR}/semBehav.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par))  drop(var(*): _cons) /// unstack 
+collabels(none) label mlabels(none) style(tex) varlabels(BehavFactor "\; Factor")  // , blist(BehavFactor  "\hline ")
+
+estout medSEM using "${TABLEDIR}/semMed.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par)) unstack drop(var(*):) ///  label
+collabels(none) mlabels(none) style(tex) varlabels(_cons Constant UtilFactor "\hline \\ Factor")
+
+
 
 * ----------------------------- LIMITATIONS (AGE 9 & 15)
 * ----- ABSENT (AGE 9 & 15)
