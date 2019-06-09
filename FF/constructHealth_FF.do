@@ -37,6 +37,9 @@ global CLEANDATADIR  	"${USERPATH}/data/clean"
 global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
 
+* ----------------------------- LOG FILE
+log using "${CODEDIR}/constructHealth_FF.log", replace
+
 * ---------------------------------------------------------------------------- *
 * ---------------------------------- GENERAL --------------------------------- *
 * ---------------------------------------------------------------------------- *
@@ -92,7 +95,6 @@ eczemaSkinRECODE diarrheaColitisRECODE headachesMigrainesRECODE earInfectionRECO
 asthmaAttackRECODE NOYES
 label values neverDrink neverSmoke YESNO
 
-
 * ----------------------------- FACTOR SCORE
 * NOTE: HIGHER SCORE REPRESENTS A BETTER OUTCOME 
 
@@ -106,8 +108,6 @@ earInfectionRECODE asthmaAttackRECODE), method(mlmv) var(GeneralHealth@1)
 foreach wave in 9 15 {
 	* ----- PREDICT AND STANDARDIZE HEALTH FACTOR
 	predict healthFactor_`wave'_temp if (e(sample) == 1 & wave == `wave'), latent(GeneralHealth)
-	egen healthFactor_`wave' 	= std(healthFactor_`wave'_temp)
-	drop healthFactor_`wave'_temp
 }
 
 
@@ -119,21 +119,16 @@ sem (UtilFactor ->  emRoom docIll medication regDoc), method(mlmv) var(UtilFacto
 foreach wave in 9 15 {
 	* ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
 	predict medicalFactor_`wave'_temp if (e(sample) == 1 & wave == `wave'), latent(UtilFactor)
-	egen medicalFactor_`wave' 	= std(medicalFactor_`wave'_temp)
-	drop medicalFactor_`wave'_temp
 }
-
 
 * ----------------------------- FACTOR SCORE: HEALTH BEHAVIOURS (AGE 15)
 * ----- SEM
 * recode activityVigorous (0=7) (1=6) (2=5) (3=4) (4=3) (5=2) (6=1) (7=0), gen(activityVigorousRECODE)
 sem (BehavFactor -> activityVigorous neverSmoke neverDrink bmi), method(mlmv) var(BehavFactor@1)
+* estout . , cells("b se") drop(_cons) style(tex) label
 
 * ----- PREDICT AND STANDARDIZE UTILIZATION FACTOR
 predict behavFactor_15_temp if (e(sample) == 1 & wave == 15), latent(BehavFactor)
-egen behavFactor_15 = std(behavFactor_15_temp)
-drop behavFactor_15_temp
-
 
 * ----------------------------- LIMITATIONS (AGE 9 & 15)
 * ----- ABSENT (AGE 9 & 15)
@@ -223,11 +218,11 @@ label var numDocIll				"Num visits health care professional due to illness"
 label var numDocIllInj			"Num visits health care professional due to illness/injury"
 label var numDocInj				"Num visits health care professional for injury (since birth)"
 
-label var healthFactor_9		"General health factor (age 9)"
-label var healthFactor_15		"General health factor (age 15)"
-label var medicalFactor_9		"Medical utilization factor (age 9)"
-label var medicalFactor_15		"Medical utilization factor (age 15)"
-label var behavFactor_15		"Behav factor (age 15)"
+// label var healthFactor_9		"General health factor (age 9)"
+// label var healthFactor_15		"General health factor (age 15)"
+// label var medicalFactor_9		"Medical utilization factor (age 9)"
+// label var medicalFactor_15		"Medical utilization factor (age 15)"
+// label var behavFactor_15		"Behav factor (age 15)"
 
 
 
