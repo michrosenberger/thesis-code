@@ -420,10 +420,8 @@ if ${REGRESSIONS} == 1 {
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} {
 			* ----- OLS
-			reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip ///
+			eststo `outcome'_OLS_`wave': reg `outcome' ${ELIGVAR} ${CONTROLS} i.statefip ///
 				if (wave == `wave' & chGenetic == 1 & finSample == 1), cluster(statefip)
-
-			est store `outcome'_OLS_`wave'
 			estadd local Controls		"Yes"
 			estadd local StateFE		"Yes"
 
@@ -432,10 +430,8 @@ if ${REGRESSIONS} == 1 {
 			estadd scalar meanElig =  r(mean)
 
 			* ----- RF
-			reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+			eststo `outcome'_RF_`wave': reg `outcome' ${SIMELIGVAR} ${CONTROLS} i.statefip ///
 				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
-
-			est store `outcome'_RF_`wave'
 			estadd local Controls		"Yes"
 			estadd local StateFE		"Yes"
 
@@ -447,9 +443,8 @@ if ${REGRESSIONS} == 1 {
 			estat firststage
 			mat fstat`outcome' = r(singleresults)
 
-			reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
+			eststo `outcome'_FS_`wave' : reg ${ELIGVAR} ${SIMELIGVAR} ${CONTROLS} i.statefip ///
 				if (wave == `wave' & samp_`outcome'`wave' == 1 & chGenetic == 1 & finSample == 1), cluster(statefip)
-			est store `outcome'_FS_`wave'
 			estadd local Controls		"Yes"
 			estadd local StateFE		"Yes"
 
@@ -458,10 +453,9 @@ if ${REGRESSIONS} == 1 {
 
 
 			* ----- IV-2SLS
-			ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-				if (wave == `wave' & chGenetic == 1 & finSample == 1),  cluster(statefip)
-
-			est store `outcome'_IV_`wave'
+			eststo `outcome'_IV_`wave' : ivregress 2sls `outcome' ${CONTROLS} i.statefip ///
+				(${ELIGVAR} = ${SIMELIGVAR}) if (wave == `wave' & chGenetic == 1 & finSample == 1), ///
+				cluster(statefip)
 			estadd local Controls 		"Yes"
 			estadd local StateFE 		"Yes"
 
@@ -660,10 +654,9 @@ if ${REGRESSIONS} == 1 {
 
 	* ----------------------------- HEALTH BEHAVIORS REGRESSIONS
 	foreach outcome in behavFactor_15 activityVigorous neverSmoke neverDrink bmi bmi24 bmi28 bmi30 {
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
-		if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
-
-		est store `outcome'_all_IV_15
+		eststo `outcome'_all_IV_15 : ivregress 2sls `outcome' ${CONTROLS} i.statefip ///
+			(${ELIGVAR} = ${SIMELIGVAR}) if (wave == 15 & chGenetic == 1 & finSample == 1), ///
+			cluster(statefip)
 		estadd local Controls 		"Yes"
 		estadd local StateFE 		"Yes"
 
@@ -725,18 +718,16 @@ if ${ASSUMPTIONS} == 1 {
 	global PRECHAR moCollege faCollege moCohort faCohort avgIncBase famSizeBase
 
 	* ----- PREDICT INSTRUMENT WITH ALL COVARIATES
-	reg ${ELIGVAR}	${PRECHAR}	${CONTROLS} i.statefip ///
+	eststo balanceElig: reg ${ELIGVAR}	${PRECHAR}	${CONTROLS} i.statefip ///
 		if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
-	est store balanceElig
 	estadd local Controls 		"Yes"
 	estadd local StateFE		"Yes"
 	test ${PRECHAR}
 	estadd scalar Fstat = r(p) // r(p) r(F)
 
 
-	reg ${SIMELIGVAR} ${PRECHAR} ${CONTROLS} i.statefip ///
+	eststo balanceSimElig : reg ${SIMELIGVAR} ${PRECHAR} ${CONTROLS} i.statefip ///
 		if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
-	est store balanceSimElig
 	estadd local Controls 		"Yes"
 	estadd local StateFE		"Yes"
 	test ${PRECHAR}
@@ -757,8 +748,6 @@ if ${ASSUMPTIONS} == 1 {
 * ----------------------- TABLES SIMULATED ELIGIBILITY ----------------------- *
 * ---------------------------------------------------------------------------- *
 if ${TABLESSIMULATED} == 1 {
-
-	/* CREATES ...  */
 
 	preserve
 		* ----------------------------- PREPARE DATA
@@ -849,23 +838,20 @@ if ${ROBUSTNESS} == 1 {
 	foreach outcome in $OUTCOMES9 {
 		* ----- IV-2SLS
 		* WITH CONTROLS + FE
-		ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
+		eststo `outcome'_IV_9 : ivregress 2sls `outcome' ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
 			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
-		est store `outcome'_IV_9
 		estadd local Controls 		"Yes"
 		estadd local StateFE 		"Yes"
 
 		* WITHOUT CONTROLS
-		ivregress 2sls `outcome' ${CONTROLS} (${ELIGVAR} = ${SIMELIGVAR}) ///
+		eststo `outcome'_IV_9_NOCO : ivregress 2sls `outcome' ${CONTROLS} (${ELIGVAR} = ${SIMELIGVAR}) ///
 			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
-		est store `outcome'_IV_9_NOCO
 		estadd local Controls 		"Yes"
 		estadd local StateFE 		"No"
 
 		* WITHOUT CONTROLS + FE
-		ivregress 2sls `outcome' (${ELIGVAR} = ${SIMELIGVAR}) ///
+		eststo `outcome'_IV_9_NOCOFE : ivregress 2sls `outcome' (${ELIGVAR} = ${SIMELIGVAR}) ///
 			if (wave == 9 & chGenetic == 1 & finSample == 1),  cluster(statefip)
-		est store `outcome'_IV_9_NOCOFE
 		estadd local Controls 		"No"
 		estadd local StateFE 		"No"
 	}
@@ -1120,72 +1106,72 @@ if ${HETEROGENOUS} == 1 {
 * ---------------------------------------------------------------------------- *
 if ${GXE} == 1 {
 
-* ----------------------------- DEPRESSION
-* ----- REGRESSIONS DEPRESSION
-foreach outcome in diagnosedDepression depressedRECODE { // TPH2rs45
-	* G E subsample whites + hispanics
-	eststo GE_`outcome' : ivregress 2sls `outcome' TPH2rs45 	age chFemale moAge age#chFemale ///
-	i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
-	if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
-	estadd local Controls 		"Yes"
-	estadd local StateFE 		"Yes"
+	* ----------------------------- DEPRESSION
+	* ----- REGRESSIONS DEPRESSION
+	foreach outcome in diagnosedDepression depressedRECODE { // TPH2rs45
+		* G E subsample whites + hispanics
+		eststo GE_`outcome' : ivregress 2sls `outcome' TPH2rs45 	age chFemale moAge age#chFemale ///
+		i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
+		if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
+		estadd local Controls 		"Yes"
+		estadd local StateFE 		"Yes"
 
-	* GxE subsample whites + hispanics
-	eststo GxE_`outcome' : ivregress 2sls `outcome' TPH2rs45 	age chFemale moAge age#chFemale ///
-	i.statefip (${ELIGVAR} c.${ELIGVAR}#TPH2rs45 = ${SIMELIGVAR} c.${SIMELIGVAR}#TPH2rs45)  ///
-	if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
-	estadd local Controls 		"Yes"
-	estadd local StateFE 		"Yes"
+		* GxE subsample whites + hispanics
+		eststo GxE_`outcome' : ivregress 2sls `outcome' TPH2rs45 	age chFemale moAge age#chFemale ///
+		i.statefip (${ELIGVAR} c.${ELIGVAR}#TPH2rs45 = ${SIMELIGVAR} c.${SIMELIGVAR}#TPH2rs45)  ///
+		if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
+		estadd local Controls 		"Yes"
+		estadd local StateFE 		"Yes"
 
-	* G E wholes sample
-	// ivregress 2sls `outcome' TPH2rs45 ${CONTROLS} ///
-	// i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
-	// if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
-}
+		* G E wholes sample
+		// ivregress 2sls `outcome' TPH2rs45 ${CONTROLS} ///
+		// i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
+		// if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
+	}
 
-* ----- LATEX DEPRESSION
-estout GE_depressedRECODE GxE_depressedRECODE GE_diagnosedDepression GxE_diagnosedDepression ///
-using "${TABLEDIR}/GxE_DEPRESS.tex", replace label collabels(none) style(tex) nonumbers ///
-keep(${ELIGVAR} 1.TPH2rs45#c.eligCum TPH2rs45 _cons) ///
-order(${ELIGVAR} 1.TPH2rs45#c.eligCum TPH2rs45 _cons) /// 
-cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-stats(Controls StateFE fs N, fmt(%9.0f %9.0f %9.1f %9.0f) ///
-layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
-label("\hline \rule{0pt}{3ex}Controls" "State FE" "F-Statistic" "Observations")) ///
-mlabels("Feel dep." "Feel dep." "Diag. dep." "Diag. dep.") ///
-varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
+	* ----- LATEX DEPRESSION
+	estout GE_depressedRECODE GxE_depressedRECODE GE_diagnosedDepression GxE_diagnosedDepression ///
+	using "${TABLEDIR}/GxE_DEPRESS.tex", replace label collabels(none) style(tex) nonumbers ///
+	keep(${ELIGVAR} 1.TPH2rs45#c.eligCum TPH2rs45 _cons) ///
+	order(${ELIGVAR} 1.TPH2rs45#c.eligCum TPH2rs45 _cons) /// 
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE fs N, fmt(%9.0f %9.0f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "F-Statistic" "Observations")) ///
+	mlabels("Feel dep." "Feel dep." "Diag. dep." "Diag. dep.") ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 
 
-* ----------------------------- BMI
-* ----- REGRESSIONS BMI
-foreach genes in FTO BDNFrs65 MC4Rrs17 bmiIndexHigh { // FTO BDNFrs65 MC4Rrs17
-	* G E subsample whites + hispanics
-	eststo GE_bmi_`genes' : ivregress 2sls bmi `genes' age 	chFemale moAge age#chFemale ///
-	i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
-	if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
-	estadd local Controls 		"Yes"
-	estadd local StateFE 		"Yes"
+	* ----------------------------- BMI
+	* ----- REGRESSIONS BMI
+	foreach genes in FTO BDNFrs65 MC4Rrs17 bmiIndexHigh { // FTO BDNFrs65 MC4Rrs17
+		* G E subsample whites + hispanics
+		eststo GE_bmi_`genes' : ivregress 2sls bmi `genes' age 	chFemale moAge age#chFemale ///
+		i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
+		if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
+		estadd local Controls 		"Yes"
+		estadd local StateFE 		"Yes"
 
-	* GxE subsample whites + hispanics
-	eststo GxE_bmi_`genes' : ivregress 2sls bmi `genes' age 	chFemale moAge age#chFemale ///  
-	i.statefip (${ELIGVAR} c.${ELIGVAR}#`genes' = ${SIMELIGVAR} c.${SIMELIGVAR}#`genes')  ///
-	if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
-	estadd local Controls 		"Yes"
-	estadd local StateFE 		"Yes"
-}
+		* GxE subsample whites + hispanics
+		eststo GxE_bmi_`genes' : ivregress 2sls bmi `genes' age 	chFemale moAge age#chFemale ///  
+		i.statefip (${ELIGVAR} c.${ELIGVAR}#`genes' = ${SIMELIGVAR} c.${SIMELIGVAR}#`genes')  ///
+		if (wave == 15 & chGenetic == 1 & finSample == 1) & (chRace == 1 | chRace == 3),  cluster(statefip)
+		estadd local Controls 		"Yes"
+		estadd local StateFE 		"Yes"
+	}
 
-* ----- LATEX BMI
-estout GE_bmi_FTO GxE_bmi_FTO GE_bmi_BDNFrs65 GxE_bmi_BDNFrs65 GE_bmi_MC4Rrs17 GxE_bmi_MC4Rrs17 ///
-using "${TABLEDIR}/GxE_BMI.tex", replace label collabels(none) style(tex) nonumbers ///
-keep(${ELIGVAR} 1.FTO#c.eligCum FTO 1.BDNFrs65#c.eligCum BDNFrs65 1.MC4Rrs17#c.eligCum MC4Rrs17 _cons) ///
-order(${ELIGVAR} 1.FTO#c.eligCum FTO 1.BDNFrs65#c.eligCum BDNFrs65 1.MC4Rrs17#c.eligCum MC4Rrs17 _cons) /// 
-cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-stats(Controls StateFE fs N, fmt(%9.0f %9.0f %9.1f %9.0f) ///
-layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
-label("\hline \rule{0pt}{3ex}Controls" "State FE" "F-Statistic" "Observations")) ///
-mlabels("BMI" "BMI" "BMI" "BMI" "BMI" "BMI") ///
-varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
+	* ----- LATEX BMI
+	estout GE_bmi_FTO GxE_bmi_FTO GE_bmi_BDNFrs65 GxE_bmi_BDNFrs65 GE_bmi_MC4Rrs17 GxE_bmi_MC4Rrs17 ///
+	using "${TABLEDIR}/GxE_BMI.tex", replace label collabels(none) style(tex) nonumbers ///
+	keep(${ELIGVAR} 1.FTO#c.eligCum FTO 1.BDNFrs65#c.eligCum BDNFrs65 1.MC4Rrs17#c.eligCum MC4Rrs17 _cons) ///
+	order(${ELIGVAR} 1.FTO#c.eligCum FTO 1.BDNFrs65#c.eligCum BDNFrs65 1.MC4Rrs17#c.eligCum MC4Rrs17 _cons) /// 
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE fs N, fmt(%9.0f %9.0f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "F-Statistic" "Observations")) ///
+	mlabels("BMI" "BMI" "BMI" "BMI" "BMI" "BMI") ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 }
 
