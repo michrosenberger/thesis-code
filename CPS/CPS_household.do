@@ -198,6 +198,9 @@ label var incRatio	"Family poverty level"
 
 drop incp_* incf_all pvlfam persInc
 
+* ----------------------------- SUBSAMPLE
+* drop if chCohort < 1998 & chCohort>=2000
+* keep if moCohort >=1955 & moCohort<=1985
 
 * ----------------------------- SAVE
 label data 			"CPS March data 1998-2018"
