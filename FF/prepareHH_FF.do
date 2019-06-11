@@ -74,8 +74,7 @@ P_hhIncome          1
 
 P_hhStructure       1 1/8 1e1c 1e1d 1e1b 1e1e
 
-rename m1a11a moReport
-recode moReport (2 = 0)
+gen moReport = 1
 
 P_reshapeMissing
 P_famStructure

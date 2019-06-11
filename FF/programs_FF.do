@@ -191,9 +191,9 @@ capture program drop    P_report
 program define          P_report
     args timevar usuallyvar
 
-    gen 	moReport = .
-    replace moReport = 1 if (`timevar' == 1 | `timevar' == 2)	                    // mother (0.5+)
+    gen 	moReport = 1 // mother default
     replace moReport = 0 if (`timevar' != 1 & `timevar' != 2 & `usuallyvar' == 1)	// father (<0.5)
+    replace moReport = . if `timevar'  >= . & `usuallyvar'  >= .
 
 end
 
