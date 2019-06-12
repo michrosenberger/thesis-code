@@ -151,7 +151,7 @@ merge 1:1 idnum using "${RAWDATADIR}/02_Three-Year In-Home/InHome3yr.dta", nogen
 keep idnum m3b2 f3b2 m3j1 f3j1 m3j3 m3j3a m3j4 m3j4a f3j3 f3j3a f3j4 f3j4a ///
 int5 int5_oth a1 a2 a3_1 a3_2 a3_3 a3_4 a3_5 a3_6 a3_7 a4 a5 a5a a5a_oth a7 ///
 a8 a9 a10 a15 a17 a18 a19 a19_ cm3alc_case cm3drug_case cm3gad_case ///
-cm3md_case_con cm3md_case_lib
+cm3md_case_con cm3md_case_lib cbmi
 
 P_missingvalues	// RECODE MISSING VALUES
 
@@ -190,8 +190,10 @@ gen docIll = .					// BINARY ILLNESS DOCTOR (FROM numDocIll)
 rename a9 	emRoom				// ER TOTAL (NUM)
 rename a10 	emRoomAccInj		// ER ACCIDENT / INJURY (NUM)
 
+rename cbmi	bmi
+
 * ----------------------------- SAVE
-keep idnum *Health wave ch* num* em* asthma* regDoc docAccInj numDocIll docIll mo*
+keep idnum *Health wave ch* num* em* asthma* regDoc docAccInj numDocIll docIll mo* bmi
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
@@ -208,7 +210,7 @@ merge 1:1 idnum using "${RAWDATADIR}/03_Five-Year In-Home/Inhome5yr2011_stata/in
 keep idnum m4b2 f4b2 m4j1 f4j1 m4j3 m4j3a m4j4 m4j4a f4j3 f4j3a f4j4 f4j4a ///
 m4b2a f4b2a m4b2b f4b2b m4b2c f4b2c a6 a12 a13 a14 a15 cm4md_case_con ///
 cm4md_case_lib int5 int_5ot a1 a2_a a2_b a2_c a2_d a2_e a2_f a2_g a2_h a2_i ///
-a2_j a2_k a2_l a2_m a2_n a3_a a3_b a3_c a3_d a3_e a3_f a3_g a3_h a3_i
+a2_j a2_k a2_l a2_m a2_n a3_a a3_b a3_c a3_d a3_e a3_f a3_g a3_h a3_i cbmi
 
 P_missingvalues	// RECODE MISSING VALUES
 
@@ -262,10 +264,12 @@ rename a3_f headachesMigraines
 rename a3_g earInfection
 rename a3_h seizures
 
+rename cbmi	bmi
+
 * ----------------------------- SAVE
 keep idnum *Health wave ch* num* em* feverRespiratory foodDigestive ///
 eczemaSkin diarrheaColitis anemia headachesMigraines earInfection seizures ///
-asthma* regDoc docAccInj mo* numDocIll docIll
+asthma* regDoc docAccInj mo* numDocIll docIll bmi
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
@@ -277,7 +281,7 @@ save "${TEMPDATADIR}/prepareHealth.dta", replace
 use "${RAWDATADIR}/04_Nine-Year Core/ff_y9_pub1.dta", clear
 
 keep idnum p5h1 m5g1 f5g1 p5h13 p5h14 p5h3* p5l11 p5h6 p5h7 p5h9 k5h1 p5h1b ///
-p5h10 p5h2a hv5_12 hv5_13 p5h3a1 cm5md_case_con cm5md_case_lib p5h7
+p5h10 p5h2a hv5_12 hv5_13 p5h3a1 cm5md_case_con cm5md_case_lib p5h7 hv5_cbmi
 
 P_missingvalues	// RECODE MISSING VALUES
 
@@ -320,10 +324,12 @@ rename p5h3h 	seizures
 * ----------------------------- LIMITATIONS
 rename p5l11 	absent_9 	// ABSENT
 
+rename hv5_cbmi	bmi
+
 * ----------------------------- SAVE
 keep idnum *Health wave ch* absent_9 num* em* medication ///
 regDoc feverRespiratory foodDigestive eczemaSkin diarrheaColitis ///
-anemia headachesMigraines earInfection seizures mo* access
+anemia headachesMigraines earInfection seizures mo* access bmi
 
 append using "${TEMPDATADIR}/prepareHealth.dta"
 save "${TEMPDATADIR}/prepareHealth.dta", replace 
@@ -335,8 +341,8 @@ save "${TEMPDATADIR}/prepareHealth.dta", replace
 use "${RAWDATADIR}/05_Fifteen-Year Core/FF_Y15_pub.dta", clear			// ALL
 
 keep idnum p6b1 p6h2 p6b31 p6b32 p6b* p6b20 p6b21 p6b22 p6b23 p6b24 p6b26 ///
-k6d3 k6d4 k6d37 k6d38 k6d39 k6d40 k6d41 k6d42 k6d43 k6d48 k6d49 k6d50 k6d51 ///
-k6d52 k6d53 k6d54 k6d55 k6d2ac cp6md_case_con cp6md_case_lib ck6cbmi p6b28
+k6d3 k6d4 k6d37 k6d38 k6d39 k6d40 k6d41 k6d42 k6d43 k6d48 k6d49 k6d50 k6d51 ck6bmip ///
+k6d52 k6d53 k6d54 k6d55 k6d2ac cp6md_case_con cp6md_case_lib ck6cbmi ch6cbmi p6b28
 
 P_missingvalues		// RECODE MISSING VALUES
 
@@ -390,6 +396,7 @@ rename k6d52 	yearTimesDrink		// ALCOHOL YEAR (OPTION)
 rename k6d53 	yearManyDrink		// ALCOHOL EACH TIME YEAR (OPTION)
 
 rename ck6cbmi 	bmi					// BMI
+rename ck6bmip 	bmi_p				// BMI Percentile
 
 * ----------------------------- MENTAL HEALTH
 rename p6b5 	diagnosedDepression	// DOCTOR DIAGNOSED DEPRESSED
@@ -397,7 +404,7 @@ rename k6d2ac 	depressed			// FEELS DEPRESSED (SELF-REPORTED)
 
 * ----------------------------- SAVE
 keep idnum *Health wave ch* regDoc ever* docAccInj docIll earInfection ///
-medication limit absent* activity* *Smoke *Drink depressed bmi access ///
+medication limit absent* activity* *Smoke *Drink depressed bmi bmi_p access ///
 diagnosedDepression foodDigestive eczemaSkin diarrheaColitis headachesMigraines 
 
 
