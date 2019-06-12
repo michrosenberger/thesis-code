@@ -40,16 +40,16 @@ global FIGUREDIR		"${USERPATH}/output/figures"
 global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 
 * ----------------------------- SET SWITCHES
-global PREPARE 			= 0		// Prepare data
+global PREPARE 			= 1		// Prepare data
 global POWER			= 0		// MDE + Power Calculations
 global DESCRIPTIVE		= 0		// Perform descriptive statistics
-global REGRESSIONS 		= 0 	// Perform regressions
+global REGRESSIONS 		= 1 	// Perform regressions
 global COEFPLOT			= 0	
 global ASSUMPTIONS		= 0		// Check IV assumptions
 global TABLESSIMULATED	= 0
 global ADDITIONAL		= 0
-global ROBUSTNESS		= 1		// Perform robustness checks
-global HETEROGENOUS		= 0		// Heterogenous effects by race
+global ROBUSTNESS		= 0		// Perform robustness checks
+global HETEROGENOUS		= 1		// Heterogenous effects by race
 global GXE				= 0
 
 * ----------------------------- GLOBAL VARIABLES
@@ -146,10 +146,19 @@ if ${PREPARE} == 1 {
 	replace bmi24 = 1 if bmi >= 24
 	replace bmi24 = . if bmi >= .
 
+	gen bmi85 = .
+	replace bmi85 = 0 if bmi_p >=0 & bmi_p < 85
+	replace bmi85 = 1 if bmi_p >= 85 & bmi_p < 100
+	*replace bmi85 = 0 if bmi_p >= 95 & bmi_p <= 100
+
 	* ----- BMI > 28 (Obese child age 15 (CDC 95th percentile))
 	gen bmi28 = 0
 	replace bmi28 = 1 if bmi >= 28
 	replace bmi28 = . if bmi >= .
+
+	gen bmi95 = .
+	replace bmi95 = 0 if bmi_p >=0 & bmi_p < 95
+	replace bmi95 = 1 if bmi_p >= 95 & bmi_p <= 100
 
 	* ----- BMI > 30
 	gen bmi30 = 0
@@ -322,7 +331,7 @@ if ${DESCRIPTIVE} == 1 {
 		esttab compFF1 compFF2 compCPS1 using "${TABLEDIR}/SumStat_both.tex", replace ///
 		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc))") ///
 		order(chCohort female chWhite chBlack chHispanic famSize moCollege faCollege moCohort faCohort) ///
-		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS") style(tex) /// alignment(r)
+		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS") style(tex) /// 
 		refcat(chCohort "Child" famSize "Family", nolabel) ///
 		stats(FullSamp WorkingSamp N, fmt(%9.0fc) ///
 		layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
@@ -653,7 +662,7 @@ if ${REGRESSIONS} == 1 {
 
 
 	* ----------------------------- HEALTH BEHAVIORS REGRESSIONS
-	foreach outcome in behavFactor_15 activityVigorous neverSmoke neverDrink bmi bmi24 bmi28 bmi30 {
+	foreach outcome in behavFactor_15 activityVigorous neverSmoke neverDrink bmi bmi85 bmi95 {
 		eststo `outcome'_all_IV_15 : ivregress 2sls `outcome' ${CONTROLS} i.statefip ///
 			(${ELIGVAR} = ${SIMELIGVAR}) if (wave == 15 & chGenetic == 1 & finSample == 1), ///
 			cluster(statefip)
@@ -683,7 +692,7 @@ if ${REGRESSIONS} == 1 {
 
 	* ----- LaTex
 	estout behavFactor_15_all_IV_15 activityVigorous_all_IV_15 neverSmoke_all_IV_15 ///
-	neverDrink_all_IV_15 bmi_all_IV_15 bmi24_all_IV_15 bmi28_all_IV_15 bmi30_all_IV_15 ///
+	neverDrink_all_IV_15 bmi_all_IV_15 bmi85_all_IV_15 bmi95_all_IV_15 ///
 	using "${TABLEDIR}/healthBehavs.tex", replace label collabels(none) style(tex) nonumbers ///
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) /// refcat(2.chRace, label(Ref. White)) ///
 	refcat(2.chRace "& ${behavFactor_15_15_IV} & ${activityVigorous_15_IV} & ${neverSmoke_15_IV} & ${neverDrink_15_IV} & ${bmi_15_IV} \\ %", nolabel) ///
@@ -691,7 +700,7 @@ if ${REGRESSIONS} == 1 {
 	stats(Controls StateFE meanElig fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
-	mlabels("\shortstack[l]{Health behav. \\ factor}" "\shortstack[l]{Vigorous \\ activity}" "\shortstack[l]{Never \\ smoke}" "\shortstack[l]{Never \\ Drink}" "BMI" "BMI24" "BMI28" "BMI30") ///
+	mlabels("\shortstack[l]{Health behav. \\ factor}" "\shortstack[l]{Vigorous \\ activity}" "\shortstack[l]{Never \\ smoke}" "\shortstack[l]{Never \\ Drink}" "BMI" "BMI85" "BMI95") ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 
@@ -909,6 +918,19 @@ if ${HETEROGENOUS} == 1 {
 		}
 	}
 
+	// * ----- Create interaction terms before
+	// tab chRace , gen(race)
+	// foreach variable in ELIGVAR SIMELIGVAR {
+	// 	gen ${`variable'}xWhite		= ${`variable'}*race1
+	// 	gen ${`variable'}xBlack 	= ${`variable'}*race2
+	// 	gen ${`variable'}xHispanic 	= ${`variable'}*race3
+	// 	gen ${`variable'}xOther 	= ${`variable'}*race4
+	// 	gen ${`variable'}xMulti 	= ${`variable'}*race5
+	// }
+
+	// ivregress 2sls chHealthRECODE ${CONTROLS} i.statefip (${ELIGVAR} ${ELIGVAR}xBlack ${ELIGVAR}xHispanic ${ELIGVAR}xOther ${ELIGVAR}xMulti = ${SIMELIGVAR} ${SIMELIGVAR}xBlack ${SIMELIGVAR}xHispanic ${SIMELIGVAR}xOther ${SIMELIGVAR}xMulti) if (wave == 9 & chGenetic == 1 & finSample == 1), cluster(statefip)
+	// estat firststage, all
+
 	* ----- REGRESSION W/ RACE INTERACTION
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} { // 2.chRace#c.eligCum
@@ -995,13 +1017,20 @@ if ${HETEROGENOUS} == 1 {
 
 	* ----------------------------- REGRESSIONS BY GENDER
 	* ----- REGRESSION WITH GENDER INTERACTION
+	gen eligxFEM 	=	${ELIGVAR}*chFemale
+	gen simEligxFEM = 	${SIMELIGVAR}*chFemale
+	label var eligxFEM "Elig $\times$ Female"
+
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} {
 			eststo gen_`wave'_`outcome': ivregress 2sls `outcome'  ${CONTROLS} i.statefip ///
-			(${ELIGVAR} c.${ELIGVAR}#chFemale = ${SIMELIGVAR} c.${SIMELIGVAR}#chFemale) if (wave == `wave' & chGenetic == 1 & finSample == 1), cluster(statefip)
+			(${ELIGVAR} eligxFEM = ${SIMELIGVAR} simEligxFEM) if (wave == `wave' & chGenetic == 1 & finSample == 1), cluster(statefip)
 			estadd local Controls 		"Yes"
 			estadd local StateFE 		"Yes"
-			* estat firststage, all
+
+			estat firststage, all
+			mat fstat`outcome' 	= r(singleresults)		// F-stat for eligCum
+			estadd scalar fs 	= fstat`outcome'[1,4] 
 		}
 	}
 
@@ -1012,8 +1041,7 @@ if ${HETEROGENOUS} == 1 {
 	gen_15_behavFactor_15 gen_15_chHealthRECODE gen_15_absent gen_15_limit gen_15_depressedRECODE ///
 	gen_15_diagnosedDepression gen_15_medicalFactor_15 ///
 	using "${TABLEDIR}/heterogenousGender.tex", replace label collabels(none) style(tex) nonumbers ///
-	keep(${ELIGVAR} 1.chFemale#c.eligCum chFemale _cons) ///
-	order(${ELIGVAR} 1.chFemale#c.eligCum chFemale _cons) /// 
+	keep(${ELIGVAR} eligxFEM chFemale _cons) order(${ELIGVAR} eligxFEM chFemale _cons) /// 
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE fs N, fmt(%9.0f %9.0f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
@@ -1073,9 +1101,6 @@ if ${HETEROGENOUS} == 1 {
 
 		graph export "${FIGUREDIR}/coefplotRace.pdf", replace
 
-
-		tab chRace_new if wave == 9
-		tab chRace_new if wave == 15
 
 		/* . tab chRace_new if wave == 9
 
