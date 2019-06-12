@@ -39,8 +39,6 @@ global TEMPDATADIR  	"${USERPATH}/data/temp"
 global CODEDIR          "${USERPATH}/code"
 global TABLEDIR         "${USERPATH}/output/tables"
 
-cd ${CODEDIR}
-
 * ----------------------------- LOG FILE
 log using "${CODEDIR}/FF/constructHH_FF.log", replace
 
@@ -151,7 +149,8 @@ label define raOther        0 "0 Non-other"             1 "1 Other"
 label define raMutli        0 "0 non-multi"             1 "1 Multi-racial"
 label define moEduc         1 "1 Less than HS"          2 "2 HS or equivalent" ///
                             3 "3 Some college, tech"    4 "College or Grad"
-label define chRace         1 "1 White" 2 "2 Black" 3 "3 Hispanic" 4 "4 Other" 5 "Multi-racial"
+label define chRace         1 "1 White" 2 "2 Black" 3 "3 Hispanic" 4 "4 Other" 5 "5 Multi-racial"
+label define moRace         1 "1 White" 2 "2 Black" 3 "3 Hispanic" 4 "4 Other"
 
 label values chFemale chFemale
 label values moReport moReport
@@ -162,8 +161,12 @@ label values chOther moOther raOther
 label values chMulti raMutli
 label values moEduc faEduc moEduc
 label values chRace chRace
+label values moRace moRace
 
 rename chAge age
+
+* ----- IMPUTE CHILD RACE WITH MOTHER RACE IF MISSING
+replace chRace = moRace if chRace == .
 
 * ----- LABELS
 * NOTE: ONE observation per WAVE and ID
