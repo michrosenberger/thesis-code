@@ -135,20 +135,34 @@ predict behavFactor_15_temp if (e(sample) == 1 & wave == 15), latent(BehavFactor
 
 
 * ----- LaTex FACTOR LOADINGS
-label var activityVigorous			"Days vigorous activity"
+label var activityVigorous			"\vspace{-0.1cm} \\\ Days vigorous activity"
 label var neverSmoke				"Never smoked"
 label var neverDrink				"Never drink"
 label var bmi						"BMI"
 
-estout genSEM using "${TABLEDIR}/semGen.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par))  drop(var(*): _cons) ///  label unstack
-collabels(none) mlabels(none) style(tex) varlabels(GeneralHealth "\; Factor")
+label var chHealthRECODE			"\vspace{-0.1cm} \\\ Child health"
+label var feverRespiratoryRECODE	"No hay fever or respiratory allergy $^{1}$"
+label var anemiaRECODE				"No anemia $^{1}$"
+label var seizuresRECODE			"No seizures $^{1}$"
+label var foodDigestiveRECODE		"No food/digestive allergy $^{1}$"
+label var eczemaSkinRECODE			"No eczema/skin allergy $^{1}$"
+label var diarrheaColitisRECODE		"No freq. diarrhea/colitis $^{1}$"
+label var headachesMigrainesRECODE	"No freq. headaches/migraines $^{1}$"
+label var earInfectionRECODE		"Not more than 3 ear infection $^{1}$"
+
+label var emRoom					"\vspace{-0.1cm} \\\ Num times taken to emergency room $^{1}$"
+label var numDocIll					"Saw doctor for illness $^{1}$"
+label var medication 				"Takes doctor prescribed medication"
+label var numRegDoc					"Saw doctor for regular check-up $^{1}$"
+
+estout genSEM using "${TABLEDIR}/semGen.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par))  drop(var(*): _cons) /// unstack
+collabels(none) label mlabels(none) style(tex) varlabels(GeneralHealth "\; Factor")
 
 estout behavSEM using "${TABLEDIR}/semBehav.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par))  drop(var(*): _cons) /// unstack 
 collabels(none) label mlabels(none) style(tex) varlabels(BehavFactor "\; Factor")  // , blist(BehavFactor  "\hline ")
 
-estout medSEM using "${TABLEDIR}/semMed.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par)) unstack drop(var(*):) ///  label
-collabels(none) mlabels(none) style(tex) varlabels(_cons Constant UtilFactor "\hline \\ Factor")
-
+estout medSEM using "${TABLEDIR}/semMed.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par)) drop(var(*): _cons) /// unstack
+collabels(none) label mlabels(none) style(tex) varlabels(_cons Constant UtilFactor "\; Factor")
 
 
 * ----------------------------- LIMITATIONS (AGE 9 & 15)
@@ -191,8 +205,8 @@ tab diagnosedDepression
 * ----- LABELS
 label var idnum 				"Family ID"
 label var wave 					"Wave"
-label var chHealth 				"Child health (1 highest)"
-label var chHealthRECODE		"Child health (5 highest)"
+label var chHealth 				"Child health" 	// highest 1
+label var chHealthRECODE		"Child health"	// highest 5
 label var diagnosedDepression	"Ever diagnosed with depression/anxiety"
 label var foodDigestive			"Had food/digestive allergy past year"
 label var eczemaSkin			"Had eczema/skin allergy past year"
@@ -204,7 +218,6 @@ label var absent 				"Days absent from school due to health past year"
 label var docAccInj				"Saw doctor for accident or injury past year"
 label var docIll				"Saw doctor for an illness past year"
 label var regDoc				"Saw doctor for regular check-up past year"
-label var medication 			"Takes doctor prescribed medication"
 label var chMediHI				"Covered by Medicaid/public insurance plan"
 label var chPrivHI				"Covered by private insurance plan"
 label var moHealth				"Mother health (self-reported)"
@@ -231,7 +244,6 @@ label var anemia				"Had anemia (past year)"
 label var seizures				"Had seizures (past year)"
 label var numRegDoc				"Num regular check-ups by doctor, nurse (past year)"
 label var numDoc 				"Num times saw doctor/nurse due to illness, accident, injury"
-label var emRoom				"Num times taken to emergency room (past year)"
 label var numDocAccInj			"Num visit doctor due to accident/injury"
 label var emRoomAccInj			"Num visit emRoom due tio accident/injury"
 label var asthmaAttack			"Episode of asthma or asthma attack"
