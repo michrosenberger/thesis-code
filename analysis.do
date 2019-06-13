@@ -40,16 +40,16 @@ global FIGUREDIR		"${USERPATH}/output/figures"
 global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
 
 * ----------------------------- SET SWITCHES
-global PREPARE 			= 0		// Prepare data
-global POWER			= 0		// MDE + Power Calculations
-global DESCRIPTIVE		= 0		// Perform descriptive statistics
-global REGRESSIONS 		= 0 	// Perform regressions
-global COEFPLOT			= 0	
-global ASSUMPTIONS		= 0		// Check IV assumptions
-global TABLESSIMULATED	= 0
-global ADDITIONAL		= 0
-global ROBUSTNESS		= 0		// Perform robustness checks
-global HETEROGENOUS		= 0		// Heterogenous effects by race
+global PREPARE 			= 1		// Prepare data
+global POWER			= 1		// MDE + Power Calculations
+global DESCRIPTIVE		= 1		// Perform descriptive statistics
+global REGRESSIONS 		= 1 	// Perform regressions
+global COEFPLOT			= 1	
+global ASSUMPTIONS		= 1		// Check IV assumptions
+global TABLESSIMULATED	= 1
+global ADDITIONAL		= 1
+global ROBUSTNESS		= 1		// Perform robustness checks
+global HETEROGENOUS		= 1		// Heterogenous effects by race
 global GXE				= 1
 
 * ----------------------------- GLOBAL VARIABLES
@@ -367,7 +367,7 @@ if ${DESCRIPTIVE} == 1 {
 		label var regDoc					"Saw doctor for regular check-up ^{2}"
 		label var absent					"Days absent from school due to health ^{2,3}"
 
-		label var behavFactor_15			"Health behav. factor ^{1}"
+		label var behavFactor_15			"Behaviors factor ^{1}"
 		label var medicalFactor_15			"Utilization factor ^{1}"
 		label var activityVigorous			"Days vigorous activity ^{2,3}" // typical week
 		label var neverSmoke				"Never smoked ^{2}"
@@ -495,7 +495,7 @@ if ${REGRESSIONS} == 1 {
 					(absent_IV_15, aseq(Absent) $COL1) 					(absent_OLS_15, aseq(Absent) $COL2) ///
 					(limit_IV_15, aseq(Limitation) $COL1) 				(limit_OLS_15, aseq(Limitation) $COL2) ///
 					(medicalFactor_15_IV_15, aseq(Utilization factor) $COL1) 	(medicalFactor_15_OLS_15, aseq(Utilization factor) $COL2) ///
-					(behavFactor_15_IV_15, aseq(Health behav. factor) $COL1) (behavFactor_15_OLS_15, aseq(Health behav. factor) $COL2) ///
+					(behavFactor_15_IV_15, aseq(Behaviors factor) $COL1) (behavFactor_15_OLS_15, aseq(Behaviors factor) $COL2) ///
 					(depressedRECODE_IV_15, aseq(Feels dep.) $COL1) 	(depressedRECODE_OLS_15, aseq(Feels dep.) $COL2) ///
 					(diagnosedDepression_IV_15, aseq(Diagnosed dep.) $COL1) (diagnosedDepression_OLS_15, aseq(Diagnosed dep.) $COL2), ///
 						bylabel(Age 15) keep(eligCum) ///
@@ -606,7 +606,7 @@ if ${REGRESSIONS} == 1 {
 	stats(Controls StateFE meanElig fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
-	mgroups("\rule{0pt}{3ex} Health behav. factor" "Child health" "Absent" "Limit" "Feels depressed" "Diagnosed depressed", ///
+	mgroups("\rule{0pt}{3ex} Behaviors factor" "Child health" "Absent" "Limit" "Feels depressed" "Diagnosed depressed", ///
 	pattern(1 0 1 0 1 0 1 0 1 0 1 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
@@ -616,7 +616,7 @@ if ${REGRESSIONS} == 1 {
 	behavFactor_15_RF_15 chHealthRECODE_RF_15 absent_RF_15 limit_RF_15 depressedRECODE_RF_15 ///
 	diagnosedDepression_RF_15 medicalFactor_15_RF_15 regDoc_RF_15 ///
 	using "${TABLEDIR}/reducedForm.tex", replace label collabels(none) style(tex) ///
-	mlabels("\shortstack[l]{Health \\ factor}" "\shortstack[l]{Child \\ health}" "Absent" "\shortstack[l]{Utilization \\ factor}" "\shortstack[l]{Regular \\ check-up}" "\shortstack[l]{Health behav. \\ factor}" "\shortstack[l]{Child \\ health}" "Absent" "\shortstack[l]{Limi- \\ tations}" "\shortstack[l]{Feels \\ depressed}" "\shortstack[l]{Diagnosed \\ depression}" "\shortstack[l]{Utilization \\ factor}" "\shortstack[l]{Regular \\ check-up}") ///
+	mlabels("\shortstack[l]{Health \\ factor}" "\shortstack[l]{Child \\ health}" "Absent" "\shortstack[l]{Utilization \\ factor}" "\shortstack[l]{Regular \\ check-up}" "\shortstack[l]{Behaviors \\ factor}" "\shortstack[l]{Child \\ health}" "Absent" "\shortstack[l]{Limi- \\ tations}" "\shortstack[l]{Feels \\ depressed}" "\shortstack[l]{Diagnosed \\ depression}" "\shortstack[l]{Utilization \\ factor}" "\shortstack[l]{Regular \\ check-up}") ///
 	nonumbers keep(${SIMELIGVAR} _cons) order(${SIMELIGVAR} _cons) ///
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE N, fmt(%9.0f %9.0f %9.0f) ///
@@ -630,7 +630,7 @@ if ${REGRESSIONS} == 1 {
 	* ----- FS (AGE 9 & 15)
 	local titles 	"& \multicolumn{13}{c}{Eligibility} \\ \cmidrule(lr){2-14}"
 	local subtitles "& \multicolumn{5}{c}{Age 9} & \multicolumn{8}{c}{Age 15} \\ \cmidrule(lr){2-6}\cmidrule(lr){7-14}"
-	local subsubtiles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Regular \\ check-up} & \shortstack[l]{Health behav. \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Limi- \\ tations} & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagnosed \\ depression} & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Regular \\ check-up} \\"
+	local subsubtiles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Regular \\ check-up} & \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Limi- \\ tations} & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagnosed \\ depression} & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Regular \\ check-up} \\"
 
 	estout healthFactor_9_FS_9 chHealthRECODE_FS_9 absent_FS_9 medicalFactor_9_FS_9 regDoc_FS_9 ///
 	behavFactor_15_FS_15 chHealthRECODE_FS_15 absent_FS_15 limit_FS_15 depressedRECODE_FS_15 ///
@@ -643,7 +643,6 @@ if ${REGRESSIONS} == 1 {
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "F-Statistic" "Observations" )) ///
 	varlabels(_cons Constant, blist(${SIMELIGVAR} "\hline ")) posthead("`titles'" "`subtitles'" "`subsubtiles'")
-
 
 
 	* ----------------------------- HEALTH BEHAVIORS REGRESSIONS
@@ -668,24 +667,24 @@ if ${REGRESSIONS} == 1 {
 	label var ${SIMELIGVAR}		"Simulated Elig"
 
 	* ----- Adjusted pvalues 
-	rwolf behavFactor_15 activityVigorous neverSmoke neverDrink bmi ///
+	rwolf behavFactor_15 activityVigorous neverSmoke neverDrink bmi bmi85 bmi95 ///
 	if (wave == 15 & chGenetic == 1 & finSample == 1), ///
 	method(ivregress) indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
-	vce(cluster statefip) reps(10) seed(1456)
+	vce(cluster statefip) reps(100) seed(1456)
 
-	formatTABLES 15 IV behavFactor_15 activityVigorous neverSmoke neverDrink bmi
+	formatTABLES 15 IV behavFactor_15 activityVigorous neverSmoke neverDrink bmi bmi85 bmi95
 
 	* ----- LaTex
 	estout behavFactor_15_all_IV_15 activityVigorous_all_IV_15 neverSmoke_all_IV_15 ///
 	neverDrink_all_IV_15 bmi_all_IV_15 bmi85_all_IV_15 bmi95_all_IV_15 ///
 	using "${TABLEDIR}/healthBehavs.tex", replace label collabels(none) style(tex) nonumbers ///
 	keep(${ELIGVAR} 2.chRace _cons) order(${ELIGVAR} 2.chRace _cons) /// refcat(2.chRace, label(Ref. White)) ///
-	refcat(2.chRace "& ${behavFactor_15_15_IV} & ${activityVigorous_15_IV} & ${neverSmoke_15_IV} & ${neverDrink_15_IV} & ${bmi_15_IV} \\ %", nolabel) ///
+	refcat(2.chRace "& ${behavFactor_15_15_IV} & ${activityVigorous_15_IV} & ${neverSmoke_15_IV} & ${neverDrink_15_IV} & ${bmi_15_IV} & ${bmi85_15_IV} & ${bmi95_15_IV} \\ %", nolabel) ///
 	cells(b(fmt(%9.3fc)) se(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE meanElig fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
-	mlabels("\shortstack[l]{Health behav. \\ factor}" "\shortstack[l]{Vigorous \\ activity}" "\shortstack[l]{Never \\ smoke}" "\shortstack[l]{Never \\ Drink}" "BMI" "BMI85" "BMI95") ///
+	mlabels("\shortstack[l]{Behaviors \\ factor}" "\shortstack[l]{Vigorous \\ activity}" "\shortstack[l]{Never \\ smoke}" "\shortstack[l]{Never \\ Drink}" "BMI" "BMI85" "BMI95") ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 
@@ -699,17 +698,24 @@ if ${ASSUMPTIONS} == 1 {
 
 	* ----------------------------- BALANCE OF OBSERVABLES
 	* ONLY USE PRE-DETERMINED CHARACTERISTICS AT BASELINE
-	foreach variable in avgInc famSize {
+	foreach variable in avgInc famSize moHealth moEduc faEduc {
 		gen `variable'Base_temp = `variable' if wave == 0
 		by idnum : egen `variable'Base = max(`variable'Base_temp)
 		drop `variable'Base_temp
 	}
 
-	replace avgIncBase = avgIncBase*1000
-	label var avgIncBase 	"Family income"
-	label var famSizeBase	"Family size"
+	recode moHealthBase (1=5) (2=4) (3=3) (4=2) (5=1), gen(moHealthBaseRECODE)
+	gen moCollegeBase = moEducBase == 4
+	gen faCollegeBase = faEducBase == 4
 
-	global PRECHAR moCollege faCollege moCohort faCohort avgIncBase famSizeBase
+	replace avgIncBase = avgIncBase*1000
+	label var avgIncBase 			"Family income"
+	label var famSizeBase			"Family size"
+	label var moCollegeBase 		"Mother has college"
+	label var faCollegeBase			"Father has college"
+	label var moHealthBaseRECODE	"Mother health"
+
+	global PRECHAR moCollegeBase faCollegeBase moCohort avgIncBase famSizeBase // moHealthBaseRECODE
 
 	* ----- PREDICT INSTRUMENT WITH ALL COVARIATES
 	eststo balanceElig: reg ${ELIGVAR}	${PRECHAR}	${CONTROLS} i.statefip ///
@@ -731,7 +737,7 @@ if ${ASSUMPTIONS} == 1 {
 	estout balanceElig balanceSimElig using "${TABLEDIR}/balance.tex", replace label style(tex) ///
 	starlevels(* .1 ** .05 *** .01) cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) ///
 	keep(${PRECHAR}) collabels(none) numbers ///
-	mlabels("Eligibility" "Simulated \\ & & Eligibility") varlabels(, blist(moCollege "\hline ")) ///
+	mlabels("Eligibility" "Simulated \\ & & Eligibility") varlabels(, blist(moCollegeBase "\hline ")) ///
 	stats(Controls StateFE Fstat N, fmt(%9.0f %9.0f %9.3f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "\textit{p}-value \textit{F}-test" "Observations"))
@@ -936,7 +942,7 @@ if ${HETEROGENOUS} == 1 {
 		}
 	}
 
-	local titles "Eligibility & \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Health behav. \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
+	local titles "Eligibility & \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
 
 	estout healthFactor_9_9 chHealthRECODE_9 absent_9 medicalFactor_9_9 behavFactor_15_15 chHealthRECODE_15 ///
 	absent_15 limit_15 depressedRECODE_15 diagnosedDepression_15 medicalFactor_15_15 ///
@@ -964,9 +970,10 @@ if ${HETEROGENOUS} == 1 {
 			estadd local Controls 		"Yes"
 			estadd local StateFE 		"Yes"
 
-			// estat firststage, all
-			// mat fstat`outcome' 	= r(singleresults)		// F-stat for eligCum
-			// estadd scalar fs 	= fstat`outcome'[1,4] 
+			estat firststage, all
+			mat fstat`outcome' 	= r(singleresults)
+			estadd scalar fs1 	= fstat`outcome'[1,4] // F-stat eligCum
+			estadd scalar fs2 	= fstat`outcome'[2,4] // F-stat eligxFEM
 
 			* - MEAN
 			sum `outcome' if e(sample) == 1
@@ -975,7 +982,7 @@ if ${HETEROGENOUS} == 1 {
 	}
 
 	* ----- LATEX
-	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Health behav. \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
+	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
 
 	estout gen_9_healthFactor_9 gen_9_chHealthRECODE gen_9_absent gen_9_medicalFactor_9 ///
 	gen_15_behavFactor_15 gen_15_chHealthRECODE gen_15_absent gen_15_limit gen_15_depressedRECODE ///
@@ -984,9 +991,9 @@ if ${HETEROGENOUS} == 1 {
 	keep(${ELIGVAR} eligxFEM chFemale 1.chFemale#c.age age _cons) ///
 	order(${ELIGVAR} eligxFEM chFemale 1.chFemale#c.age age _cons) /// 
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE meanElig fs N, fmt(%9.0f %9.0f %9.3f %9.1f %9.0f) ///
+	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.3f %9.1f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
 	mlabels(none) mgroups("\rule{0pt}{3ex} Age 9" "Age 15", ///
 	pattern(1 0 0 0 1 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
@@ -1000,69 +1007,97 @@ if ${HETEROGENOUS} == 1 {
 if ${GXE} == 1 {
 
 	* ----------------------------- DEPRESSION
+	gen eligxTPH2rs45 	= ${ELIGVAR}*TPH2rs45
+	gen simEligxTPH2rs45 = ${SIMELIGVAR}*TPH2rs45
+	label var eligxTPH2rs45 "Elig $\times$ TPH2rs45"
+
 	* ----- REGRESSIONS DEPRESSION
 	foreach outcome in diagnosedDepression depressedRECODE { // TPH2rs45
-		* G E subsample whites + hispanics
-		eststo GE_`outcome' : ivregress 2sls `outcome' TPH2rs45 	age chFemale moAge age#chFemale ///
+		* G E
+		eststo GE_`outcome' : ivregress 2sls `outcome' TPH2rs45 ${CONTROLS} ///
 		i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
-		if (wave == 15 & chGenetic == 1 & finSample == 1) ,  cluster(statefip) // & (chRace == 1 | chRace == 3)
+		if (wave == 15 & chGenetic == 1 & finSample == 1) ,  cluster(statefip) 
 		estadd local Controls 		"Yes"
 		estadd local StateFE 		"Yes"
 
-		* GxE subsample whites + hispanics
-		eststo GxE_`outcome' : ivregress 2sls `outcome' TPH2rs45 	age chFemale moAge age#chFemale ///
-		i.statefip (${ELIGVAR} c.${ELIGVAR}#TPH2rs45 = ${SIMELIGVAR} c.${SIMELIGVAR}#TPH2rs45)  ///
-		if (wave == 15 & chGenetic == 1 & finSample == 1) ,  cluster(statefip) // & (chRace == 1 | chRace == 3)
+		sum `outcome' if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
+
+		* GxE
+		eststo GxE_`outcome' : ivregress 2sls `outcome' TPH2rs45 ${CONTROLS} ///
+		i.statefip (${ELIGVAR} eligxTPH2rs45 = ${SIMELIGVAR} simEligxTPH2rs45)  ///
+		if (wave == 15 & chGenetic == 1 & finSample == 1) ,  cluster(statefip)
 		estadd local Controls 		"Yes"
 		estadd local StateFE 		"Yes"
 
-		* G E wholes sample
-		// ivregress 2sls `outcome' TPH2rs45 ${CONTROLS} ///
-		// i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
-		// if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
+		estat firststage, all
+		mat fstat`outcome' 	= r(singleresults)
+		estadd scalar fs1 	= fstat`outcome'[1,4] // F-stat eligCum
+		estadd scalar fs2 	= fstat`outcome'[2,4] // F-stat eligxGene
+
+		sum `outcome' if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
 	}
 
 	* ----- LATEX DEPRESSION
 	estout GE_depressedRECODE GxE_depressedRECODE GE_diagnosedDepression GxE_diagnosedDepression ///
 	using "${TABLEDIR}/GxE_DEPRESS.tex", replace label collabels(none) style(tex) nonumbers ///
-	keep(${ELIGVAR} 1.TPH2rs45#c.eligCum TPH2rs45 _cons) ///
-	order(${ELIGVAR} 1.TPH2rs45#c.eligCum TPH2rs45 _cons) /// 
+	keep(${ELIGVAR} eligxTPH2rs45 TPH2rs45 _cons) order(${ELIGVAR} eligxTPH2rs45 TPH2rs45 _cons) /// 
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE fs N, fmt(%9.0f %9.0f %9.1f %9.0f) ///
+	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.2f %9.1f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "F-Statistic" "Observations")) ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
 	mlabels("Feel dep." "Feel dep." "Diag. dep." "Diag. dep.") ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 
 
 	* ----------------------------- BMI
+	rename bmiIndexHigh Index
+
 	* ----- REGRESSIONS BMI
-	foreach genes in FTO BDNFrs65 MC4Rrs17 bmiIndexHigh { // FTO BDNFrs65 MC4Rrs17
-		* G E subsample whites + hispanics
+	foreach genes in FTO BDNFrs65 MC4Rrs17 Index { // FTO BDNFrs65 MC4Rrs17
+
+		gen eligx`genes' 	= ${ELIGVAR}*`genes'
+		gen simEligx`genes' = ${SIMELIGVAR}*`genes'
+		label var eligx`genes' "Elig $\times$ `genes'"
+
+		* G E 
 		eststo GE_bmi_`genes' : ivregress 2sls bmi `genes' age chFemale moAge age#chFemale i.chRace ///
 		i.statefip (${ELIGVAR} = ${SIMELIGVAR})  ///
-		if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip) // & (chRace == 1 | chRace == 3)
+		if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 		estadd local Controls 		"Yes"
 		estadd local StateFE 		"Yes"
 
-		* GxE subsample whites + hispanics
+		sum bmi if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
+
+		* GxE 
 		eststo GxE_bmi_`genes' : ivregress 2sls bmi `genes' age chFemale moAge age#chFemale i.chRace ///  
-		i.statefip (${ELIGVAR} c.${ELIGVAR}#`genes' = ${SIMELIGVAR} c.${SIMELIGVAR}#`genes')  ///
-		if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip) // & (chRace == 1 | chRace == 3)
+		i.statefip (${ELIGVAR} eligx`genes' = ${SIMELIGVAR} simEligx`genes')  ///
+		if (wave == 15 & chGenetic == 1 & finSample == 1),  cluster(statefip)
 		estadd local Controls 		"Yes"
 		estadd local StateFE 		"Yes"
+
+		estat firststage, all
+		mat fstat`genes' 	= r(singleresults)
+		estadd scalar fs1 	= fstat`genes'[1,4] // F-stat eligCum
+		estadd scalar fs2 	= fstat`genes'[2,4] // F-stat eligxGene
+
+		sum bmi if e(sample) == 1
+		estadd scalar meanElig =  r(mean)
+
 	}
 
 	* ----- LATEX BMI
-	estout GE_bmi_FTO GxE_bmi_FTO GE_bmi_BDNFrs65 GxE_bmi_BDNFrs65 GE_bmi_MC4Rrs17 GxE_bmi_MC4Rrs17 GE_bmi_bmiIndexHigh GxE_bmi_bmiIndexHigh ///
+	estout GE_bmi_FTO GxE_bmi_FTO GE_bmi_BDNFrs65 GxE_bmi_BDNFrs65 GE_bmi_MC4Rrs17 GxE_bmi_MC4Rrs17 GE_bmi_Index GxE_bmi_Index ///
 	using "${TABLEDIR}/GxE_BMI.tex", replace label collabels(none) style(tex) nonumbers ///
-	keep(${ELIGVAR} 1.FTO#c.eligCum FTO 1.BDNFrs65#c.eligCum BDNFrs65 1.MC4Rrs17#c.eligCum MC4Rrs17 1.bmiIndexHigh#c.eligCum bmiIndexHigh  2.chRace 3.chRace 4.chRace 5.chRace _cons) ///
-	order(${ELIGVAR} 1.FTO#c.eligCum FTO 1.BDNFrs65#c.eligCum BDNFrs65 1.MC4Rrs17#c.eligCum MC4Rrs17 1.bmiIndexHigh#c.eligCum bmiIndexHigh   2.chRace 3.chRace 4.chRace 5.chRace _cons) /// 
+	keep(${ELIGVAR} eligxFTO FTO eligxBDNFrs65 BDNFrs65 eligxMC4Rrs17 MC4Rrs17 eligxIndex Index _cons) ///
+	order(${ELIGVAR} eligxFTO FTO eligxBDNFrs65 BDNFrs65 eligxMC4Rrs17 MC4Rrs17 eligxIndex Index _cons) /// 
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE fs N, fmt(%9.0f %9.0f %9.1f %9.0f) ///
+	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.2f %9.1f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "F-Statistic" "Observations")) ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
 	mlabels("BMI" "BMI" "BMI" "BMI" "BMI" "BMI" "BMI" "BMI") ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
