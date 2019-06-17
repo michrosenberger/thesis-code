@@ -151,9 +151,9 @@ label var headachesMigrainesRECODE	"No freq. headaches/migraines $^{1}$"
 label var earInfectionRECODE		"Not more than 3 ear infection $^{1}$"
 
 label var emRoom					"\vspace{-0.1cm} \\\ Num times taken to emergency room $^{1}$"
-label var numDocIll					"Saw doctor for illness $^{1}$"
+label var docIll					"Saw doctor for illness $^{1}$"
 label var medication 				"Takes doctor prescribed medication"
-label var numRegDoc					"Saw doctor for regular check-up $^{1}$"
+label var regDoc					"Saw doctor for regular check-up $^{1}$"
 
 estout genSEM using "${TABLEDIR}/semGen.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par))  drop(var(*): _cons) /// unstack
 collabels(none) label mlabels(none) style(tex) varlabels(GeneralHealth "\; Factor")
