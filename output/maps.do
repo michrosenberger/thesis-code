@@ -45,12 +45,11 @@ if ${PROGRAMS} == 1 {
 * ----- DOWNLOAD US MAP
 * Download US map
 if ${USMAP} == 1 {
-	maptile_install using "http://files.michaelstepner.com/geo_state.zip"
+	* WILL INSTALL IN THE PERSONAL/maptile_geographies FOLDER
+	maptile_install using "http://files.michaelstepner.com/geo_state.zip" , replace
 }
 
 * ----------------------------- % OF ELIGIBLE CHILDREN PER STATE
-* Alternative: do by age groups
-
 * ----- PREPARE SIMLUATED ELIGIBILITY DATA
 foreach year in 1998 2018 {
 	use "${CLEANDATADIR}/simulatedEligbility.dta", clear
@@ -85,7 +84,7 @@ foreach year in 1998 2018 {
 	maptile simulatedElig`year', geo(state) geoid(statefips) fcolor( Blues2) ///
 	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) ///
 	legjunction(" to ") ///
-	legend(pos(5)) legtitle("% of children") line(data(line_data))) ///
+	legend(pos(5)) legtitle("% of children") line(data("${MAPTILEPATH}/line_data"))) ///
 	legformat(%4.0f) cutp(break2) 
 	graph export "${FIGUREDIR}/MapElig`year'.png", replace
 }
@@ -145,7 +144,7 @@ foreach year in 1998 2018 {
 	maptile cut`year', geo(state) geoid(statefips) fcolor(Blues2) ///
 	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) ///
 	legjunction(" to ") ///
-	legend(pos(5)) legtitle("% of FPL") line(data(line_data)) ) ///
+	legend(pos(5)) legtitle("% of FPL") line(data("${MAPTILEPATH}/line_data")) ) ///
 	legformat(%4.0f) cutp(break2) 
 	graph export "${FIGUREDIR}/MapFPL`year'.png", replace
 }

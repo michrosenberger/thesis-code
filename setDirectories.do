@@ -19,5 +19,7 @@ global RAWDATADIRFPL            "${DATAPATH}/raw/FPL"
 global RAWDATADIRKFF            "${DATAPATH}/raw/KFF"
 global RAWDATADIRTHOMPSON      	"${DATAPATH}/MedicaidDataPost/RawData"
 
+global MAPTILEPATH 				"~/Library/Application Support/Stata/ado/personal/maptile_geographies"
+
 global TABLEDIR                 "${OUTPUTPATH}/tables"
 global FIGUREDIR                "${OUTPUTPATH}/figures"

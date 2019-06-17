@@ -5,25 +5,21 @@
 * Date:     Nov 19, 2018
 * -----------------------------------
 
-* ----------------------------- SET WORKING DIRECTORIES
-cd "~/Library/Application Support/Stata/ado/personal/maptile_geographies"
-
-
 * ----------------------------- PREPARE DATA
-use state_coords_clean, clear
-    
+use "${MAPTILEPATH}/state_coords_clean", clear
+
 bysort _ID: egen xcoord = median(_X)
 bysort _ID: egen ycoord = median(_Y)
 collapse (lastnm) xcoord ycoord, by(_ID)
     
 preserve
-    use state_database_clean, clear
+    use "${MAPTILEPATH}/state_database_clean", clear
     keep statefips _polygonid state
     rename _polygonid _ID
-    save state_id_fips, replace
+    save "${MAPTILEPATH}/state_id_fips", replace
 restore
     
-merge 1:1 _ID using state_id_fips, update replace nogen
+merge 1:1 _ID using "${MAPTILEPATH}/state_id_fips", update replace nogen
 
 * ----------------------------- LINES STATES ON MAP
 preserve
@@ -68,7 +64,7 @@ preserve
     replace _X = _X + 1     if state == "MA" & id == 3
     replace _Y = _Y + 0.5   if state == "MA" & id == 3
 
-    save line_data.dta, replace
+    save "${MAPTILEPATH}/line_data.dta", replace
 restore
 
 * ----------------------------- CENTER ALL STATE LABELS
