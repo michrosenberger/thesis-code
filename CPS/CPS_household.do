@@ -125,8 +125,8 @@ bysort hhseq year : egen faCohort = max(faCohort_temp)
 bysort hhseq year : egen chCohort = max(chCohort_temp)
 
 * ----------------------------- PARENTS EDUCATION
-gen moCollege_temp = educ == 3 & female == 1 & (pfrel == 2 | pfrel == 5) // some college
-gen faCollege_temp = educ == 3 & female == 0 & (pfrel == 1 | pfrel == 5) // some college
+gen moCollege_temp = educ == 4 & female == 1 & (pfrel == 2 | pfrel == 5) // some college
+gen faCollege_temp = educ == 4 & female == 0 & (pfrel == 1 | pfrel == 5) // some college
 
 bysort hhseq year : egen moCollege = max(moCollege_temp)
 bysort hhseq year : egen faCollege = max(faCollege_temp)
