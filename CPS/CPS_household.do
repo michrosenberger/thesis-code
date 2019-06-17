@@ -26,12 +26,15 @@ cps.dta (year age statefip incRatio) */
 
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global MYPATH		"~/Development/MA"
+    global DATAPATH			"~/Development/MA/data"
+	global CODEPATH			"~/Development/MA/code"
+	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
+	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global RAWDATADIR		"${MYPATH}/data/raw/MarchCPS"
-global CODEDIR			"${MYPATH}/code"
-global CLEANDATADIR  	"${MYPATH}/data/clean"
-global TEMPDATADIR  	"${MYPATH}/data/temp"
+global RAWDATADIR		"${DATAPATH}/raw/MarchCPS"
+global CODEDIR			"${CODEPATH}"
+global CLEANDATADIR  	"${DATAPATH}/clean"
+global TEMPDATADIR  	"${DATAPATH}/temp"
 
 
 * ----------------------------- SWITCHES

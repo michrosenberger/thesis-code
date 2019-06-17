@@ -18,14 +18,20 @@ set maxvar 10000
 
 * ----------------------------- SET WORKING DIRECTORIES
 if "`c(username)'" == "michellerosenberger"  {
-    global MYPATH		"~/Development/MA"
+    global DATAPATH			"~/Development/MA/data"
+	global CODEPATH			"~/Development/MA/code"
+	global OUTPUTPATH		"~/Development/MA/output"
+	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
+	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	*global OUTPUTPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/output"
 }
-global RAWDATADIR  		"${MYPATH}/data/raw"
-global CLEANDATADIR  	"${MYPATH}/data/clean"
-global TEMPDATADIR  	"${MYPATH}/data/temp"
-global TABLEDIR         "${MYPATH}/output/tables"
-global FIGUREDIR        "${MYPATH}/output/figures"
-global CODEDIR          "${MYPATH}/code"
+
+global CODEDIR          "${CODEPATH}"
+global RAWDATADIR  		"${DATAPATH}/raw"
+global CLEANDATADIR  	"${DATAPATH}/clean"
+global TEMPDATADIR  	"${DATAPATH}/temp"
+global TABLEDIR         "${OUTPUTPATH}/tables"
+global FIGUREDIR        "${OUTPUTPATH}/figures"
 
 
 * ----------------------------- SET SWITCHES

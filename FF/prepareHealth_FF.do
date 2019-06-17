@@ -31,13 +31,16 @@ set maxvar 10000
 
 * ----------------------------- SET WORKING DIRECTORIES & GLOBAL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global USERPATH     "~/Development/MA"
+    global DATAPATH			"~/Development/MA/data"
+	global CODEPATH			"~/Development/MA/code"
+	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
+	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
 
-global RAWDATADIR	    "${USERPATH}/data/raw/FragileFamilies"
-global CLEANDATADIR  	"${USERPATH}/data/clean"
-global TEMPDATADIR  	"${USERPATH}/data/temp"
-global CODEDIR          "${USERPATH}/code"
+global CODEDIR          "${CODEPATH}"
+global RAWDATADIR	    "${DATAPATH}/raw/FragileFamilies"
+global CLEANDATADIR  	"${DATAPATH}/clean"
+global TEMPDATADIR  	"${DATAPATH}/temp"
 
 * ----------------------------- LOAD PROGRAMS
 do "${CODEDIR}/FF/programs_FF.do"

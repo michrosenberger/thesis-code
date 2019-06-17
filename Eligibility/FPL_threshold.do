@@ -26,11 +26,15 @@ set maxvar 10000
 
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global MYPATH		"~/Development/MA"
+    global DATAPATH			"~/Development/MA/data"
+	global CODEPATH			"~/Development/MA/code"
+	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
+	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global DATARAW          "${MYPATH}/data/raw/FPL"
-global CLEANDATADIR  	"${MYPATH}/data/clean"
-global TEMPDATADIR      "${MYPATH}/data/temp"
+global DATARAW          "${DATAPATH}/raw/FPL"
+global CLEANDATADIR  	"${DATAPATH}/clean"
+global TEMPDATADIR      "${DATAPATH}/temp"
+global CODEDIR          "${CODEPATH}"
 
 * ----------------------------- SWITCHES
 global PROGRAMS = 0			// Install the packages

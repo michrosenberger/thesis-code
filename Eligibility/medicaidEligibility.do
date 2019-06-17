@@ -29,12 +29,16 @@ set maxvar 10000
 
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global MYPATH		"~/Development/MA"
+    global DATAPATH			"~/Development/MA/data"
+	global CODEPATH			"~/Development/MA/code"
+	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
+	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global RAWDATA      	"${MYPATH}/data/MedicaidDataPost/RawData"
-global MYDATA       	"${MYPATH}/data/raw/KFF"
-global CLEANDATADIR  	"${MYPATH}/data/clean"
-global TEMPDATADIR  	"${MYPATH}/data/temp"
+global RAWDATA      	"${DATAPATH}/MedicaidDataPost/RawData"
+global MYDATA       	"${DATAPATH}/raw/KFF"
+global CLEANDATADIR  	"${DATAPATH}/clean"
+global TEMPDATADIR  	"${DATAPATH}/temp"
+global CODEDIR          "${CODEPATH}"
 
 
 * ---------------------------------------------------------------------------- *

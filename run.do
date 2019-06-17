@@ -13,8 +13,9 @@ set matsize 10000
 set maxvar 10000
 
 * ----------------------------- WORING DIRECTORIES AND GLOABL VARS
-if "`c(username)'" ==   "michellerosenberger" {
-    global CODEDIR	    "~/Development/MA/code"
+if "`c(username)'" == "michellerosenberger"  {
+	global CODEDIR			"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
 
 * ----------------------------- CPS DATA
