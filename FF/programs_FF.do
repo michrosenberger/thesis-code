@@ -184,6 +184,33 @@ program define          P_hhStructure
     gen     moHH_size_c   = cm`wave'adult + cm`wave'kids
     gen     faHH_size_c   = cf`wave'adult + cf`wave'kids
 
+    * ----- CALCULATE RELEVANT FAMILY INCOME FOR CHILD
+    /* Note divide total hh income by the number of members that are employed. If parent married 
+    multiply average hh income by two. Otherwise by one. */
+    foreach parent in mo fa {
+        * CALCUALTE AVERAGE HH INCOME
+        egen `parent'NumEmployed = rowtotal(`parent'HH_employ*)
+        replace `parent'NumEmployed = `parent'NumEmployed + 1 // for parent
+        gen `parent'AvgIncEmployed = `parent'HH_income / `parent'NumEmployed
+
+        * DOES PARENT HAVE RESIDENT PARTNER?
+        egen `parent'Partner = anymatch(`parent'HH_relate*), values(3)
+
+        * DOES RESIDENT PARTNER WORK?
+        foreach num in 1 2 3 4 5 6 7 8 {
+            gen `parent'HH_partWork`num' = 1 if `parent'HH_relate`num' == 3 & `parent'HH_employ`num' == 1
+        }
+        egen `parent'PartnerWork = rowtotal(`parent'HH_partWork*)
+
+        * FAMILY INCOME
+        gen `parent'PartnerInc = `parent'AvgIncEmployed ///
+            if (`parent'Partner == 1 &`parent'PartnerWork == 1 & `parent'Married == 1)
+        gen `parent'OwnInc = `parent'AvgIncEmployed
+
+        egen `parent'FamInc = rowtotal(`parent'PartnerInc `parent'OwnInc)
+        replace `parent'FamInc = . if `parent'HH_income >= .
+    }
+
 end
 
 * ----------------------------- CHILD LIVING ARR.
@@ -360,24 +387,6 @@ program define          P_famSizeStructure
 
     gen     chAvg_inc = moAvg_inc if moReport != 0
     replace chAvg_inc = faAvg_inc if moReport == 0
-
-    * ----- COLLAPSE AND SAVE
-    if wave == 0 {
-        keep idnum moYear moMonth ch* incRatio wave moEduc faEduc moWhite moBlack moHispanic moOther moHH_size_c moReport moCohort faCohort moAge moRace
-    }
-    if wave > 0 {
-        keep idnum moYear moMonth ch* incRatio wave moHH_size_c moReport
-    }
-
-    ds idnum, not
-    global FINALVARS = r(varlist)
-    collapse $FINALVARS, by(idnum)
-
-    drop chFAM_member chFAM_female chFAM_relate chFAM_age chFAM_employ moMonth chFAM_size_f
-    replace chFAM_size = . if moYear == .
-
-    * ----- RATIO HH TO FAM SIZE
-    gen ratio_size = chHH_size / chFAM_size
 
 end
 
