@@ -29,16 +29,11 @@ set maxvar 10000
 
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global DATAPATH			"~/Development/MA/data"
-	global CODEPATH			"~/Development/MA/code"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global RAWDATA      	"${DATAPATH}/MedicaidDataPost/RawData"
-global MYDATA       	"${DATAPATH}/raw/KFF"
-global CLEANDATADIR  	"${DATAPATH}/clean"
-global TEMPDATADIR  	"${DATAPATH}/temp"
-global CODEDIR          "${CODEPATH}"
+
+do "${CODEDIR}/setDirectories.do"
 
 
 * ---------------------------------------------------------------------------- *
@@ -48,7 +43,7 @@ global CODEDIR          "${CODEPATH}"
 * ----------------------------- CURRIE & DECKER DATA (YEARS: 1986 - 2005)
 * SOURCE: THOMPSON
 
-use "${RAWDATA}/cutoff.dta", clear 
+use "${RAWDATADIRTHOMPSON}/cutoff.dta", clear 
 gen bpost1983 	= birthyear > 1983
 collapse medicut schipcut, by(statefip year age bpost1983) 
 
@@ -64,11 +59,11 @@ save "${CLEANDATADIR}/cutscombined.dta", replace
 * SOURCE: THOMPSON
 
 * ----- IMPORT OWN TRANSCRIPTS (KFF REPORTS)
-import excel "${MYDATA}/KFFTranscriptions_M.xlsx", sheet("sheet1") firstrow clear
+import excel "${RAWDATADIRKFF}/KFFTranscriptions_M.xlsx", sheet("sheet1") firstrow clear
 save "${TEMPDATADIR}/KFFTranscriptions_M.dta", replace
 
 * ----- IMPORT THOMPSON TRANSCRIPTS (KFF REPORTS)
-import excel "${RAWDATA}/KFFTranscriptions.xlsx", sheet("sheet1") firstrow clear
+import excel "${RAWDATADIRTHOMPSON}/KFFTranscriptions.xlsx", sheet("sheet1") firstrow clear
 
 * ----- MERGE ALL KFF REPROTS
 merge 1:1 statefip using "${TEMPDATADIR}/KFFTranscriptions_M.dta", label nogen

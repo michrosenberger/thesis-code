@@ -81,15 +81,6 @@ do "${CODEDIR}/constructHealth_FF.do"
 * ----- REGRESSIONS
 
 
-* ----- ROBUSTNESS CHECKS
-
-
-* ----------------------------- OUTCOMES
-* ----- TABLES
-do "${CODEDIR}/tables.do"
-    display("Tables created.")
-    display("Output: *")
-
 * ----- MAPS
 do "${CODEDIR}/maps.do"
     display("Maps created.")

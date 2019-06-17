@@ -19,15 +19,11 @@ set maxvar 10000
 
 * ----------------------------- SET WORKING DIRECTORIES
 if "`c(username)'" == "michellerosenberger"  {
-    global DATAPATH			"~/Development/MA/data"
-	global CODEPATH			"~/Development/MA/code"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
 
-global CODEDIR          "${CODEPATH}"
-global RAWDATADIR	    "${DATAPATH}/raw/FragileFamilies"
-global TEMPDATADIR  	"${DATAPATH}/temp"
+do "${CODEDIR}/setDirectories.do"
 
 * ----------------------------- LOAD DATA
 use "${RAWDATADIR}/rawData/contractcity6pub.dta", clear

@@ -26,15 +26,11 @@ set maxvar 10000
 
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global DATAPATH			"~/Development/MA/data"
-	global CODEPATH			"~/Development/MA/code"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global DATARAW          "${DATAPATH}/raw/FPL"
-global CLEANDATADIR  	"${DATAPATH}/clean"
-global TEMPDATADIR      "${DATAPATH}/temp"
-global CODEDIR          "${CODEPATH}"
+
+do "${CODEDIR}/setDirectories.do"
 
 * ----------------------------- SWITCHES
 global PROGRAMS = 0			// Install the packages
@@ -59,7 +55,7 @@ save "${CLEANDATADIR}/PovertyLevels.dta", replace
 
 * ----- INSERT DATA
 forvalues year = 1997(1)2018 { 
-    import excel "${DATARAW}/FPL`year'.xlsx", sheet("Sheet1") firstrow clear
+    import excel "${RAWDATADIRFPL}/FPL`year'.xlsx", sheet("Sheet1") firstrow clear
     gen year = `year'
     reshape long FS, i(STATE) j(famSize)
     rename FS povLevel 

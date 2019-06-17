@@ -30,19 +30,11 @@ set maxvar 10000
 
 * ----------------------------- SET WORKING DIRECTORIES & GLOBAL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global DATAPATH			"~/Development/MA/data"
-	global CODEPATH			"~/Development/MA/code"
-	global OUTPUTPATH		"~/Development/MA/output"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
-	*global OUTPUTPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/output"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
 
-global CODEDIR          "${CODEPATH}"
-global RAWDATADIR	    "${DATAPATH}/raw/FragileFamilies"
-global CLEANDATADIR  	"${DATAPATH}/clean"
-global TEMPDATADIR  	"${DATAPATH}/temp"
-global TABLEDIR         "${OUTPUTPATH}/tables"
+do "${CODEDIR}/setDirectories.do"
 
 * ----------------------------- LOG FILE
 log using "${CODEDIR}/FF/constructHH_FF.log", replace

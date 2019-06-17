@@ -23,19 +23,12 @@ cps.dta (year age statefip incRatio) */
 * ---------------------------------------------------------------------------- *
 * --------------------------------- PREAMBLE --------------------------------- *
 * ---------------------------------------------------------------------------- *
-
-* ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global DATAPATH			"~/Development/MA/data"
-	global CODEPATH			"~/Development/MA/code"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global RAWDATADIR		"${DATAPATH}/raw/MarchCPS"
-global CODEDIR			"${CODEPATH}"
-global CLEANDATADIR  	"${DATAPATH}/clean"
-global TEMPDATADIR  	"${DATAPATH}/temp"
 
+do "${CODEDIR}/setDirectories.do"
 
 * ----------------------------- SWITCHES
 global MERGEDATA		= 0			// MERGE DATA (TIME CONSUMING!)
@@ -47,9 +40,9 @@ global MERGEDATA		= 0			// MERGE DATA (TIME CONSUMING!)
 * ----------------------------- IMPORT DATA
 if ${MERGEDATA} == 1 {
 
-	use "${RAWDATADIR}/cepr_march_1997.dta", clear
+	use "${RAWDATADIRCPS}/cepr_march_1997.dta", clear
 	foreach year of numlist 1998(1)2016 {
-		qui append using "${RAWDATADIR}/cepr_march_`year'.dta", force
+		qui append using "${RAWDATADIRCPS}/cepr_march_`year'.dta", force
 	}
 	foreach year of numlist 2017(1)2018 {
 		qui append using "${TEMPDATADIR}/cpsmar`year'_clean.dta", force

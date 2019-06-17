@@ -11,15 +11,11 @@ clear all
 
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global DATAPATH			"~/Development/MA/data"
-	global CODEPATH			"~/Development/MA/code"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global RAWDATADIR			"${DATAPATH}/raw/MarchCPS"
-global CLEANDATADIR  		"${DATAPATH}/clean"
-global TEMPDATADIR  		"${DATAPATH}/temp"
-global CODEDIR				"${CODEPATH}"
+
+do "${CODEDIR}/setDirectories.do"
 
 /*------------------------------------------------
   by Jean Roth Thu Oct 12 15:43:03 EDT 2017
@@ -33,7 +29,7 @@ global CODEDIR				"${CODEPATH}"
    the complete path and name of the raw data file.
    On a PC, use backslashes in paths as in C:\  */   
 
-local dat_name "${RAWDATADIR}/asec2017_pubuse.dat"
+local dat_name "${RAWDATADIRCPS}/asec2017_pubuse.dat"
 
 /* The following line should contain the path to your output '.dta' file */
 
@@ -41,7 +37,7 @@ local dta_name "${TEMPDATADIR}/cpsmar2017_clean.dta"
 
 /* The following line should contain the path to the data dictionary file */
 
-local dct_name "${RAWDATADIR}/cpsmar2017.dct"
+local dct_name "${RAWDATADIRCPS}/cpsmar2017.dct"
 
 quietly infile using "`dct_name'", using("`dat_name'") clear
 

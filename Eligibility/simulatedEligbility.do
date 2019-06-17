@@ -26,14 +26,11 @@ simulatedEligbility.dta (age statefip year simelig) */
 * ---------------------------------------------------------------------------- *
 * ----------------------------- WORKING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global DATAPATH			"~/Development/MA/data"
-	global CODEPATH			"~/Development/MA/code"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-global CLEANDATADIR  	    "${DATAPATH}/data/clean"
-global TEMPDATADIR  	    "${DATAPATH}/data/temp"
-global CODEDIR              "${CODEPATH}"
+
+do "${CODEDIR}/setDirectories.do"
 
 
 * ---------------------------------------------------------------------------- *
