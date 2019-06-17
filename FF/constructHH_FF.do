@@ -79,7 +79,7 @@ drop _merge
 
 * ----- INCOME RATIO
 * Divide FF family income by poverty line based on fam size and composition
-gen incRatio = avgInc / povLevel
+gen incRatio = chFamInc / povLevel // gen incRatio2 = avgInc / povLevel
 label var incRatio	"Family poverty level"
 
 
