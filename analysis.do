@@ -29,15 +29,11 @@ set maxvar 10000
 
 * ----------------------------- SET WORKING DIRECTORIES & GLOBAL VARS
 if "`c(username)'" == "michellerosenberger"  {
-    global USERPATH     "~/Development/MA"
+	global CODEDIR		"~/Development/MA/code"
+	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
 
-global CLEANDATADIR		"${USERPATH}/data/clean"
-global TEMPDATADIR  	"${USERPATH}/data/temp"
-global CODEDIR			"${USERPATH}/code"
-global TABLEDIR			"${USERPATH}/output/tables"
-global FIGUREDIR		"${USERPATH}/output/figures"
-global RAWDATADIR		"${USERPATH}/data/raw/FragileFamilies"
+do "${CODEDIR}/setDirectories.do"
 
 * ----------------------------- SET SWITCHES
 global PREPARE 			= 1		// Prepare data
@@ -53,7 +49,7 @@ global HETEROGENOUS		= 1		// Heterogenous effects by race
 global GXE				= 1
 
 * ----------------------------- GLOBAL VARIABLES
-global CONTROLS 	age 	chFemale i.chRace moAge c.age#chFemale
+global CONTROLS 	i.age 	chFemale i.chRace moAge age#chFemale
 
 global ELIGVAR 		eligCum		// endogenous variable
 global SIMELIGVAR 	simEligCum	// instrument
@@ -125,6 +121,8 @@ if ${PREPARE} == 1 {
 	label var simEligCum	"Simulated Elig"
 
 	* ----- LIMIT THE SAMPLE TO THE SAME INDIVIDUALS ACROSS ALL OUTCOMES
+	egen numElig = count(eligCur) , by(idnum)
+
 	* AGE 9
 	qui ivregress 2sls healthFactor_9 ${CONTROLS} i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
 		if (wave == 9 & chGenetic == 1),  cluster(statefip)
@@ -247,9 +245,11 @@ if ${DESCRIPTIVE} == 1 {
 		* ----------------------------- PREPARE DATA
 		eststo clear
 
+		drop chWhite chBlack chHispanic chOther chMulti
+
 		global STATSVAR 	famSize female chWhite chBlack chHispanic chOther ///
 							chMulti moCohort faCohort moAge avgInc incRatio ////
-							chCohort moCollege faCollege
+							chCohort moCollege faCollege numElig
 		
 		global COMPARVAR 	famSize female chWhite chBlack chHispanic moCohort ///
 							faCohort chCohort moCollege faCollege
@@ -257,37 +257,56 @@ if ${DESCRIPTIVE} == 1 {
 		rename chFemale female
 		rename year chCohort
 
+		* ONLY USE PRE-DETERMINED CHARACTERISTICS AT BASELINE
+		foreach variable in moEduc faEduc {
+			gen `variable'Base_temp = `variable' if wave == 0
+			by idnum : egen `variable'Base = max(`variable'Base_temp)
+			drop `variable'Base_temp
+		}
+
+		drop moCollege faCollege
+
+		gen moCollege = moEducBase == 4
+		gen faCollege = faEducBase == 4
+
+		tab chRace, gen(race)
+		rename race1 chWhite
+		rename race2 chBlack
+		rename race3 chHispanic
+		rename race4 chOther
+		rename race5 chMulti
+
 		keep idnum wave $STATSVAR finSample
 
 		* ----------------------------- SUMMARY STATS FRAGILE FAMILIES
 		* ----- PREPARE VARIABLES
-		label var female 		"Female"
-		label var chWhite 		"White"
-		label var chBlack		"Black"
-		label var chHispanic	"Hispanic"
-		label var chOther		"Other race"
-		label var chMulti		"Multi-racial"
-		label var incRatio		"Poverty ratio"
-		label var chCohort		"Birth year"
-		label var avgInc		"Family income \\ \:\:\:\:\:\:\:\: (in 1'000 USD)"
-		label var moCollege		"Mother has some college"
-		label var faCollege		"Father has some college"
-		label var faCohort		"Father's birth year"
-
-		foreach var of varlist $STATSVAR {
-			label variable `var' `"\:\:\:\: `: variable label `var''"'
-		}
+		label var female 		"\:\:\:\: Female"
+		label var chWhite 		"\:\:\:\: White"
+		label var chBlack		"\:\:\:\: Black"
+		label var chHispanic	"\:\:\:\: Hispanic"
+		label var chOther		"\:\:\:\: Other race"
+		label var chMulti		"\:\:\:\: Multi-racial"
+		label var incRatio		"\:\:\:\: Poverty ratio"
+		label var chCohort		"\:\:\:\: Birth year"
+		label var avgInc		"\:\:\:\: Yearly family income (in \\$1'000)" // \\ \:\:\:\:\:\:\:\:
+		label var moCollege		"\:\:\:\: Mother has college"
+		label var faCollege		"\:\:\:\: Father has college"
+		label var faCohort		"\:\:\:\: Father's birth year"
+		label var moAge			"\:\:\:\: Mother's age at birth"
+		label var moCohort		"\:\:\:\: Mother's birth year"
+		label var famSize		"\:\:\:\: Family size"
+		label var numElig		"\:\:\:\: Eligibility observed"
 
 		* ----- FF SUMMARY STATISTICS
-		eststo statsFF: estpost tabstat $STATSVAR if (wave == 0 & finSample == 1), columns(statistics) statistics(mean sd min max n) 
+		eststo statsFF: estpost tabstat $STATSVAR if (wave == 0 & finSample == 1), columns(statistics) statistics(mean sd median min max n) 
 
 		* ----- LaTex TABLE
 		esttab statsFF using "${TABLEDIR}/SumStat_FF.tex", style(tex) replace ///
-		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc %9.0fc %9.2fc)) sd(fmt(%9.2fc))") ///
-		label nonumber mlabels(none) /// 
-		order(chCohort female chWhite chBlack chHispanic chMulti chOther moAge moCohort faCohort moCollege faCollege famSize avgInc incRatio) ///
-		stats(N, fmt(%9.0f) label(Observations)) collabels("Mean" "Standard \\ & & Deviation") ///
-		refcat(chCohort "Child" moAge "Family", nolabel)
+		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc %9.0fc %9.2fc)) sd(fmt(%9.2fc)) p50 min max") mlabels("Mean & SD & Median & Min & Max \\ %") ///
+		label nonumber /// 
+		order(chCohort female chWhite chBlack chHispanic chMulti chOther numElig moAge moCohort faCohort moCollege faCollege famSize avgInc incRatio) ///
+		stats(N, fmt(%9.0f) label(Observations)) collabels(none) ///
+		refcat(chCohort "Child" moAge "Family", nolabel) alignment(rrrrr)
 
 
 		* ----------------------------- SUMMARY STATS COMPARISON CPS & FF
@@ -304,11 +323,17 @@ if ${DESCRIPTIVE} == 1 {
 		estadd local FullSamp		"Yes"
 		estadd local WorkingSamp	"No"
 
+		matrix compFF1_mean = e(mean)
+
 		* ----- WOKRING SAMPLE FFCWS SUM STAT
 		eststo compFF2: estpost tabstat $COMPARVAR if (wave == 0 & FF == 1 & finSample == 1), ///
 		columns(statistics) statistics(mean sd n)
 		estadd local FullSamp		"No"
 		estadd local WorkingSamp	"Yes"
+
+		* ----- COMPARISON DIFFERENCE BY FINSAMPLE
+		replace finSample = 0 if finSample == .
+ 		eststo diff : estpost ttest $COMPARVAR  if ( wave == 0 & FF == 1), by(finSample)
 
 		* ----- FULL CPS SUM STAT
 		eststo compCPS1: estpost tabstat $COMPARVAR if FF == 0, ///
@@ -321,10 +346,10 @@ if ${DESCRIPTIVE} == 1 {
 		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc))") ///
 		order(chCohort female chWhite chBlack chHispanic famSize moCollege faCollege moCohort faCohort) ///
 		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS") style(tex) /// 
-		refcat(chCohort "Child" famSize "Family", nolabel) ///
+		refcat(chCohort "Child" famSize "Family", nolabel) nonumbers alignment(rrrr) ///
 		stats(FullSamp WorkingSamp N, fmt(%9.0fc) ///
-		layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
-		label("Full Sample" "Working Sample" "Observations"))
+		layout("\multicolumn{1}{r}{@}" "\multicolumn{1}{r}{@}") ///
+		label("Full Sample" "Working Sample" "Observations")) 
 
 	restore
 
@@ -897,6 +922,7 @@ if ${HETEROGENOUS} == 1 {
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} {
 			foreach race in 1 2 3 4 {
+				di "Race : `race' and wave : `wave'"
 				eststo r`wave'_`race'_`outcome': ivregress 2sls `outcome' age chFemale /// 
 				moAge age#chFemale i.statefip (${ELIGVAR} = ${SIMELIGVAR}) ///
 				if (wave == `wave' & chGenetic == 1 & finSample == 1 & chRace_new == `race'),  cluster(statefip)
@@ -982,20 +1008,36 @@ if ${HETEROGENOUS} == 1 {
 	}
 
 	* ----- LATEX
-	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} & \\"
+	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} \\ "
 
 	estout gen_9_healthFactor_9 gen_9_chHealthRECODE gen_9_absent gen_9_medicalFactor_9 ///
-	gen_15_behavFactor_15 gen_15_chHealthRECODE gen_15_absent gen_15_limit gen_15_depressedRECODE ///
-	gen_15_diagnosedDepression gen_15_medicalFactor_15 ///
-	using "${TABLEDIR}/heterogenousGender.tex", replace label collabels(none) style(tex) nonumbers ///
-	keep(${ELIGVAR} eligxFEM chFemale 1.chFemale#c.age age _cons) ///
-	order(${ELIGVAR} eligxFEM chFemale 1.chFemale#c.age age _cons) /// 
+	using "${TABLEDIR}/heterogenousGender9.tex", replace label collabels(none) style(tex) nonumbers ///
+	keep(${ELIGVAR} eligxFEM chFemale 8.age 9.age 8.age#1.chFemale 9.age#1.chFemale _cons) ///
+	order(${ELIGVAR} eligxFEM chFemale 8.age 9.age 8.age#1.chFemale 9.age#1.chFemale _cons) /// 
 	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.3f %9.1f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
-	mlabels(none) mgroups("\rule{0pt}{3ex} Age 9" "Age 15", ///
-	pattern(1 0 0 0 1 0 0 0) span ///
+	mlabels(none) mgroups("\rule{0pt}{3ex} Age 9", ///
+	pattern(1 0 0 0) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) posthead("`titles'")
+
+
+
+	local titles "& \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} \\"
+
+	estout gen_15_behavFactor_15 gen_15_chHealthRECODE gen_15_absent gen_15_limit gen_15_depressedRECODE ///
+	gen_15_diagnosedDepression gen_15_medicalFactor_15 ///
+	using "${TABLEDIR}/heterogenousGender15.tex", replace label collabels(none) style(tex) nonumbers ///
+	keep(${ELIGVAR} eligxFEM chFemale 14.age 15.age 16.age 17.age 14.age#1.chFemale 15.age#1.chFemale 16.age#1.chFemale 17.age#1.chFemale _cons) ///
+	order(${ELIGVAR} eligxFEM chFemale 10.age 14.age 15.age 16.age 17.age 14.age#1.chFemale 15.age#1.chFemale 16.age#1.chFemale 17.age#1.chFemale _cons) /// 
+	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.3f %9.1f %9.1f %9.0f) ///
+	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
+	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
+	mlabels(none) mgroups("\rule{0pt}{3ex} Age 15", ///
+	pattern(1 0 0 0 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) posthead("`titles'")
 
