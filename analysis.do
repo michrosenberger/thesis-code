@@ -249,7 +249,7 @@ if ${DESCRIPTIVE} == 1 {
 
 		global STATSVAR 	famSize female chWhite chBlack chHispanic chOther ///
 							chMulti moCohort faCohort moAge avgInc incRatio ////
-							chCohort moCollege faCollege numElig
+							chCohort moCollege faCollege numElig eligCum 
 		
 		global COMPARVAR 	famSize female chWhite chBlack chHispanic moCohort ///
 							faCohort chCohort moCollege faCollege
@@ -302,7 +302,7 @@ if ${DESCRIPTIVE} == 1 {
 
 		* ----- LaTex TABLE
 		esttab statsFF using "${TABLEDIR}/SumStat_FF.tex", style(tex) replace ///
-		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc %9.0fc %9.2fc)) sd(fmt(%9.2fc)) p50 min max") mlabels("Mean & SD & Median & Min & Max \\ %") ///
+		cells("mean(fmt(%9.0f %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f %9.0f %9.0f %9.2f)) sd(fmt(%9.2f)) p50 min max") mlabels("Mean & SD & Median & Min & Max \\ %") ///
 		label nonumber /// 
 		order(chCohort female chWhite chBlack chHispanic chMulti chOther numElig moAge moCohort faCohort moCollege faCollege famSize avgInc incRatio) ///
 		stats(N, fmt(%9.0f) label(Observations)) collabels(none) ///
@@ -343,11 +343,11 @@ if ${DESCRIPTIVE} == 1 {
 
 		* ----- LaTex TABLE
 		esttab compFF1 compFF2 compCPS1 using "${TABLEDIR}/SumStat_both.tex", replace ///
-		cells("mean(fmt(%9.0fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.2fc %9.0fc))") ///
+		cells("mean(fmt(%9.0f %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f %9.0f))") ///
 		order(chCohort female chWhite chBlack chHispanic famSize moCollege faCollege moCohort faCohort) ///
 		label collabels(none) mlabels("FFCWS" "FFCWS" "CPS") style(tex) /// 
 		refcat(chCohort "Child" famSize "Family", nolabel) nonumbers alignment(rrrr) ///
-		stats(FullSamp WorkingSamp N, fmt(%9.0fc) ///
+		stats(FullSamp WorkingSamp N, fmt(%9.0f) ///
 		layout("\multicolumn{1}{r}{@}" "\multicolumn{1}{r}{@}") ///
 		label("Full Sample" "Working Sample" "Observations")) 
 
@@ -385,21 +385,20 @@ if ${DESCRIPTIVE} == 1 {
 		label var diarrheaColitisRECODE		"No freq. diarrhea/colitis ^{2}"
 		label var headachesMigrainesRECODE	"No freq. headaches/migraines ^{2}"
 		label var earInfectionRECODE		"No ear infection ^{2}"	
-		// label var asthmaAttackRECODE		"No asthma attack ^{2}"
 		label var emRoom					"Num times taken to emergency room ^{2}"
-		label var docIll					"Saw doctor for illnes ^{2}"
+		label var docIll					"Saw doctor for illness ^{2,3}"
 		label var medication				"Takes doctor prescribed medication"
 		label var regDoc					"Saw doctor for regular check-up ^{2}"
-		label var absent					"Days absent from school due to health ^{2,3}"
+		label var absent					"Days absent from school due to health"
 
 		label var behavFactor_15			"Behaviors factor ^{1}"
 		label var medicalFactor_15			"Utilization factor ^{1}"
-		label var activityVigorous			"Days vigorous activity ^{2,3}" // typical week
-		label var neverSmoke				"Never smoked ^{2}"
-		label var neverDrink				"Never drink ^{2}"
+		label var activityVigorous			"Days vigorous activity typical week" 
+		label var neverSmoke				"Never smoked"
+		label var neverDrink				"Never drink"
 		label var bmi						"BMI"
 		label var limit						"Limitations in usual activities \\ \:\:\:\: due to health"
-		label var depressedRECODE			"Feel depressed ^{2}" // self-reported
+		label var depressedRECODE			"Feel depressed" // self-reported
 		label var diagnosedDepression		"Ever diagnosed depression/anxiety"
 
 		foreach var of varlist $INDEXVARS9 activityVigorous neverSmoke neverDrink bmi {
@@ -421,6 +420,10 @@ if ${DESCRIPTIVE} == 1 {
 		earInfectionRECODE medicalFactor_9 emRoom docIll medication regDoc absent) /// asthmaAttackRECODE
 		style(tex) noobs nonumbers mlabels("Mean & SD & Median & Min & Max & N \\ %") ///
 		collabels(none) label
+
+		label var chHealthRECODE			"Child health"
+		label var emRoom					"Num times taken to emergency room ^{2,3}"
+		label var docIll					"Saw doctor for illness ^{2}"
 
 		esttab healthVars2 using "${TABLEDIR}/descriptiveHealth2.tex", replace ///
 		cells("mean(fmt(%9.3f)) sd p50 min max count(fmt(%9.0f))") ///
@@ -710,6 +713,8 @@ if ${REGRESSIONS} == 1 {
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic" "Observations")) ///
 	mlabels("\shortstack[l]{Behaviors \\ factor}" "\shortstack[l]{Vigorous \\ activity}" "\shortstack[l]{Never \\ smoke}" "\shortstack[l]{Never \\ Drink}" "BMI" "BMI85" "BMI95") ///
+	mgroups("\rule{0pt}{3ex} Age 15", pattern(1 0 0 0 0 0 0) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 
@@ -806,9 +811,7 @@ if ${TABLESSIMULATED} == 1 {
 		use "${TEMPDATADIR}/DiffElig.dta", clear
 		eststo diffElig: estpost tabstat Elig1998 Elig2018 Diff, by(state_abbrev) nototal
 		esttab diffElig using "${TABLEDIR}/simulatedEligbility_state.tex", replace label ///
-		nonumber cells("Elig1998(fmt(a3) label(1998)) Elig2018(fmt(a3) label(2018)) Diff(fmt(a3) label(Diff))") noobs ///
-		title("Medicaid eligibility by state") compress ///
-		addnotes("Based on March CPS data" "from 1998 and 2018.") longtable nomtitle
+		nonumber cells("Elig1998(fmt(a3) label(1998)) Elig2018(fmt(a3) label(2018)) Diff(fmt(a3) label(Diff))") noobs compress longtable nomtitle
 
 		* ----------------------------- DELETE FILES
 		cd ${TEMPDATADIR}
@@ -906,11 +909,13 @@ if ${ROBUSTNESS} == 1 {
 if ${HETEROGENOUS} == 1 {
 	eststo clear
 
+	* --------------------------------------------------
 	* ----------------------------- REGRESSIONS BY RACE
+	* --------------------------------------------------
 	gen chRace_new = chRace
 	replace chRace_new = 4 if chRace_new == 5
 
-	* ----- RACE AS CONTROL VARIABLE
+	* ----- REGRESSIONS: RACE AS CONTROL VARIABLE
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} {
 			eststo rA`wave'_`outcome': ivregress 2sls `outcome'  ${CONTROLS} i.statefip ///
@@ -918,7 +923,7 @@ if ${HETEROGENOUS} == 1 {
 		}
 	}
 
-	* ----- RUN SEPARATE REGRESSIONS FOR EACH RACE
+	* ----- REGRESSIONS: SEPARATE FOR EACH RACE
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} {
 			foreach race in 1 2 3 4 {
@@ -932,41 +937,41 @@ if ${HETEROGENOUS} == 1 {
 		}
 	}
 
-	* ----- Adjusted pvalues OUTCOMES IV 9 - ALL
-	rwolf healthFactor_9 chHealthRECODE absent medicalFactor_9 ///
-	if (wave == 9 & chGenetic == 1 & finSample == 1), method(ivregress) indepvar(${ELIGVAR}) ///
-	iv(${SIMELIGVAR}) controls(${CONTROLS} i.statefip) vce(cluster statefip) reps(100) seed(1456)
+	* ----- ADJUSTED PVALUES RACE
+	local adjustedVars9 	healthFactor_9 chHealthRECODE absent medicalFactor_9
 
-	formatTABLES 9 IVA healthFactor_9 chHealthRECODE absent medicalFactor_9
+	local adjustedVars15 	behavFactor_15 chHealthRECODE absent limit depressedRECODE ///
+							diagnosedDepression medicalFactor_15
 
-	* ----- Adjusted pvalues OUTCOMES IV 15 - ALL
-	rwolf behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression medicalFactor_15 ///
-	if (wave == 15 & chGenetic == 1 & finSample == 1), method(ivregress) indepvar(${ELIGVAR}) ///
-	iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) vce(cluster statefip) reps(100) seed(1456)
+	* AGE 9 IV: ALL
+	rwolf `adjustedVars9' if (wave == 9 & chGenetic == 1 & finSample == 1), method(ivregress) ///
+	indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS} i.statefip) vce(cluster statefip) reps(100) seed(1456)
 
-	formatTABLES 15 IVA behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression medicalFactor_15
+		formatTABLES 9 IVA `adjustedVars9'
 
-	* ----- Adjusted pvalues OUTCOMES IV 9 - FOR EACH RACE
+	* AGE 15 IV: ALL
+	rwolf `adjustedVars15' if (wave == 15 & chGenetic == 1 & finSample == 1), method(ivregress) ///
+	indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) vce(cluster statefip) reps(100) seed(1456)
+
+		formatTABLES 15 IVA `adjustedVars15'
+
+	* AGE 9 IV: FOR EACH RACE
 	foreach race in 1 2 3 4 {
-		rwolf healthFactor_9 chHealthRECODE absent medicalFactor_9 ///
-		if (wave == 9 & chGenetic == 1 & finSample == 1 & chRace_new == `race'), ///
-		method(ivregress) indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
-		vce(cluster statefip) reps(100) seed(1456)
+		rwolf `adjustedVars9' if (wave == 9 & chGenetic == 1 & finSample == 1 & chRace_new == `race'), method(ivregress) ///
+		indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) vce(cluster statefip) reps(100) seed(1456)
 
-		formatTABLES 9 IV`race' healthFactor_9 chHealthRECODE absent medicalFactor_9
+		formatTABLES 9 IV`race' `adjustedVars9'
+	}	
+
+	* AGE 15 IV: FOR EACH RACE
+	foreach race in 1 2 3 4 {
+		rwolf `adjustedVars15' if (wave == 15 & chGenetic == 1 & finSample == 1 & chRace_new == `race'), method(ivregress) ///
+		indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS} i.statefip) vce(cluster statefip) reps(100) seed(1456)
+
+			formatTABLES 15 IV`race' `adjustedVars15'
 	}
 
-	* ----- Adjusted pvalues OUTCOMES IV 15 - FOR EACH RACE
-	foreach race in 1 2 3 4 {
-		rwolf behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression medicalFactor_15 ///
-		if (wave == 15 & chGenetic == 1 & finSample == 1 & chRace_new == `race'), ///
-		method(ivregress) indepvar(${ELIGVAR}) iv(${SIMELIGVAR}) controls(${CONTROLS}  i.statefip) ///
-		vce(cluster statefip) reps(100) seed(1456)
-
-		formatTABLES 15 IV`race' behavFactor_15 chHealthRECODE absent limit depressedRECODE diagnosedDepression medicalFactor_15
-	}
-
-	* ----- LATEX 
+	* ----- LATEX RACE
 	foreach wave in 9 15 {
 		foreach outcome in ${OUTCOMES`wave'} {
 
@@ -1018,7 +1023,9 @@ if ${HETEROGENOUS} == 1 {
 	varlabels(_cons Constant, blist(All "\hline ")) posthead("`titles'")
 
 
+	* -----------------------------------------------------
 	* ----------------------------- REGRESSIONS BY GENDER
+	* -----------------------------------------------------
 	* ----- REGRESSION WITH GENDER INTERACTION
 	qui sum ${ELIGVAR}
 	gen eligxFEM 	=	(${ELIGVAR}-r(mean))*chFemale
@@ -1045,19 +1052,54 @@ if ${HETEROGENOUS} == 1 {
 		}
 	}
 
-	* ----- LATEX
+	* ----- ADJUSTED PVALUES WITH GENDER INTERACTION
+	local adjustedVars9 	healthFactor_9 chHealthRECODE absent medicalFactor_9
+
+	local adjustedVars15 	behavFactor_15 chHealthRECODE absent limit depressedRECODE ///
+							diagnosedDepression medicalFactor_15
+
+	* AGE 9 IV: ${ELIGVAR}
+	rwolf `adjustedVars9' if (wave == 9 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress) indepvar(${ELIGVAR}) otherendog(eligxFEM) iv(${SIMELIGVAR} simEligxFEM) ///
+	controls(${CONTROLS} i.statefip) vce(cluster statefip) reps(150) seed(234) // verbose
+
+		formatTABLES 9 ExF1 `adjustedVars9'
+
+	* AGE 9 IV: eligxFEM
+	rwolf `adjustedVars9' if (wave == 9 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress) indepvar(eligxFEM) otherendog(${ELIGVAR}) iv(${SIMELIGVAR} simEligxFEM) ///
+	controls(${CONTROLS} i.statefip) vce(cluster statefip) reps(150) seed(234) // verbose
+
+		formatTABLES 9 ExF2 `adjustedVars9'
+
+	* AGE 15 IV: ${ELIGVAR}
+	rwolf `adjustedVars15' if (wave == 15 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress) indepvar(${ELIGVAR}) otherendog(eligxFEM) iv(${SIMELIGVAR} simEligxFEM) ///
+	controls(${CONTROLS} i.statefip) vce(cluster statefip) reps(150) seed(234) // verbose
+
+		formatTABLES 15 ExF1 `adjustedVars15'
+
+	* AGE 15 IV: eligxFEM
+	rwolf `adjustedVars15' if (wave == 15 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress) indepvar(eligxFEM) otherendog(${ELIGVAR}) iv(${SIMELIGVAR} simEligxFEM) ///
+	controls(${CONTROLS} i.statefip) vce(cluster statefip) reps(150) seed(234) // verbose
+
+		formatTABLES 15 ExF2 `adjustedVars15'
+
+
+	* ----- LATEX WITH GENDER INTERACTION
 	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} \\ "
 
 	estout gen_9_healthFactor_9 gen_9_chHealthRECODE gen_9_absent gen_9_medicalFactor_9 ///
 	using "${TABLEDIR}/heterogenousGender9.tex", replace label collabels(none) style(tex) nonumbers ///
 	keep(${ELIGVAR} eligxFEM chFemale _cons) order(${ELIGVAR} eligxFEM chFemale _cons) /// 
-	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	cells(b(fmt(%9.3fc)) se(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.3f %9.1f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
-	mlabels(none) mgroups("\rule{0pt}{3ex} Age 9", ///
-	pattern(1 0 0 0) span ///
+	mlabels(none) mgroups("\rule{0pt}{3ex} Age 9",	pattern(1 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	refcat(${ELIGVAR} "& ${healthFactor_9_9_ExF1} & ${chHealthRECODE_9_ExF1} & ${absent_9_ExF1} & ${medicalFactor_9_9_ExF1} \\ %" eligxFEM "& ${healthFactor_9_9_ExF2} & ${chHealthRECODE_9_ExF2} & ${absent_9_ExF2} & ${medicalFactor_9_9_ExF2} \\ %", nolabel below) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) posthead("`titles'")
 
 	local titles "& \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} \\"
@@ -1066,13 +1108,13 @@ if ${HETEROGENOUS} == 1 {
 	gen_15_diagnosedDepression gen_15_medicalFactor_15 ///
 	using "${TABLEDIR}/heterogenousGender15.tex", replace label collabels(none) style(tex) nonumbers ///
 	keep(${ELIGVAR} eligxFEM chFemale _cons) order(${ELIGVAR} eligxFEM chFemale _cons) ///
-	cells(b(fmt(%9.3fc) star) se(par fmt(%9.3fc))) starlevels(* .1 ** .05 *** .01) ///
+	cells(b(fmt(%9.3fc)) se(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.3f %9.1f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
-	mlabels(none) mgroups("\rule{0pt}{3ex} Age 15", ///
-	pattern(1 0 0 0 0 0 0) span ///
+	mlabels(none) mgroups("\rule{0pt}{3ex} Age 15", pattern(1 0 0 0 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
+	refcat(${ELIGVAR} "& ${behavFactor_15_15_ExF1} & ${chHealthRECODE_15_ExF1} & ${absent_15_ExF1} & ${limit_15_ExF1} & ${depressedRECODE_15_ExF1} & ${diagnosedDepression_15_ExF1} & ${medicalFactor_15_15_ExF1} \\ %" eligxFEM "& ${behavFactor_15_15_ExF2} & ${chHealthRECODE_15_ExF2} & ${absent_15_ExF2} & ${limit_15_ExF2} & ${depressedRECODE_15_ExF2} & ${diagnosedDepression_15_ExF2} & ${medicalFactor_15_15_ExF2} \\ %", nolabel below) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) posthead("`titles'")
 
 }
@@ -1082,6 +1124,9 @@ if ${HETEROGENOUS} == 1 {
 * ---------------------------------------------------------------------------- *
 if ${GXE} == 1 {
 
+	* -----------------------------------------------------
+	* ----------------------------- HEALTH BEHAVIORS
+	* -----------------------------------------------------
 	* ----- REGRESSIONS GxE HEALTH BEHAVIORS
 	capture drop eligxDRD2rs18 simEligxDRD2rs18
 	gen eligxDRD2rs18 		= ${ELIGVAR}*DRD2rs18 		// WITHOUT DEMEANING!
@@ -1089,7 +1134,6 @@ if ${GXE} == 1 {
 	label var eligxDRD2rs18 "Elig $\times$ Risky DRD2"
 
 	foreach outcome in behavFactor_15 activityVigorous neverSmoke neverDrink bmi {
-		* GxE: HEALTH BEHAVIORS DRD2rs18
 		eststo GxE_`outcome'_DRD2 : ivregress 2sls `outcome' DRD2rs18 ${CONTROLS} ///
 		i.statefip (${ELIGVAR} eligxDRD2rs18 = ${SIMELIGVAR} simEligxDRD2rs18)  ///
 		if (wave == 15 & chGenetic == 1 & finSample == 1) ,  cluster(statefip)
@@ -1105,6 +1149,22 @@ if ${GXE} == 1 {
 		estadd scalar meanElig =  r(mean)
 	}
 
+	* ----- ADJUSTED PVALUES GXE HEALTH BEHAVIORS
+	local adjustedVars15 	behavFactor_15 activityVigorous neverSmoke neverDrink bmi
+
+	* AGE 15 IV: ${ELIGVAR} 
+	rwolf `adjustedVars15' if (wave == 15 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress) indepvar(${ELIGVAR}) otherendog(eligxDRD2rs18) iv(${SIMELIGVAR} simEligxDRD2rs18) ///
+	controls(DRD2rs18 ${CONTROLS} i.statefip) vce(cluster statefip) reps(150) seed(234) // verbose
+
+		formatTABLES 15 GxE1 `adjustedVars15'
+
+	* AGE 15 IV: eligxDRD2rs18
+	rwolf `adjustedVars15' if (wave == 15 & chGenetic == 1 & finSample == 1), ///
+	method(ivregress) indepvar(eligxDRD2rs18) otherendog(${ELIGVAR}) iv(${SIMELIGVAR} simEligxDRD2rs18) ///
+	controls(DRD2rs18 ${CONTROLS}  i.statefip) vce(cluster statefip) reps(150) seed(234) // verbose
+
+		formatTABLES 15 GxE2 `adjustedVars15'
 
 	* ----- LATEX GxE HEALTH BEHAVIORS WITHOUT DEMEANING!
 	estout GxE_behavFactor_15_DRD2 GxE_activityVigorous_DRD2 GxE_neverSmoke_DRD2 ///
@@ -1116,11 +1176,16 @@ if ${GXE} == 1 {
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "F-Statistic 1" "F-Statistic 2" "Observations")) ///
 	mlabels("\shortstack[l]{Behaviors \\ factor}" "\shortstack[l]{Vigorous \\ activity}" "\shortstack[l]{Never \\ smoke}" "\shortstack[l]{Never \\ Drink}" "BMI") ///
+	refcat(${ELIGVAR} "& ${behavFactor_15_15_GxE1} & ${activityVigorous_15_GxE1} & ${neverSmoke_15_GxE1} & ${neverDrink_15_GxE1} & ${bmi_15_GxE1} \\ %" eligxDRD2rs18 "& ${behavFactor_15_15_GxE2} & ${activityVigorous_15_GxE2} & ${neverSmoke_15_GxE2} & ${neverDrink_15_GxE2} & ${bmi_15_GxE2} \\ %", nolabel below) ///
+	mgroups("\rule{0pt}{3ex} Age 15", pattern(1 0 0 0 0) span ///
+	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline "))
 
 
+	* -----------------------------------------------------
 	* ----------------------------- BMI
-	* ----- REGRESSIONS BMI
+	* -----------------------------------------------------
+	* ----- REGRESSIONS GXE BMI
 	foreach genes in FTO TMEM18rs65 MC4Rrs17 riskIndexBMI { 
 
 		qui sum ${ELIGVAR} if (wave == 15 & chGenetic == 1 & finSample == 1)
@@ -1156,12 +1221,12 @@ if ${GXE} == 1 {
 
 	}
 
+	* ----- LATEX GXE BMI
 	label var eligxFTO 				"Elig $\times$ Risky FTO"
 	label var eligxTMEM18rs65 		"Elig $\times$ Risky TMEM18"
 	label var eligxMC4Rrs17			"Elig $\times$ Risky MC4R" 
 	label var eligxriskIndexBMI		"Elig $\times$ Risk Index"
 
-	* ----- LATEX BMI
 	estout GE_bmi_FTO GxE_bmi_FTO GE_bmi_TMEM18rs65 GxE_bmi_TMEM18rs65 GE_bmi_MC4Rrs17 GxE_bmi_MC4Rrs17 ///
 	GE_bmi_riskIndexBMI GxE_bmi_riskIndexBMI ///
 	using "${TABLEDIR}/GxE_BMI.tex", replace label collabels(none) style(tex) ///
