@@ -53,12 +53,6 @@ while `int' <= 5 {
 
 replace state = p6state_n if wave == 15
 
-
-* ----------------------------- IMPUTE
-* NOTE: If state in wave before and after the same impute the missing information
-/* bysort idnum (wave) : replace state = state[_n-1] if state == . & state[_n-1] == state[_n+1] */
-
-
 * ----------------------------- LABELS & SAVE
 label var state "State of residence"
 label values state fips
