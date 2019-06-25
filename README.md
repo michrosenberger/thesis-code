@@ -1,14 +1,13 @@
 # Code for Master Thesis <!-- omit in toc -->
 
-- [Overview](#overview)
-- [Data](#data)
-- [Order of Execution](#order-of-execution)
-- [Directory Structure](#directory-structure)
-- [Variable naming convention](#variable-naming-convention)
+- [Overview](#Overview)
+- [Data](#Data)
+- [Order of Execution](#Order-of-Execution)
+- [Directory Structure](#Directory-Structure)
 
 
 ## Overview
-This code performs the data cleaning and analysis for my master thesis.
+This code performs the data cleaning, as well as the data analysis for my master thesis.
 
 
 ## Data
@@ -20,7 +19,7 @@ https://aspe.hhs.gov/prior-hhs-poverty-guidelines-and-federal-register-reference
 
 **Fragile Families Dataset**  
 Downloaded from:  
-[Link here]
+https://fragilefamilies.princeton.edu/documentation
 
 **KFF Reports**  
 Reports for the years 2012 - 2018 were downloaded from:  
@@ -48,11 +47,27 @@ The files were written for a UNIX environment. You can just run the file listed 
 
 ## Directory Structure
 ~~~
-├── LICENSE
-│
-├── README.md                       <- General information about the project
-│
-├── .gitignore                      <- Specifies files to ignore
+├── code
+│   │
+│   ├── README.md                   <- General information about the project
+│   │
+│   ├── setDirectories.do           <- Set own working directories
+│   │
+│   ├── run.do                      <- Runs all the files
+│   │
+│   ├── analysis.do                 <- Performs the analysis
+│   │
+│   ├── CPS                         <- Files to clean the March CPS data
+│   │
+│   ├── FF                          <- Files to clean the FFCWS data
+│   │
+│   ├── Eligibility                 <- Files to construct eligibility
+│   │
+│   ├── output                      <- Files to construct the maps
+│   │
+│   ├── .gitignore                  <- Specifies which files to ignore
+│   │
+│   └── LICENSE
 │
 ├── data
 │   │
@@ -63,8 +78,6 @@ The files were written for a UNIX environment. You can just run the file listed 
 │   ├── raw
 │   │
 │   └── references
-│
-├── code
 │
 ├── output
 │   │
@@ -82,9 +95,3 @@ The files were written for a UNIX environment. You can just run the file listed 
 
 ~~~
 
-
-
-## Variable naming convention
-* Variables: lowerCamelCase
-* Global variables (constant): UPPERCASE
-* Path names: UPPERCASE
