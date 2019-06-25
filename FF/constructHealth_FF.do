@@ -104,6 +104,10 @@ foodDigestiveRECODE eczemaSkinRECODE diarrheaColitisRECODE headachesMigrainesREC
 earInfectionRECODE), method(mlmv) var(GeneralHealth@1) // asthmaAttackRECODE
 eststo genSEM
 
+/* estat framework
+matrix genSEM = r(Gamma)
+matrix roweq genSEM = " " */
+
 foreach wave in 9 15 {
 	* ----- PREDICT AND STANDARDIZE HEALTH FACTOR
 	predict healthFactor_`wave'_temp if (e(sample) == 1 & wave == `wave'), latent(GeneralHealth)
@@ -138,19 +142,19 @@ label var neverDrink				"Never drink"
 label var bmi						"BMI"
 
 label var chHealthRECODE			"\vspace{-0.1cm} \\\ Child health"
-label var feverRespiratoryRECODE	"No hay fever or respiratory allergy $^{1}$"
-label var anemiaRECODE				"No anemia $^{1}$"
-label var seizuresRECODE			"No seizures $^{1}$"
-label var foodDigestiveRECODE		"No food/digestive allergy $^{1}$"
-label var eczemaSkinRECODE			"No eczema/skin allergy $^{1}$"
-label var diarrheaColitisRECODE		"No freq. diarrhea/colitis $^{1}$"
-label var headachesMigrainesRECODE	"No freq. headaches/migraines $^{1}$"
-label var earInfectionRECODE		"Not more than 3 ear infection $^{1}$"
+label var feverRespiratoryRECODE	"No hay fever or respiratory allergy"
+label var anemiaRECODE				"No anemia"
+label var seizuresRECODE			"No seizures"
+label var foodDigestiveRECODE		"No food/digestive allergy"
+label var eczemaSkinRECODE			"No eczema/skin allergy"
+label var diarrheaColitisRECODE		"No freq. diarrhea/colitis"
+label var headachesMigrainesRECODE	"No freq. headaches/migraines"
+label var earInfectionRECODE		"Not more than 3 ear infection"
 
-label var emRoom					"\vspace{-0.1cm} \\\ Num times taken to emergency room $^{1}$"
-label var docIll					"Saw doctor for illness $^{1}$"
+label var emRoom					"\vspace{-0.1cm} \\\ Num times taken to emergency room"
+label var docIll					"Saw doctor for illness"
 label var medication 				"Takes doctor prescribed medication"
-label var regDoc					"Saw doctor for regular check-up $^{1}$"
+label var regDoc					"Saw doctor for regular check-up"
 
 estout genSEM using "${TABLEDIR}/semGen.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par))  drop(var(*): _cons) /// unstack
 collabels(none) label mlabels(none) style(tex) varlabels(GeneralHealth "\; Factor")
@@ -161,6 +165,11 @@ collabels(none) label mlabels(none) style(tex) varlabels(BehavFactor "\; Factor"
 estout medSEM using "${TABLEDIR}/semMed.tex", replace cells(b(fmt(%9.3fc) star) se(fmt(%9.3fc) par)) drop(var(*): _cons) /// unstack
 collabels(none) label mlabels(none) style(tex) varlabels(_cons Constant UtilFactor "\; Factor")
 
+/* estout matrix(genSEM) using "${TABLEDIR}/semGen.tex", replace cells(b(fmt(%9.3fc) star)) style(tex) mlabels("General Health \\ & Factor \\ \hline %") collabels(none) label
+
+estout matrix(behavSEM) using "${TABLEDIR}/semBehav.tex", replace cells(b(fmt(%9.3fc) star)) style(tex) mlabels("Health Behaviors \\ & Factor \\ \hline %") collabels(none) label
+
+estout matrix(medSEM) using "${TABLEDIR}/semMed.tex", replace cells(b(fmt(%9.3fc) star)) style(tex) mlabels("Utilization \\ & Factor \\ \hline %") collabels(none) label */
 
 * ----------------------------- LIMITATIONS (AGE 9 & 15)
 * ----- ABSENT (AGE 9 & 15)
