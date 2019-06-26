@@ -86,7 +86,7 @@ foreach year in 1998 2018 {
 	legjunction(" to ") ///
 	legend(pos(5)) legtitle("% of children") line(data("${MAPTILEPATH}/line_data"))) ///
 	legformat(%4.0f) cutp(break2) 
-	graph export "${FIGUREDIR}/MapElig`year'.png", replace
+	graph export "${FIGUREDIR}/MapElig`year'.${EXTENSION}", replace
 }
 
 /*
@@ -146,7 +146,7 @@ foreach year in 1998 2018 {
 	legjunction(" to ") ///
 	legend(pos(5)) legtitle("% of FPL") line(data("${MAPTILEPATH}/line_data")) ) ///
 	legformat(%4.0f) cutp(break2) 
-	graph export "${FIGUREDIR}/MapFPL`year'.png", replace
+	graph export "${FIGUREDIR}/MapFPL`year'.${EXTENSION}", replace
 }
 
 * ----- DELETE ELIGIBILITY FILES
@@ -192,7 +192,7 @@ two (scatter mean_Elig0 year, connect(L) msymbol(X) mlcolor(emidblue) lcolor(emi
 ytitle("Fraction") xlabel(1998 (4) 2018)) ///
 (connected mean_Elig1 year, msymbol(X) mlcolor(ebblue) lcolor(ebblue)) ///
 (connected mean_Elig6 year, msymbol(X) mlcolor(navy) lcolor(navy))
-graph export "${FIGUREDIR}/ChangeEligibility.png", replace
+graph export "${FIGUREDIR}/ChangeEligibility.${EXTENSION}", replace
 
 
 
