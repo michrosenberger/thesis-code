@@ -265,6 +265,8 @@ label var numDocInj				"Num visits health care professional for injury (since bi
 
 
 
+save "${TEMPDATADIR}/health1.dta", replace 
+
 * ----- SAVE
 drop moReport
 describe
@@ -275,15 +277,6 @@ save "${TEMPDATADIR}/health.dta", replace
 * ---------------------------------------------------------------------------- *
 * ---------------------------------- NOT USED -------------------------------- *
 * ---------------------------------------------------------------------------- *
-
-// label var everAsthma			"Ever diagnosed with asthma"
-// label var everADHD				"Ever diagnosed with ADD/ADHD"
-// label var stuttering			"Had stuttering or stammering problem past year"
-// label var breathing				"Had trouble breathing/chest problem past year"
-// label var diabetes				"Had diabetes (past year)"
-// label var asthmaER				"Emergency/urgent care treatment for asthma"
-// label var asthmaERnum			"Num visits urget care center/ER due to asthma (past year)"
-
 
 // * ----------------------------- MEDICAID COVERAGE
 // * ----- COVERAGE EACH WAVE

@@ -11,9 +11,7 @@ set emptycells drop
 set matsize 10000
 set maxvar 10000
 
-/* This code ...
-
-* ----- INPUT DATASETS:
+/* ----- INPUT DATASETS:
 cepr_march_`year'.dta (1998 - 2016); cpsmar`year'_clean.dta (2017 - 2018);
 PovertyLevels.dta
 
@@ -31,7 +29,7 @@ if "`c(username)'" == "michellerosenberger"  {
 do "${CODEDIR}/setDirectories.do"
 
 * ----------------------------- SWITCHES
-global MERGEDATA		= 0			// MERGE DATA (TIME CONSUMING!)
+global MERGEDATA		= 1			// MERGE DATA (TIME CONSUMING!)
 
 
 * ---------------------------------------------------------------------------- *
@@ -48,7 +46,7 @@ if ${MERGEDATA} == 1 {
 		qui append using "${TEMPDATADIR}/cpsmar`year'_clean.dta", force
 	}
 
-	keep famno pfrel hhseq female age race year incp_wag incp_uc incp_se ///
+	keep famno pfrel hhseq female age wbho year incp_wag incp_uc incp_se ///
 	incp_cs incp_alm incp_ssi incp_ss incp_vet incp_wcp state gestfips hins ///
 	hipriv hipub hiep hipind himcaid himcc hischip pvcfam incf_all pvlfam ///
 	educ educ2 educ92
@@ -206,7 +204,7 @@ keep if pfrel == 3
 
 * ----- SAVE
 keep year age statefip incRatio health* child* ch* *Cohort famSize female *College
-save "${TEMPDATADIR}/cps.dta", replace
+save "${CLEANDATADIR}/cps.dta", replace
 
 
 

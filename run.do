@@ -18,70 +18,76 @@ if "`c(username)'" == "michellerosenberger"  {
 	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
 
+
+* ----------------------------- FEDERAL POVERTY LINE
+do "${CODEDIR}/Eligibility/FPL_threshold.do"
+    di("Federal poverty line created.")
+    di("Data: PovertyLevels.dta")
+
+
 * ----------------------------- CPS DATA
 * ----- YEAR 2017
-do "${CODEDIR}/cpsmar2017.do"
+do "${CODEDIR}/CPS/cpsmar2017.do"
 
 * ----- YEAR 2018
-do "${CODEDIR}/cpsmar2018.do"
+do "${CODEDIR}/CPS/cpsmar2018.do"
 
 * ----- COMBINE ALL CPS YEARS
-do "${CODEDIR}/CPS_household.do"
+do "${CODEDIR}/CPS/CPS_household.do"
     di("CPS household data created.")
     di("Data created: cps.dta")
 
 
 * ----------------------------- INSTRUMENT
-* ----- FEDERAL POVERTY LINE
-do "${CODEDIR}/FPL_threshold.do"
-    di("Federal poverty line created.")
-    di("Data: PovertyLevels.dta")
-
 * ----- ELIGIBILITY THRESHOLDS
-do "${CODEDIR}/medicaidEligibility.do"
+do "${CODEDIR}/Eligibility/medicaidEligibility.do"
     di("Eligibility data created.")
     di("Data created: cutscombined.dta")
 
-
 * ----- CREATE SIMULATED ELIGIBILITY
-do "${CODEDIR}/simulatedEligibility.do"
+do "${CODEDIR}/Eligibility/simulatedEligbility.do"
    di("Instrument created.")
 
-* ----------------------------- PREPARE FF DATA
+
+* ----------------------------- FFCWS DATA
 * ----- PREPARE HH PANEL
-do "${CODEDIR}/prepareHH_FF.do"
+do "${CODEDIR}/FF/prepareHH_FF.do"
     di("FF household data prepared.")
     di("Data created: parents_Y0.dta - parents_Y15.dta")
 
 * ----- PREPARE OUTCOME VARIABLES
-do "${CODEDIR}/prepareHealth_FF.do"
+do "${CODEDIR}/FF/prepareHealth_FF.do"
     di("FF health data prepared.")
     di("Data created: prepareHealth.dta")
 
-* ----- PREPARE STATES (RESTRICTED USE DATA)
-do "${CODEDIR}/states_FF.do"
-    di("FF states created.")
-    di("Data created: states.dta")
-
-
-* ----------------------------- CONSTRUCT VARS FF DATA
-* ----- CONSTRUCT HH PANEL
-do "${CODEDIR}/constructHH_FF.do"
-    di("FF household data combined.")
-    di("Data created: household_FF.dta")
-
 * ----- CONSTRUCT OUTCOME VARIABLES
-do "${CODEDIR}/constructHealth_FF.do"
+do "${CODEDIR}/FF/constructHealth_FF.do"
     di("FF health data combined.")
     di("Data created: health.dta")
 
+* ----- PREPARE STATES (RESTRICTED USE DATA)
+do "${CODEDIR}/FF/states_FF.do"
+    di("FF states created.")
+    di("Data created: states.dta")
+
+* ----- PREPARE GENETIC DATA (RESTRICTED USE DATA)
+do "${CODEDIR}/FF/genetic_FF.do"
+    di("FF genetic data created.")
+    di("Data created: genetic.dta")
+
+
+* ----- CONSTRUCT HH PANEL
+do "${CODEDIR}/FF/constructHH_FF.do"
+    di("FF household data combined.")
+    di("Data created: household_FF.dta")
 
 
 * ----------------------------- ANALYSIS
 * ----- REGRESSIONS
-
+do "${CODEDIR}/analysis.do"
+    display("Analysis performed.")
 
 * ----- MAPS
-do "${CODEDIR}/maps.do"
+do "${CODEDIR}/output/maps.do"
     display("Maps created.")
-    display("Output: *")
+

@@ -29,7 +29,7 @@ do "${CODEDIR}/setDirectories.do"
 use "${RAWDATADIR}/rawData/contractcity6pub.dta", clear
 keep idnum *stfips p6state_n
 
-merge 1:m idnum using "${TEMPDATADIR}/health.dta", keepus(moReport wave)
+merge 1:m idnum using "${TEMPDATADIR}/health1.dta", keepus(moReport wave)
 
 * ----------------------------- MISSING VALUES
 foreach var in  m1stfips f1stfips m2stfips f2stfips m3stfips f3stfips ///

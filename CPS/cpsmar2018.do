@@ -5276,7 +5276,7 @@ label define tchsp_val
 
 #delimit cr
 
-do "${CODEDIR}/CEPR_cleaning.do"
+do "${CODEDIR}/CPS/CEPR_cleaning.do"
 
 compress
 saveold `dta_name' , replace

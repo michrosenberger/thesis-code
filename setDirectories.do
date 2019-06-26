@@ -4,9 +4,9 @@ if "`c(username)'" == "michellerosenberger"  {
     global DATAPATH			"~/Development/MA/data"
 	global CODEPATH			"~/Development/MA/code"
 	global OUTPUTPATH		"~/Development/MA/output"
-	*global DATAPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
-	*global CODEPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
-	*global OUTPUTPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/output"
+	// global DATAPATH			"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/data"
+	// global CODEPATH			"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	// global OUTPUTPATH		"/Volumes/g_econ_department$/econ/biroli/geighei/data/medicaidGxE/output"
 }
 
 global CODEDIR                  "${CODEPATH}"
