@@ -189,7 +189,7 @@ grstyle linestyle legend none
 
 * ----- GRAPH
 two (scatter mean_Elig0 year, connect(L) msymbol(X) mlcolor(emidblue) lcolor(emidblue) ///
-ytitle("% eligible") xlabel(1998 (4) 2018)) ///
+ytitle("Fraction") xlabel(1998 (4) 2018)) ///
 (connected mean_Elig1 year, msymbol(X) mlcolor(ebblue) lcolor(ebblue)) ///
 (connected mean_Elig6 year, msymbol(X) mlcolor(navy) lcolor(navy))
 graph export "${FIGUREDIR}/ChangeEligibility.png", replace
