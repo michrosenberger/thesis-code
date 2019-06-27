@@ -54,7 +54,7 @@ if ${USMAP} == 1 {
 foreach year in 1998 2018 {
 	use "${CLEANDATADIR}/simulatedEligbility.dta", clear
 	keep if year == `year'
-	collapse simulatedElig, by(statefip)			// mean (highest?)
+	collapse simulatedElig, by(statefip)			// mean
 	replace simulatedElig = simulatedElig * 100		// in percent
 	rename simulatedElig simulatedElig`year'
 	rename statefip statefips
@@ -78,10 +78,10 @@ replace break2 = 40 if _ID == 1
 replace break2 = 50 if _ID == 2
 replace break2 = 60 if _ID == 3
 replace break2 = 70 if _ID == 4
-replace break2 = 71 if _ID == 5
+replace break2 = 80 if _ID == 5
 
 foreach year in 1998 2018 {
-	maptile simulatedElig`year', geo(state) geoid(statefips) fcolor( Blues2) ///
+	maptile simulatedElig`year', geo(state) geoid(statefips) fcolor(Blues) ///
 	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) ///
 	legjunction(" to ") ///
 	legend(pos(5)) legtitle("% of children") line(data("${MAPTILEPATH}/line_data"))) ///
@@ -141,7 +141,7 @@ replace break2 = 350 if _ID == 3
 replace break2 = 400 if _ID == 4
 
 foreach year in 1998 2018 {
-	maptile cut`year', geo(state) geoid(statefips) fcolor(Blues2) ///
+	maptile cut`year', geo(state) geoid(statefips) fcolor(Blues) ///
 	spopt( label(xcoord(xcoord) ycoord(ycoord) label(state) ) legstyle(2) ///
 	legjunction(" to ") ///
 	legend(pos(5)) legtitle("% of FPL") line(data("${MAPTILEPATH}/line_data")) ) ///
@@ -157,7 +157,7 @@ erase maxFPL2018.dta
 
 
 * ---------------------------------------------------------------------------- *
-* ------------------------ MEDIAN SIMULATED ELIGIBILITY ---------------------- *
+* -------------------------- MEAN SIMULATED ELIGIBILITY ---------------------- *
 * ---------------------------------------------------------------------------- *
 use "${CLEANDATADIR}/simulatedEligbility.dta", clear
 order statefip year age
