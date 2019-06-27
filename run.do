@@ -15,9 +15,8 @@ set maxvar 10000
 * ----------------------------- WORING DIRECTORIES AND GLOABL VARS
 if "`c(username)'" == "michellerosenberger"  {
 	global CODEDIR			"~/Development/MA/code"
-	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	// global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
-
 
 * ----------------------------- FEDERAL POVERTY LINE
 do "${CODEDIR}/Eligibility/FPL_threshold.do"
@@ -45,8 +44,8 @@ do "${CODEDIR}/Eligibility/medicaidEligibility.do"
     di("Data created: cutscombined.dta")
 
 * ----- CREATE SIMULATED ELIGIBILITY
-do "${CODEDIR}/Eligibility/simulatedEligbility.do"
-   di("Instrument created.")
+// do "${CODEDIR}/Eligibility/simulatedEligbility.do"
+//    di("Instrument created.")
 
 
 * ----------------------------- FFCWS DATA

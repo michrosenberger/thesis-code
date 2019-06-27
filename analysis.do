@@ -30,24 +30,24 @@ set maxvar 10000
 * ----------------------------- SET WORKING DIRECTORIES & GLOBAL VARS
 if "`c(username)'" == "michellerosenberger"  {
 	global CODEDIR		"~/Development/MA/code"
-	*global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
+	// global CODEDIR		"/Volumes/g_econ_department$/econ/biroli/geighei/code/medicaidGxE/thesis-code"
 }
 
 do "${CODEDIR}/setDirectories.do"
 
 * ----------------------------- SET SWITCHES
 global PREPARE 			= 1		// Prepare data
-global POWER			= 0		// MDE + Power Calculations
-global DESCRIPTIVE		= 0		// Perform descriptive statistics
-global REGRESSIONS 		= 0 	// Perform regressions
-global COEFPLOT			= 0	
-global ENROLLMENT		= 0		// Main effects with enrollment
-global ASSUMPTIONS		= 0		// Check IV assumptions
-global TABLESSIMULATED	= 0
-global ADDITIONAL		= 0
-global ROBUSTNESS		= 0		// Perform robustness checks
-global HETEROGENOUS		= 0		// Heterogenous effects by race
-global GXE				= 0
+global POWER			= 1		// MDE + Power Calculations
+global DESCRIPTIVE		= 1		// Perform descriptive statistics
+global REGRESSIONS 		= 1 	// Perform regressions
+global COEFPLOT			= 1	
+global ENROLLMENT		= 1		// Main effects with enrollment
+global ASSUMPTIONS		= 1		// Check IV assumptions
+global TABLESSIMULATED	= 1
+global ADDITIONAL		= 1
+global ROBUSTNESS		= 1		// Perform robustness checks
+global HETEROGENOUS		= 1		// Heterogenous effects by race
+global GXE				= 1
 
 * ----------------------------- GLOBAL VARIABLES
 global CONTROLS 	i.age 	chFemale i.chRace moAge age#chFemale
