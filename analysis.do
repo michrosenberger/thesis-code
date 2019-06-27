@@ -1130,35 +1130,20 @@ if ${HETEROGENOUS} == 1 {
 
 		formatTABLES 15 ExF2 `adjustedVars15'
 
+	* ----- LATEX WITH GENDER INTERACTION BOTH AGES
+	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} & \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} \\"
 
-	* ----- LATEX WITH GENDER INTERACTION
-	local titles "& \shortstack[l]{Health \\ factor} & \shortstack[l]{Child \\ health} & Absent & \shortstack[l]{Utilization \\ factor} \\ "
-
-	estout gen_9_healthFactor_9 gen_9_chHealthRECODE gen_9_absent gen_9_medicalFactor_9 ///
-	using "${TABLEDIR}/heterogenousGender9.tex", replace label collabels(none) style(tex) nonumbers ///
+	estout gen_9_healthFactor_9 gen_9_chHealthRECODE gen_9_absent gen_9_medicalFactor_9 gen_15_behavFactor_15 ///
+	gen_15_chHealthRECODE gen_15_absent gen_15_limit gen_15_depressedRECODE gen_15_diagnosedDepression gen_15_medicalFactor_15 ///
+	using "${TABLEDIR}/heterogenousGender.tex", replace label collabels(none) style(tex) nonumbers ///
 	keep(${ELIGVAR} eligxFEM chFemale _cons) order(${ELIGVAR} eligxFEM chFemale _cons) /// 
 	cells(b(fmt(%9.3fc)) se(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
 	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.3f %9.1f %9.1f %9.0f) ///
 	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
 	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "\textit{F}-Statistic 1" "\textit{F}-Statistic 2" "Observations")) ///
-	mlabels(none) mgroups("\rule{0pt}{3ex} Age 9",	pattern(1 0 0 0) span ///
+	mlabels(none) mgroups("\rule{0pt}{3ex} Age 9" "Age 15",	pattern(1 0 0 0 1 0 0 0 0 0 0) span ///
 	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
-	refcat(${ELIGVAR} "& ${healthFactor_9_9_ExF1} & ${chHealthRECODE_9_ExF1} & ${absent_9_ExF1} & ${medicalFactor_9_9_ExF1} \\ %" eligxFEM "& ${healthFactor_9_9_ExF2} & ${chHealthRECODE_9_ExF2} & ${absent_9_ExF2} & ${medicalFactor_9_9_ExF2} \\ %", nolabel below) ///
-	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) posthead("`titles'")
-
-	local titles "& \shortstack[l]{Behaviors \\ factor} & \shortstack[l]{Child \\ health} & Absent & Limit & \shortstack[l]{Feels \\ depressed} & \shortstack[l]{Diagn. \\ depressed} & \shortstack[l]{Utilization \\ factor} \\"
-
-	estout gen_15_behavFactor_15 gen_15_chHealthRECODE gen_15_absent gen_15_limit gen_15_depressedRECODE ///
-	gen_15_diagnosedDepression gen_15_medicalFactor_15 ///
-	using "${TABLEDIR}/heterogenousGender15.tex", replace label collabels(none) style(tex) nonumbers ///
-	keep(${ELIGVAR} eligxFEM chFemale _cons) order(${ELIGVAR} eligxFEM chFemale _cons) ///
-	cells(b(fmt(%9.3fc)) se(par fmt(%9.3fc) star)) starlevels(* .1 ** .05 *** .01) ///
-	stats(Controls StateFE meanElig fs1 fs2 N, fmt(%9.0f %9.0f %9.3f %9.1f %9.1f %9.0f) ///
-	layout("\multicolumn{1}{l}{@}" "\multicolumn{1}{l}{@}") ///
-	label("\hline \rule{0pt}{3ex}Controls" "State FE" "Mean" "\textit{F}-Statistic 1" "\textit{F}-Statistic 2" "Observations")) ///
-	mlabels(none) mgroups("\rule{0pt}{3ex} Age 15", pattern(1 0 0 0 0 0 0) span ///
-	prefix(\multicolumn{@span}{c}{) suffix(}) erepeat(\cmidrule(lr){@span})) ///
-	refcat(${ELIGVAR} "& ${behavFactor_15_15_ExF1} & ${chHealthRECODE_15_ExF1} & ${absent_15_ExF1} & ${limit_15_ExF1} & ${depressedRECODE_15_ExF1} & ${diagnosedDepression_15_ExF1} & ${medicalFactor_15_15_ExF1} \\ %" eligxFEM "& ${behavFactor_15_15_ExF2} & ${chHealthRECODE_15_ExF2} & ${absent_15_ExF2} & ${limit_15_ExF2} & ${depressedRECODE_15_ExF2} & ${diagnosedDepression_15_ExF2} & ${medicalFactor_15_15_ExF2} \\ %", nolabel below) ///
+	refcat(${ELIGVAR} "& ${healthFactor_9_9_ExF1} & ${chHealthRECODE_9_ExF1} & ${absent_9_ExF1} & ${medicalFactor_9_9_ExF1} & ${behavFactor_15_15_ExF1} & ${chHealthRECODE_15_ExF1} & ${absent_15_ExF1} & ${limit_15_ExF1} & ${depressedRECODE_15_ExF1} & ${diagnosedDepression_15_ExF1} & ${medicalFactor_15_15_ExF1} \\ %" eligxFEM "& ${healthFactor_9_9_ExF2} & ${chHealthRECODE_9_ExF2} & ${absent_9_ExF2} & ${medicalFactor_9_9_ExF2} & ${behavFactor_15_15_ExF2} & ${chHealthRECODE_15_ExF2} & ${absent_15_ExF2} & ${limit_15_ExF2} & ${depressedRECODE_15_ExF2} & ${diagnosedDepression_15_ExF2} & ${medicalFactor_15_15_ExF2} \\ %", nolabel below) ///
 	varlabels(_cons Constant, blist(${ELIGVAR} "\hline ")) posthead("`titles'")
 
 }
