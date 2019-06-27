@@ -164,9 +164,9 @@ order statefip year age
 sort statefip year age
 label var year "Year"
 
-gen Elig0 = simulatedElig if ( age == 0 )
-gen Elig1 = simulatedElig if ( age == 1 | age == 2 | age == 3 | age == 4 | age == 5 )
-gen Elig6 = simulatedElig if ( age > 5 )
+gen Elig0 = simulatedElig * 100 if ( age == 0 )
+gen Elig1 = simulatedElig * 100 if ( age == 1 | age == 2 | age == 3 | age == 4 | age == 5 )
+gen Elig6 = simulatedElig * 100 if ( age > 5 )
 
 * ----- MEAN FOR EACH AGE GROUP
 bysort year: egen mean_Elig0 = mean(Elig0)
@@ -189,7 +189,7 @@ grstyle linestyle legend none
 
 * ----- GRAPH
 two (scatter mean_Elig0 year, connect(L) msymbol(X) mlcolor(emidblue) lcolor(emidblue) ///
-ytitle("Fraction") xlabel(1998 (4) 2018)) ///
+ytitle("Percent") xlabel(1998 (4) 2018)) ///
 (connected mean_Elig1 year, msymbol(X) mlcolor(ebblue) lcolor(ebblue)) ///
 (connected mean_Elig6 year, msymbol(X) mlcolor(navy) lcolor(navy))
 graph export "${FIGUREDIR}/ChangeEligibility.${EXTENSION}", replace
